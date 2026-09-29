@@ -5,6 +5,10 @@ import sellerRoutes from './seller.routes.js';
 import storeRoutes from './store.routes.js';
 import categoryRoutes from './category.routes.js';
 import productRoutes from './product.routes.js';
+import batchRoutes from './batch.routes.js';
+import inventoryRoutes from './inventory.routes.js';
+import pricingRoutes from './pricing.routes.js';
+import expiryRoutes from './expiry.routes.js';
 
 const router = Router();
 
@@ -14,5 +18,9 @@ router.use('/sellers', sellerRoutes);
 router.use('/stores', storeRoutes);
 router.use('/categories', categoryRoutes);
 router.use('/products', productRoutes);
+router.use('/batches', batchRoutes);
+router.use('/inventory', inventoryRoutes);
+router.use('/pricing', pricingRoutes);
+router.use('/expiry', expiryRoutes);
 
 export default router;
