@@ -9,6 +9,8 @@ import batchRoutes from './batch.routes.js';
 import inventoryRoutes from './inventory.routes.js';
 import pricingRoutes from './pricing.routes.js';
 import expiryRoutes from './expiry.routes.js';
+import marketplaceRoutes from './marketplace.routes.js';
+import wishlistRoutes from './wishlist.routes.js';
 
 const router = Router();
 
@@ -22,5 +24,7 @@ router.use('/batches', batchRoutes);
 router.use('/inventory', inventoryRoutes);
 router.use('/pricing', pricingRoutes);
 router.use('/expiry', expiryRoutes);
+router.use('/marketplace', marketplaceRoutes);
+router.use('/wishlist', wishlistRoutes);
 
 export default router;
