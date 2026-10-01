@@ -23,7 +23,8 @@ const base64UrlDecode = (str) => {
  * The token only points securely to the batch ID and cryptographic nonce.
  */
 export const generateSecureQrToken = (batchId) => {
-  const secret = env.JWT_SECRET || 'nearexpiry-qr-fallback-secret';
+  const secret =
+    env.QR_SIGNING_SECRET || env.JWT_SECRET || 'nearexpiry_qr_hmac_signing_key_2026';
   const nonce = crypto.randomBytes(16).toString('hex');
 
   const header = { alg: 'HS256', typ: 'NE-QR' };
@@ -71,7 +72,8 @@ export const verifySecureQrToken = (token) => {
   }
 
   const [encodedHeader, encodedPayload, signature] = parts;
-  const secret = env.JWT_SECRET || 'nearexpiry-qr-fallback-secret';
+  const secret =
+    env.QR_SIGNING_SECRET || env.JWT_SECRET || 'nearexpiry_qr_hmac_signing_key_2026';
   const data = `${encodedHeader}.${encodedPayload}`;
 
   const expectedSignature = crypto

@@ -74,6 +74,7 @@ export const registerAdminSchema = z.object({
     email: z.string().trim().email().transform((val) => val.toLowerCase()),
     phone: z.string().trim().optional(),
     password: passwordSchema,
+    adminSecret: z.string().trim().optional(),
   }),
 });
 

@@ -57,11 +57,17 @@ export const globalErrorHandler = (err, req, res, next) => {
     console.error(`[Error] ${req.method} ${req.originalUrl} ->`, err);
   }
 
+  const clientMessage =
+    env.isProduction && error.statusCode >= 500
+      ? 'Internal Server Error'
+      : error.message;
+
   return res.status(error.statusCode).json({
     success: false,
-    message: error.message,
+    message: clientMessage,
     errorCode: error.errorCode,
     ...(error.errors && error.errors.length > 0 && { errors: error.errors }),
     ...(env.isDevelopment && { stack: error.stack }),
   });
 };
+

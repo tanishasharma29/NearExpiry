@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { Payment, PAYMENT_STATUS, PAYMENT_METHOD } from '../models/payment.model.js';
 import { Order, ORDER_STATUS } from '../models/order.model.js';
+import { Store } from '../models/store.model.js';
 import { USER_ROLES } from '../models/user.model.js';
 import { ApiError } from '../utils/ApiError.js';
 import { getPaymentProvider } from './payment/providers/index.js';
@@ -304,6 +305,13 @@ export const getPaymentByIdService = async (paymentId, userActor) => {
 
   if (userActor.role === USER_ROLES.CUSTOMER && payment.customerId.toString() !== userActor._id.toString()) {
     throw new ApiError(403, 'Forbidden: Access denied.', 'FORBIDDEN');
+  }
+
+  if (userActor.role === USER_ROLES.SELLER) {
+    const store = await Store.findById(payment.storeId).lean();
+    if (!store || store.ownerId?.toString() !== userActor._id.toString()) {
+      throw new ApiError(403, 'Forbidden: You can only view payments for your own store.', 'FORBIDDEN');
+    }
   }
 
   return payment;
