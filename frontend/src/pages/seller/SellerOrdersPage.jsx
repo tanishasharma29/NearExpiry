@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ShoppingBag, CheckCircle, Package, Truck, Store, IndianRupee } from 'lucide-react';
-import api from '../../api/client';
+import { orderService } from '../../services/orderService';
+import { paymentService } from '../../services/paymentService';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 
 const NEXT_STATUS_MAP = {
@@ -16,8 +17,8 @@ export const SellerOrdersPage = () => {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/orders/seller');
-      setOrders(res.data?.data?.orders || []);
+      const data = await orderService.getSellerOrders();
+      setOrders(data?.orders || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -31,7 +32,7 @@ export const SellerOrdersPage = () => {
 
   const updateOrderStatus = async (orderId, nextStatus) => {
     try {
-      await api.patch(`/orders/${orderId}/status`, { status: nextStatus });
+      await orderService.updateOrderStatus(orderId, { status: nextStatus });
       fetchOrders();
     } catch (err) {
       alert(err.message || 'Failed to update order status');
@@ -40,7 +41,7 @@ export const SellerOrdersPage = () => {
 
   const confirmCod = async (paymentId) => {
     try {
-      await api.post(`/payments/${paymentId}/confirm-cod`);
+      await paymentService.confirmCodPayment(paymentId);
       alert('Cash payment confirmed successfully!');
       fetchOrders();
     } catch (err) {

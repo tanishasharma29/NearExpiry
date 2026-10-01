@@ -11,7 +11,7 @@ import {
   CartesianGrid,
   Legend
 } from 'recharts';
-import api from '../../api/client';
+import { analyticsService } from '../../services/analyticsService';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 
 export const SellerAnalyticsPage = () => {
@@ -23,8 +23,8 @@ export const SellerAnalyticsPage = () => {
     const fetchAnalytics = async () => {
       try {
         setLoading(true);
-        const res = await api.get(`/analytics/seller?period=${period}`);
-        setData(res.data.data);
+        const anData = await analyticsService.getSellerAnalytics(period);
+        setData(anData);
       } catch (err) {
         console.error(err);
       } finally {

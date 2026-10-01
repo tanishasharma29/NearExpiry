@@ -1,3 +1,4 @@
+import { ensureSellerStore } from './store.service.js';
 import mongoose from 'mongoose';
 import { User, USER_ROLES } from '../models/user.model.js';
 import { Store } from '../models/store.model.js';
@@ -47,7 +48,10 @@ const STANDARD_EXPIRY_BUCKETS = [
  * Executes fully within MongoDB aggregation engine (zero Node.js memory loading).
  */
 export const getSellerAnalyticsService = async (sellerUser, queryParams = {}) => {
-  const store = await Store.findOne({ ownerId: sellerUser._id }).lean();
+  let store = await Store.findOne({ ownerId: sellerUser._id }).lean();
+  if (!store) {
+    store = await ensureSellerStore(sellerUser);
+  }
   if (!store) {
     throw new ApiError(404, 'Store not found for this seller.', 'STORE_NOT_FOUND');
   }

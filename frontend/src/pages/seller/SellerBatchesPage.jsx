@@ -3,7 +3,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Plus, QrCode, Layers, AlertCircle, ShieldCheck } from 'lucide-react';
-import api from '../../api/client';
+import { batchService } from '../../services/batchService';
+import { productService } from '../../services/productService';
 import { Modal } from '../../components/common/Modal';
 import { ExpiryBadge } from '../../components/common/ExpiryBadge';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
@@ -38,12 +39,12 @@ export const SellerBatchesPage = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [bRes, pRes] = await Promise.all([
-        api.get('/batches'),
-        api.get('/products'),
+      const [bData, pData] = await Promise.all([
+        batchService.getBatches(),
+        productService.getProducts(),
       ]);
-      setBatches(bRes.data?.data?.batches || []);
-      setProducts(pRes.data?.data?.products || []);
+      setBatches(bData?.batches || []);
+      setProducts(pData?.products || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -58,7 +59,7 @@ export const SellerBatchesPage = () => {
   const onSubmit = async (data) => {
     try {
       setServerError('');
-      await api.post('/batches', data);
+      await batchService.createBatch(data);
       setModalOpen(false);
       reset();
       loadData();
@@ -69,8 +70,8 @@ export const SellerBatchesPage = () => {
 
   const handleShowQr = async (batchId) => {
     try {
-      const res = await api.get(`/qr/batch/${batchId}`);
-      setQrData(res.data.data);
+      const qrData = await batchService.getBatchQrCode(batchId);
+      setQrData(qrData);
       setQrModalOpen(true);
     } catch (err) {
       alert(err.message || 'Failed to generate QR code');

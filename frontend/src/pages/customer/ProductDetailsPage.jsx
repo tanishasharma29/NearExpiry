@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ShoppingCart, Heart, Store, Calendar, ShieldCheck, AlertCircle, ArrowLeft, PackageCheck, Layers } from 'lucide-react';
-import api from '../../api/client';
+import { productService } from '../../services/productService';
 import { ExpiryBadge } from '../../components/common/ExpiryBadge';
 import { PriceTag } from '../../components/common/PriceTag';
 import { StockBadge } from '../../components/common/StockBadge';
@@ -26,8 +26,8 @@ export const ProductDetailsPage = () => {
     const fetchProductDetails = async () => {
       try {
         setLoading(true);
-        const res = await api.get(`/marketplace/products/${id}`);
-        setData(res.data.data);
+        const resData = await productService.getMarketplaceProductById(id);
+        setData(resData);
       } catch (err) {
         console.error('Failed to load product details', err);
       } finally {

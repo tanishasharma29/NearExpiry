@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, Filter, SlidersHorizontal, ArrowUpDown, X, MapPin } from 'lucide-react';
-import api from '../../api/client';
+import { productService } from '../../services/productService';
+import { categoryService } from '../../services/categoryService';
 import { ProductCard } from '../../components/common/ProductCard';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { EmptyState } from '../../components/common/EmptyState';
@@ -25,8 +26,8 @@ export const MarketplacePage = () => {
 
   // Load categories
   useEffect(() => {
-    api.get('/categories?status=ACTIVE')
-      .then((res) => setCategories(res.data?.data?.categories || []))
+    categoryService.getCategories({ status: 'ACTIVE' })
+      .then((data) => setCategories(data?.categories || (Array.isArray(data) ? data : [])))
       .catch(() => {});
   }, []);
 
@@ -34,21 +35,18 @@ export const MarketplacePage = () => {
   const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams();
-      if (search) params.append('search', search);
-      if (category) params.append('category', category);
-      if (expiryWindow) params.append('expiryWindow', expiryWindow);
-      if (minDiscount) params.append('minDiscount', minDiscount);
-      if (sortBy) params.append('sortBy', sortBy);
-      if (sortOrder) params.append('sortOrder', sortOrder);
-      if (maxDistanceKm) params.append('maxDistanceKm', maxDistanceKm);
-      params.append('page', page);
-      params.append('limit', 12);
+      const queryParams = { page, limit: 12 };
+      if (search) queryParams.search = search;
+      if (category) queryParams.category = category;
+      if (expiryWindow) queryParams.expiryWindow = expiryWindow;
+      if (minDiscount) queryParams.minDiscount = minDiscount;
+      if (sortBy) queryParams.sortBy = sortBy;
+      if (sortOrder) queryParams.sortOrder = sortOrder;
+      if (maxDistanceKm) queryParams.maxDistanceKm = maxDistanceKm;
 
-      const res = await api.get(`/marketplace/products?${params.toString()}`);
-      const { products: items, pagination: pag } = res.data.data;
-      setProducts(items || []);
-      setPagination(pag || { page: 1, limit: 12, total: 0, pages: 1 });
+      const data = await productService.getMarketplaceProducts(queryParams);
+      setProducts(data?.products || []);
+      setPagination(data?.pagination || { page: 1, limit: 12, total: 0, pages: 1 });
     } catch (err) {
       console.error('Failed to fetch marketplace products', err);
       setProducts([]);

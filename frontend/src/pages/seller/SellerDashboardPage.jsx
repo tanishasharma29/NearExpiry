@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Package, Layers, AlertTriangle, Clock, TrendingUp, IndianRupee, ArrowRight, PlusCircle, BellRing } from 'lucide-react';
-import api from '../../api/client';
+import { analyticsService } from '../../services/analyticsService';
+import { orderService } from '../../services/orderService';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 
 export const SellerDashboardPage = () => {
@@ -13,12 +14,18 @@ export const SellerDashboardPage = () => {
     const fetchDashboard = async () => {
       try {
         setLoading(true);
-        const [anRes, ordRes] = await Promise.all([
-          api.get('/analytics/seller?period=30d'),
-          api.get('/orders/seller?limit=5'),
+        const [anData, ordData] = await Promise.all([
+          analyticsService.getSellerAnalytics('30d').catch((err) => {
+            console.warn('Analytics empty or pending', err);
+            return null;
+          }),
+          orderService.getSellerOrders({ limit: 5 }).catch((err) => {
+            console.warn('Orders empty or pending', err);
+            return { orders: [] };
+          }),
         ]);
-        setAnalytics(anRes.data?.data);
-        setRecentOrders(ordRes.data?.data?.orders || []);
+        setAnalytics(anData);
+        setRecentOrders(ordData?.orders || []);
       } catch (err) {
         console.error('Failed to load seller dashboard', err);
       } finally {

@@ -1,3 +1,4 @@
+import { ensureSellerStore } from './store.service.js';
 import mongoose from 'mongoose';
 import { Product, PRODUCT_STATUS } from '../models/product.model.js';
 import { Category, CATEGORY_STATUS } from '../models/category.model.js';
@@ -39,8 +40,11 @@ const assertProductOwnershipOrAdmin = (product, requesterUser) => {
  * Seller creates a new Product under an ACTIVE Category.
  */
 export const createProductService = async (sellerUser, payload) => {
-  // 1. Ensure Seller has created a Store
-  const store = await Store.findOne({ ownerId: sellerUser._id });
+  // 1. Ensure Seller has created a Store (auto-provision if needed)
+  let store = await Store.findOne({ ownerId: sellerUser._id });
+  if (!store) {
+    store = await ensureSellerStore(sellerUser);
+  }
   if (!store) {
     throw new ApiError(
       400,

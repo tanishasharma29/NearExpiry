@@ -1,3 +1,4 @@
+import { ensureSellerStore } from './store.service.js';
 import { applyDynamicPricingToBatchService } from './pricing.service.js';
 import { ensureDefaultPriceRulesSeeded } from './priceRule.service.js';
 import { PRICE_CHANGE_TRIGGERS } from '../models/priceAudit.model.js';
@@ -66,7 +67,10 @@ const assertBatchOwnershipOrAdmin = (batch, requesterUser) => {
  */
 export const createBatchService = async (sellerUser, payload) => {
   // Verify Seller's Store
-  const store = await Store.findOne({ ownerId: sellerUser._id });
+  let store = await Store.findOne({ ownerId: sellerUser._id });
+  if (!store) {
+    store = await ensureSellerStore(sellerUser);
+  }
   if (!store) {
     throw new ApiError(
       400,

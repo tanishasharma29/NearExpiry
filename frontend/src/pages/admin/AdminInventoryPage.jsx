@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import api from '../../api/client';
+import { adminService } from '../../services/adminService';
 import { Boxes } from 'lucide-react';
 import { ExpiryBadge } from '../../components/common/ExpiryBadge';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
@@ -9,8 +9,8 @@ export const AdminInventoryPage = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/admin/inventory')
-      .then((res) => setBatches(res.data?.data?.inventory || []))
+    adminService.getInventoryMonitoring()
+      .then((data) => setBatches(data?.inventory || []))
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
   }, []);

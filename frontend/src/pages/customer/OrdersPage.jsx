@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Package, Clock, ChevronRight, CheckCircle2 } from 'lucide-react';
-import api from '../../api/client';
+import { orderService } from '../../services/orderService';
 import { EmptyState } from '../../components/common/EmptyState';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 
@@ -13,8 +13,8 @@ export const OrdersPage = () => {
     const fetchOrders = async () => {
       try {
         setLoading(true);
-        const res = await api.get('/orders');
-        setOrders(res.data.data?.orders || []);
+        const data = await orderService.getCustomerOrders();
+        setOrders(data?.orders || (Array.isArray(data) ? data : []));
       } catch (err) {
         console.error('Failed to load orders', err);
       } finally {

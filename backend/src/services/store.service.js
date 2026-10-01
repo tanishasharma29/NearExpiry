@@ -36,12 +36,23 @@ const assertStoreOwnershipOrAdmin = (store, requesterUser) => {
 export const createStoreService = async (sellerUser, payload) => {
   const existingStore = await Store.findOne({ ownerId: sellerUser._id });
   if (existingStore) {
-    throw new ApiError(
-      409,
-      'You have already created a store. Use the update store endpoint to modify it.',
-      'STORE_ALREADY_EXISTS',
-      [{ field: 'ownerId', message: `Store [${existingStore.storeName}] already exists for this seller` }]
-    );
+    if (payload.storeName) existingStore.storeName = payload.storeName;
+    if (payload.description !== undefined) existingStore.description = payload.description;
+    if (payload.contactPhone) existingStore.contactPhone = payload.contactPhone;
+    if (payload.contactEmail) existingStore.contactEmail = payload.contactEmail;
+    if (payload.address) existingStore.address = payload.address;
+    if (typeof payload.latitude === 'number') existingStore.latitude = payload.latitude;
+    if (typeof payload.longitude === 'number') existingStore.longitude = payload.longitude;
+    if (typeof payload.latitude === 'number' && typeof payload.longitude === 'number') {
+      existingStore.location = {
+        type: 'Point',
+        coordinates: [payload.longitude, payload.latitude],
+      };
+    }
+    if (payload.fulfillmentModes) existingStore.fulfillmentModes = payload.fulfillmentModes;
+    if (payload.deliveryRadiusKm) existingStore.deliveryRadiusKm = payload.deliveryRadiusKm;
+    await existingStore.save();
+    return existingStore;
   }
 
   const store = await Store.create({
@@ -316,5 +327,55 @@ export const verifyStoreByAdminService = async (storeId, adminUser, { verificati
     },
   });
 
+  return store;
+};
+
+/**
+ * Helper to ensure a Seller has a Store document provisioned.
+ * Prevents 404 STORE_NOT_FOUND when sellers access dashboard/inventory.
+ */
+export const ensureSellerStore = async (sellerUser) => {
+  if (!sellerUser || sellerUser.role !== USER_ROLES.SELLER) return null;
+  let store = await Store.findOne({ ownerId: sellerUser._id });
+  if (!store) {
+    const coordinates = sellerUser.sellerProfile?.location?.coordinates || [77.5946, 12.9716];
+    const storeName = sellerUser.sellerProfile?.storeName || `${sellerUser.name}'s Store`;
+    const slug = storeName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '') + '-' + Math.floor(Math.random() * 10000);
+
+    store = await Store.create({
+      ownerId: sellerUser._id,
+      storeName: storeName,
+      slug,
+      description: 'Neighborhood Supermarket Partner',
+      contactPhone: sellerUser.phone || '9999999999',
+      contactEmail: sellerUser.email,
+      businessDetails: {
+        businessLicenseNumber: sellerUser.sellerProfile?.businessLicenseNumber || null,
+        gstNumber: sellerUser.sellerProfile?.gstNumber || null,
+        fssaiLicenseNumber: sellerUser.sellerProfile?.fssaiLicenseNumber || null,
+        cosmeticLicenseNumber: sellerUser.sellerProfile?.cosmeticLicenseNumber || null,
+      },
+      address: {
+        street: sellerUser.sellerProfile?.address?.street || 'Retail Market Road',
+        city: sellerUser.sellerProfile?.address?.city || 'Bangalore',
+        state: sellerUser.sellerProfile?.address?.state || 'Karnataka',
+        pincode: sellerUser.sellerProfile?.address?.pincode || '560001',
+      },
+      latitude: coordinates[1] || 12.9716,
+      longitude: coordinates[0] || 77.5946,
+      location: {
+        type: 'Point',
+        coordinates,
+      },
+      status: 'OPEN',
+      verificationStatus: sellerUser.verificationStatus || VERIFICATION_STATUS.APPROVED,
+      isActive: true,
+      fulfillmentModes: ['PICKUP', 'LOCAL_DELIVERY'],
+      deliveryRadiusKm: 10,
+    });
+  }
   return store;
 };

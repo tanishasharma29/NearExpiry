@@ -12,7 +12,7 @@ import {
   ShieldCheck,
   CheckCircle2
 } from 'lucide-react';
-import api from '../../api/client';
+import { adminService } from '../../services/adminService';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 
 export const AdminDashboardPage = () => {
@@ -23,8 +23,8 @@ export const AdminDashboardPage = () => {
   const fetchDashboard = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/admin/dashboard');
-      setDashboard(res.data?.data);
+      const data = await adminService.getDashboard();
+      setDashboard(data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -39,8 +39,8 @@ export const AdminDashboardPage = () => {
   const triggerSweep = async () => {
     try {
       setSweeping(true);
-      const res = await api.post('/admin/pricing-rules/trigger-sweep');
-      alert(`Manual sweep triggered! Scanned: ${res.data?.data?.batchesScanned || 0} batches.`);
+      const res = await adminService.triggerPricingSweep();
+      alert(`Manual sweep triggered! Scanned: ${res?.batchesScanned || 0} batches.`);
       fetchDashboard();
     } catch (err) {
       alert(err.message || 'Failed to trigger sweep');

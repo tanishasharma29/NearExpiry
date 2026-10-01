@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, CheckCircle, Clock, Package, Store, MapPin, AlertCircle } from 'lucide-react';
-import api from '../../api/client';
+import { orderService } from '../../services/orderService';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 
 const STATUS_STEPS = ['PLACED', 'CONFIRMED', 'PACKED', 'READY_FOR_PICKUP', 'DELIVERED'];
@@ -15,8 +15,8 @@ export const OrderDetailsPage = () => {
     const fetchOrder = async () => {
       try {
         setLoading(true);
-        const res = await api.get(`/orders/${id}`);
-        setOrder(res.data.data);
+        const data = await orderService.getOrderById(id);
+        setOrder(data?.order || data);
       } catch (err) {
         console.error('Failed to load order', err);
       } finally {

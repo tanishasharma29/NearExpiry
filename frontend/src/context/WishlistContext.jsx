@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import api from '../api/client';
+import { cartService } from '../services/cartService';
 import { useAuth } from './AuthContext';
 
 const WishlistContext = createContext(null);
@@ -16,8 +16,8 @@ export const WishlistProvider = ({ children }) => {
     }
     try {
       setLoading(true);
-      const res = await api.get('/wishlist');
-      setWishlist(res.data.data?.items || []);
+      const data = await cartService.getWishlist();
+      setWishlist(data?.items || (Array.isArray(data) ? data : []));
     } catch {
       setWishlist([]);
     } finally {
@@ -30,12 +30,12 @@ export const WishlistProvider = ({ children }) => {
   }, [fetchWishlist]);
 
   const addToWishlist = async (productId) => {
-    await api.post('/wishlist', { productId });
+    await cartService.addToWishlist(productId);
     await fetchWishlist();
   };
 
   const removeFromWishlist = async (productId) => {
-    await api.delete(`/wishlist/${productId}`);
+    await cartService.removeFromWishlist(productId);
     await fetchWishlist();
   };
 

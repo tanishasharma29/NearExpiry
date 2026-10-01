@@ -296,6 +296,7 @@ export const browseMarketplaceProductsService = async (query = {}) => {
     }
 
     return {
+      _id: item.product._id,
       productId: item.product._id,
       name: item.product.name,
       slug: item.product.slug,

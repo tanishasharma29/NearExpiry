@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import api from '../api/client';
+import { cartService } from '../services/cartService';
 import { useAuth } from './AuthContext';
 
 const CartContext = createContext(null);
@@ -17,11 +17,11 @@ export const CartProvider = ({ children }) => {
     }
     try {
       setLoading(true);
-      const res = await api.get('/cart');
-      setCart(res.data.data);
+      const data = await cartService.getCart();
+      setCart(data);
       setError(null);
     } catch (err) {
-      setError(err.message);
+      setError(err?.message || 'Failed to fetch cart');
     } finally {
       setLoading(false);
     }
@@ -34,9 +34,9 @@ export const CartProvider = ({ children }) => {
   const addToCart = async (productId, quantity = 1) => {
     try {
       setLoading(true);
-      const res = await api.post('/cart/items', { productId, quantity });
-      setCart(res.data.data);
-      return res.data.data;
+      const data = await cartService.addItem(productId, quantity);
+      setCart(data);
+      return data;
     } finally {
       setLoading(false);
     }
@@ -45,9 +45,9 @@ export const CartProvider = ({ children }) => {
   const updateQuantity = async (productId, quantity) => {
     try {
       setLoading(true);
-      const res = await api.put(`/cart/items/${productId}`, { quantity });
-      setCart(res.data.data);
-      return res.data.data;
+      const data = await cartService.updateItem(productId, quantity);
+      setCart(data);
+      return data;
     } finally {
       setLoading(false);
     }
@@ -56,9 +56,9 @@ export const CartProvider = ({ children }) => {
   const removeFromCart = async (productId) => {
     try {
       setLoading(true);
-      const res = await api.delete(`/cart/items/${productId}`);
-      setCart(res.data.data);
-      return res.data.data;
+      const data = await cartService.removeItem(productId);
+      setCart(data);
+      return data;
     } finally {
       setLoading(false);
     }
@@ -67,9 +67,9 @@ export const CartProvider = ({ children }) => {
   const clearCart = async () => {
     try {
       setLoading(true);
-      const res = await api.delete('/cart');
-      setCart(res.data.data);
-      return res.data.data;
+      const data = await cartService.clearCart();
+      setCart(data);
+      return data;
     } finally {
       setLoading(false);
     }

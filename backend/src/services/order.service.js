@@ -1,3 +1,4 @@
+import { ensureSellerStore } from './store.service.js';
 import mongoose from 'mongoose';
 import { Order, ORDER_STATUS, FULFILLMENT_TYPES } from '../models/order.model.js';
 import { Cart } from '../models/cart.model.js';
@@ -329,7 +330,10 @@ export const getCustomerOrdersService = async (customerId, query = {}) => {
  * 3. Get Seller's Store Orders.
  */
 export const getSellerOrdersService = async (sellerUser, query = {}) => {
-  const store = await Store.findOne({ ownerId: sellerUser._id }).lean();
+  let store = await Store.findOne({ ownerId: sellerUser._id }).lean();
+  if (!store) {
+    store = await ensureSellerStore(sellerUser);
+  }
   if (!store) {
     throw new ApiError(404, 'Store not found for this seller.', 'STORE_NOT_FOUND');
   }

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Store, Check, X, ShieldAlert, AlertCircle } from 'lucide-react';
-import api from '../../api/client';
+import { adminService } from '../../services/adminService';
 import { Modal } from '../../components/common/Modal';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 
@@ -14,8 +14,8 @@ export const AdminSellersPage = () => {
   const fetchSellers = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/admin/sellers');
-      setSellers(res.data?.data?.sellers || []);
+      const data = await adminService.getSellers();
+      setSellers(data?.sellers || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -29,7 +29,7 @@ export const AdminSellersPage = () => {
 
   const handleApprove = async (sellerId) => {
     try {
-      await api.patch(`/admin/sellers/${sellerId}/approval`, { status: 'APPROVED' });
+      await adminService.updateSellerApproval(sellerId, { status: 'APPROVED' });
       alert('Seller approved and store activated successfully!');
       fetchSellers();
     } catch (err) {
@@ -40,7 +40,7 @@ export const AdminSellersPage = () => {
   const handleReject = async () => {
     if (!reason.trim()) return alert('Please enter a rejection reason');
     try {
-      await api.patch(`/admin/sellers/${selectedSeller._id}/approval`, {
+      await adminService.updateSellerApproval(selectedSeller._id, {
         status: 'REJECTED',
         rejectionReason: reason,
       });

@@ -4,7 +4,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ShieldCheck, Truck, Store, CreditCard, Banknote, AlertCircle } from 'lucide-react';
-import api from '../../api/client';
+import { orderService } from '../../services/orderService';
+import { paymentService } from '../../services/paymentService';
+import { cartService } from '../../services/cartService';
 import { useCart } from '../../context/CartContext';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 
@@ -65,24 +67,18 @@ export const CheckoutPage = () => {
         }),
       };
 
+      // Pre-flight cart checkout validation with backend
+      await cartService.validateCheckout();
+
       // 1. Create order
-      const orderRes = await api.post('/orders', orderPayload);
-      const createdOrder = orderRes.data.data;
+      const createdOrder = await orderService.createOrder(orderPayload);
 
       // 2. Process Payment
-      if (data.paymentMethod === 'MOCK_PAYMENT') {
-        await api.post('/payments/process', {
-          orderId: createdOrder._id,
-          method: 'MOCK_PAYMENT',
-          simulateFailure: false,
-        });
-      } else {
-        // COD
-        await api.post('/payments/process', {
-          orderId: createdOrder._id,
-          method: 'CASH_ON_DELIVERY',
-        });
-      }
+      await paymentService.processPayment({
+        orderId: createdOrder._id,
+        method: data.paymentMethod,
+        simulateFailure: false,
+      });
 
       await fetchCart();
       navigate(`/orders/${createdOrder._id}`);

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import api from '../../api/client';
+import { adminService } from '../../services/adminService';
 import { Sliders, RefreshCw, RotateCcw, Plus, AlertCircle } from 'lucide-react';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 
@@ -11,8 +11,8 @@ export const AdminPricingPage = () => {
   const fetchRules = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/admin/pricing-rules');
-      setRules(res.data?.data?.rules || []);
+      const data = await adminService.getPricingRules();
+      setRules(data?.rules || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -27,7 +27,7 @@ export const AdminPricingPage = () => {
   const handleResetDefaults = async () => {
     if (!window.confirm('Reset all dynamic pricing rules back to standard default 6 tiers?')) return;
     try {
-      await api.post('/admin/pricing-rules/reset-defaults');
+      await adminService.resetPricingRules();
       alert('Reset to defaults successfully!');
       fetchRules();
     } catch (err) {
@@ -38,8 +38,8 @@ export const AdminPricingPage = () => {
   const handleTriggerSweep = async () => {
     try {
       setSweeping(true);
-      const res = await api.post('/admin/pricing-rules/trigger-sweep');
-      alert(`Dynamic sweep finished! Batches scanned: ${res.data?.data?.batchesScanned || 0}`);
+      const sweepRes = await adminService.triggerPricingSweep();
+      alert(`Dynamic sweep finished! Batches scanned: ${sweepRes?.batchesScanned || 0}`);
     } catch (err) {
       alert(err.message || 'Failed to trigger sweep');
     } finally {

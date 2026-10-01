@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import api from '../../api/client';
+import { adminService } from '../../services/adminService';
 import { Users, Search, Shield, Ban, CheckCircle } from 'lucide-react';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 
@@ -12,11 +12,11 @@ export const AdminUsersPage = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams();
-      if (role) params.append('role', role);
-      if (search) params.append('search', search);
-      const res = await api.get(`/admin/users?${params.toString()}`);
-      setUsers(res.data?.data?.users || []);
+      const queryParams = {};
+      if (role) queryParams.role = role;
+      if (search) queryParams.search = search;
+      const data = await adminService.getUsers(queryParams);
+      setUsers(data?.users || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -30,7 +30,7 @@ export const AdminUsersPage = () => {
 
   const toggleStatus = async (userId, currentActive) => {
     try {
-      await api.patch(`/admin/users/${userId}/status`, { isActive: !currentActive });
+      await adminService.updateUserStatus(userId, { isActive: !currentActive });
       fetchUsers();
     } catch (err) {
       alert(err.message || 'Failed to update user status');

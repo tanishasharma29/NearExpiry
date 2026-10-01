@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Sparkles, Clock, ShieldCheck, ArrowRight, TrendingDown, Store, Leaf, ShoppingBag } from 'lucide-react';
-import api from '../../api/client';
+import { productService } from '../../services/productService';
+import { categoryService } from '../../services/categoryService';
 import { ProductCard } from '../../components/common/ProductCard';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 
@@ -15,12 +16,12 @@ export const LandingPage = () => {
       try {
         setLoading(true);
         // Fetch near-expiry deals (0-7 days window, sorted by expiry ascending)
-        const [prodRes, catRes] = await Promise.all([
-          api.get('/marketplace/products?limit=8&sortBy=expiry&sortOrder=asc'),
-          api.get('/categories?status=ACTIVE'),
+        const [prodData, catData] = await Promise.all([
+          productService.getMarketplaceProducts({ limit: 8, sortBy: 'expiry', sortOrder: 'asc' }),
+          categoryService.getCategories({ status: 'ACTIVE' }),
         ]);
-        setUrgentDeals(prodRes.data?.data?.products || []);
-        setCategories(catRes.data?.data?.categories?.slice(0, 6) || []);
+        setUrgentDeals(prodData?.products || []);
+        setCategories(catData?.categories?.slice(0, 6) || (Array.isArray(catData) ? catData.slice(0, 6) : []));
       } catch (err) {
         console.warn('Failed to load landing data', err);
       } finally {

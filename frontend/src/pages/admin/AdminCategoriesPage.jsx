@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import api from '../../api/client';
+import { adminService } from '../../services/adminService';
+import { categoryService } from '../../services/categoryService';
 import { Layers, Plus } from 'lucide-react';
 import { Modal } from '../../components/common/Modal';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
@@ -13,8 +14,8 @@ export const AdminCategoriesPage = () => {
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/admin/categories');
-      setCategories(res.data?.data?.categories || []);
+      const data = await adminService.getCategories();
+      setCategories(data?.categories || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -30,7 +31,7 @@ export const AdminCategoriesPage = () => {
     e.preventDefault();
     if (!catName.trim()) return;
     try {
-      await api.post('/categories', { name: catName, status: 'ACTIVE' });
+      await categoryService.createCategory({ name: catName, status: 'ACTIVE' });
       setCatName('');
       setModalOpen(false);
       fetchCategories();

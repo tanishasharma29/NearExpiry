@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import api from '../../api/client';
+import { adminService } from '../../services/adminService';
 import { Package, ShieldAlert, Archive } from 'lucide-react';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 
@@ -10,8 +10,8 @@ export const AdminProductsPage = () => {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/admin/products');
-      setProducts(res.data?.data?.products || []);
+      const data = await adminService.getProducts();
+      setProducts(data?.products || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -25,7 +25,7 @@ export const AdminProductsPage = () => {
 
   const moderateProduct = async (id, nextStatus) => {
     try {
-      await api.patch(`/admin/products/${id}/moderation`, { status: nextStatus });
+      await adminService.moderateProduct(id, { status: nextStatus });
       fetchProducts();
     } catch (err) {
       alert(err.message || 'Failed to moderate product');

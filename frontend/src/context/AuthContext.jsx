@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import api from '../api/client';
+import { authService } from '../services/authService';
 
 const AuthContext = createContext(null);
 
@@ -15,7 +15,7 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(() => localStorage.getItem('token') || null);
   const [loading, setLoading] = useState(true);
 
-  // Sync /me on initial mount if token exists
+  // Sync /me on initial mount if token exists & listen for unauthorized event
   useEffect(() => {
     const fetchMe = async () => {
       if (!token) {
@@ -23,24 +23,39 @@ export const AuthProvider = ({ children }) => {
         return;
       }
       try {
-        const res = await api.get('/auth/me');
-        if (res.data?.data?.user) {
-          setUser(res.data.data.user);
-          localStorage.setItem('user', JSON.stringify(res.data.data.user));
+        const data = await authService.getMe();
+        const userData = data?.user || data;
+        if (userData) {
+          setUser(userData);
+          localStorage.setItem('user', JSON.stringify(userData));
         }
       } catch (err) {
-        console.warn('Session expired or invalid, logging out', err.message);
-        logout();
+        console.warn('Session expired or invalid, clearing local session', err?.message);
+        // Clear local state without making any network requests
+        setUser(null);
+        setToken(null);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
       } finally {
         setLoading(false);
       }
     };
     fetchMe();
+
+    const handleUnauthorized = () => {
+      // Clear expired local session without making outgoing network requests
+      setUser(null);
+      setToken(null);
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+    };
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
   }, [token]);
 
   const login = async (email, password) => {
-    const res = await api.post('/auth/login', { email, password });
-    const { token: receivedToken, user: receivedUser } = res.data.data;
+    const data = await authService.login({ email, password });
+    const { token: receivedToken, user: receivedUser } = data;
     setToken(receivedToken);
     setUser(receivedUser);
     localStorage.setItem('token', receivedToken);
@@ -48,9 +63,9 @@ export const AuthProvider = ({ children }) => {
     return receivedUser;
   };
 
-  const registerCustomer = async (data) => {
-    const res = await api.post('/auth/register/customer', data);
-    const { token: receivedToken, user: receivedUser } = res.data.data;
+  const registerCustomer = async (formData) => {
+    const data = await authService.registerCustomer(formData);
+    const { token: receivedToken, user: receivedUser } = data;
     setToken(receivedToken);
     setUser(receivedUser);
     localStorage.setItem('token', receivedToken);
@@ -58,9 +73,9 @@ export const AuthProvider = ({ children }) => {
     return receivedUser;
   };
 
-  const registerSeller = async (data) => {
-    const res = await api.post('/auth/register/seller', data);
-    const { token: receivedToken, user: receivedUser } = res.data.data;
+  const registerSeller = async (formData) => {
+    const data = await authService.registerSeller(formData);
+    const { token: receivedToken, user: receivedUser } = data;
     setToken(receivedToken);
     setUser(receivedUser);
     localStorage.setItem('token', receivedToken);
@@ -69,13 +84,19 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    try {
-      api.post('/auth/logout').catch(() => {});
-    } catch (_) {}
+    const currentToken = localStorage.getItem('token');
+    // Clear local state first
     setUser(null);
     setToken(null);
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+
+    // Fire and forget server logout only if token was present
+    if (currentToken) {
+      try {
+        authService.logout().catch(() => {});
+      } catch (_) {}
+    }
   };
 
   const value = {

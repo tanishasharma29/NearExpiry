@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import api from '../../api/client';
+import { batchService } from '../../services/batchService';
 import { Boxes, PackageCheck, AlertCircle, Clock } from 'lucide-react';
 import { ExpiryBadge } from '../../components/common/ExpiryBadge';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
@@ -9,8 +9,8 @@ export const SellerInventoryPage = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/batches')
-      .then((res) => setBatches(res.data?.data?.batches || []))
+    batchService.getBatches()
+      .then((data) => setBatches(data?.batches || []))
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
   }, []);

@@ -1,3 +1,4 @@
+import { Store, STORE_OPERATIONAL_STATUS } from '../models/store.model.js';
 import { User, USER_ROLES, VERIFICATION_STATUS } from '../models/user.model.js';
 import { ApiError } from '../utils/ApiError.js';
 import { generateAccessToken } from '../utils/jwt.js';
@@ -74,10 +75,10 @@ export const registerSellerService = async (payload) => {
       fssaiLicenseNumber: fssaiLicenseNumber || null,
       cosmeticLicenseNumber: cosmeticLicenseNumber || null,
       address: {
-        street: address?.street || '',
-        city: address?.city || '',
-        state: address?.state || '',
-        pincode: address?.pincode || '',
+        street: address?.street || 'Retail Market Road',
+        city: address?.city || 'Bangalore',
+        state: address?.state || 'Karnataka',
+        pincode: address?.pincode || '560001',
       },
       location: {
         type: 'Point',
@@ -87,6 +88,47 @@ export const registerSellerService = async (payload) => {
     },
     lastLoginAt: new Date(),
   });
+
+  const slug = (storeName || `${name} Store`)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '') + '-' + Math.floor(Math.random() * 10000);
+
+  try {
+    await Store.create({
+      ownerId: user._id,
+      storeName: storeName || `${name}'s Store`,
+      slug,
+      description: 'Neighborhood Supermarket Partner',
+      contactPhone: phone || '9999999999',
+      contactEmail: email,
+      businessDetails: {
+        businessLicenseNumber: businessLicenseNumber || null,
+        gstNumber: gstNumber || null,
+        fssaiLicenseNumber: fssaiLicenseNumber || null,
+        cosmeticLicenseNumber: cosmeticLicenseNumber || null,
+      },
+      address: {
+        street: address?.street || 'Retail Market Road',
+        city: address?.city || 'Bangalore',
+        state: address?.state || 'Karnataka',
+        pincode: address?.pincode || '560001',
+      },
+      latitude: coordinates[1] || 12.9716,
+      longitude: coordinates[0] || 77.5946,
+      location: {
+        type: 'Point',
+        coordinates,
+      },
+      status: STORE_OPERATIONAL_STATUS.OPEN,
+      verificationStatus: user.verificationStatus,
+      isActive: true,
+      fulfillmentModes: ['PICKUP', 'LOCAL_DELIVERY'],
+      deliveryRadiusKm: 10,
+    });
+  } catch (err) {
+    console.error('Error auto-provisioning store on seller registration:', err);
+  }
 
   const token = generateAccessToken(user);
 

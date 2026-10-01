@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BellRing, CheckCircle, AlertTriangle, Clock } from 'lucide-react';
-import api from '../../api/client';
+import { inventoryService } from '../../services/inventoryService';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 
 export const SellerExpiryAlertsPage = () => {
@@ -10,8 +10,8 @@ export const SellerExpiryAlertsPage = () => {
   const fetchAlerts = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/expiry/alerts');
-      setAlerts(res.data?.data?.alerts || []);
+      const data = await inventoryService.getExpiryAlerts();
+      setAlerts(data?.alerts || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -25,7 +25,7 @@ export const SellerExpiryAlertsPage = () => {
 
   const acknowledgeAlert = async (id) => {
     try {
-      await api.patch(`/expiry/alerts/${id}/acknowledge`);
+      await inventoryService.acknowledgeExpiryAlert(id);
       fetchAlerts();
     } catch (err) {
       alert(err.message || 'Failed to acknowledge alert');

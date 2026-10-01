@@ -3,7 +3,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Plus, Package, AlertCircle } from 'lucide-react';
-import api from '../../api/client';
+import { productService } from '../../services/productService';
+import { categoryService } from '../../services/categoryService';
 import { Modal } from '../../components/common/Modal';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 
@@ -39,12 +40,12 @@ export const SellerProductsPage = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [prodRes, catRes] = await Promise.all([
-        api.get('/products'),
-        api.get('/categories?status=ACTIVE'),
+      const [prodData, catData] = await Promise.all([
+        productService.getMyProducts().catch(() => productService.getProducts()),
+        categoryService.getCategories({ status: 'ACTIVE' }),
       ]);
-      setProducts(prodRes.data?.data?.products || []);
-      setCategories(catRes.data?.data?.categories || []);
+      setProducts(prodData?.products || []);
+      setCategories(catData?.categories || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -59,7 +60,7 @@ export const SellerProductsPage = () => {
   const onSubmit = async (data) => {
     try {
       setServerError('');
-      await api.post('/products', data);
+      await productService.createProduct(data);
       setModalOpen(false);
       reset();
       loadData();
