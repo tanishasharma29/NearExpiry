@@ -11,6 +11,13 @@ import pricingRoutes from './pricing.routes.js';
 import expiryRoutes from './expiry.routes.js';
 import marketplaceRoutes from './marketplace.routes.js';
 import wishlistRoutes from './wishlist.routes.js';
+import cartRoutes from './cart.routes.js';
+import orderRoutes from './order.routes.js';
+import paymentRoutes from './payment.routes.js';
+import qrRoutes from './qr.routes.js';
+import notificationRoutes from './notification.routes.js';
+import adminRoutes from './admin.routes.js';
+import analyticsRoutes from './analytics.routes.js';
 
 const router = Router();
 
@@ -26,5 +33,12 @@ router.use('/pricing', pricingRoutes);
 router.use('/expiry', expiryRoutes);
 router.use('/marketplace', marketplaceRoutes);
 router.use('/wishlist', wishlistRoutes);
+router.use('/cart', cartRoutes);
+router.use('/orders', orderRoutes);
+router.use('/payments', paymentRoutes);
+router.use('/qr', qrRoutes);
+router.use('/notifications', notificationRoutes);
+router.use('/admin', adminRoutes);
+router.use('/analytics', analyticsRoutes);
 
 export default router;

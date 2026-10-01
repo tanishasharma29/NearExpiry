@@ -7,6 +7,8 @@ import { InventoryAudit, INVENTORY_ACTION_TYPES } from '../models/inventory.mode
 import { Product } from '../models/product.model.js';
 import { Store } from '../models/store.model.js';
 import { USER_ROLES } from '../models/user.model.js';
+import { Wishlist } from '../models/wishlist.model.js';
+import { notifyCustomerWishlistAvailability } from './notification.service.js';
 import { ApiError } from '../utils/ApiError.js';
 import {
   calculateRemainingDays,
@@ -158,6 +160,23 @@ export const createBatchService = async (sellerUser, payload) => {
     performedBy: sellerUser._id,
     performedByRole: sellerUser.role,
   });
+
+  // Notify customers who bookmarked this product on their wishlist
+  if (payload.quantity > 0) {
+    Wishlist.find({ productId: product._id })
+      .lean()
+      .then((wishlists) => {
+        for (const w of wishlists) {
+          notifyCustomerWishlistAvailability({
+            customerId: w.userId,
+            product,
+            batch,
+            store,
+          }).catch((err) => console.error('[Notification] Wishlist availability notify error:', err));
+        }
+      })
+      .catch((err) => console.error('[Notification] Wishlist availability query error:', err));
+  }
 
   return batch.populate([
     { path: 'productId', select: 'name brand unit category image' },

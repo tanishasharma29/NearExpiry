@@ -12,6 +12,13 @@ import { SchedulerExecutionLog } from '../models/schedulerLog.model.js';
 import { ensureDefaultPriceRulesSeeded } from './priceRule.service.js';
 import { evaluateDynamicPricingAlgorithm } from './pricing.service.js';
 import { calculateRemainingDays } from '../utils/shelfLife.js';
+import { Wishlist } from '../models/wishlist.model.js';
+import {
+  notifySellerApproachingExpiry,
+  notifySellerCriticalExpiry,
+  notifySellerExpiredInventory,
+  notifyCustomerWishlistDiscount,
+} from './notification.service.js';
 
 // In-process concurrency lock to guarantee idempotent, non-overlapping runs
 let isJobCurrentlyRunning = false;
@@ -111,13 +118,37 @@ const generateIdempotentExpiryAlertsForBatch = async ({
     if (wasInserted) {
       if (candidate.alertType === EXPIRY_ALERT_TYPES.APPROACHING_EXPIRY) {
         approachingCreated += 1;
+        notifySellerApproachingExpiry({
+          sellerId: batch.sellerId,
+          batch,
+          product: { _id: batch.productId, name: productName },
+          store: { _id: batch.storeId, storeName: 'NearExpiry Store' },
+          remainingDays,
+          discountPercentage,
+          currentPrice: finalPrice,
+        }).catch((err) => console.error('[Notification] Approaching expiry error:', err));
       } else if (
         candidate.alertType === EXPIRY_ALERT_TYPES.CRITICAL_EXPIRY ||
         candidate.alertType === EXPIRY_ALERT_TYPES.FINAL_48H_CRITICAL
       ) {
         criticalCreated += 1;
+        notifySellerCriticalExpiry({
+          sellerId: batch.sellerId,
+          batch,
+          product: { _id: batch.productId, name: productName },
+          store: { _id: batch.storeId, storeName: 'NearExpiry Store' },
+          remainingDays,
+          discountPercentage,
+          currentPrice: finalPrice,
+        }).catch((err) => console.error('[Notification] Critical expiry error:', err));
       } else if (candidate.alertType === EXPIRY_ALERT_TYPES.BATCH_EXPIRED) {
         expiredCreated += 1;
+        notifySellerExpiredInventory({
+          sellerId: batch.sellerId,
+          batch,
+          product: { _id: batch.productId, name: productName },
+          store: { _id: batch.storeId, storeName: 'NearExpiry Store' },
+        }).catch((err) => console.error('[Notification] Expired inventory error:', err));
       }
     }
   }
@@ -309,6 +340,27 @@ export const runExpiryProcessingJob = async ({
                 : PRICE_CHANGE_TRIGGERS.MANUAL_RECALCULATION,
             triggeredBy,
           });
+
+          // Check for Wishlist customers who set alert thresholds for this product
+          if (nextDiscount > prevDiscount) {
+            Wishlist.find({
+              productId: batch.productId,
+              targetDiscountPercentage: { $lte: nextDiscount },
+            })
+              .lean()
+              .then((wishlists) => {
+                for (const w of wishlists) {
+                  notifyCustomerWishlistDiscount({
+                    customerId: w.userId,
+                    product: { _id: batch.productId, name: productName },
+                    discountPercentage: nextDiscount,
+                    currentPrice: nextPrice,
+                    store: { _id: batch.storeId, storeName: 'NearExpiry Partner Store' },
+                  }).catch((err) => console.error('[Notification] Wishlist discount notify error:', err));
+                }
+              })
+              .catch((err) => console.error('[Notification] Wishlist query error:', err));
+          }
         }
 
         // Step 8 & 9: Generate Expiry & Critical Alerts (Idempotent via unique index)
@@ -351,7 +403,9 @@ export const runExpiryProcessingJob = async ({
     isJobCurrentlyRunning = false;
 
     try {
-      await SchedulerExecutionLog.create(metrics);
+      const logDoc = await SchedulerExecutionLog.create(metrics);
+      metrics.executionLogId = logDoc._id;
+      metrics.batchesProcessed = metrics.batchesScanned;
     } catch (logErr) {
       console.error('[ExpiryScheduler] Failed to write SchedulerExecutionLog:', logErr.message);
     }
