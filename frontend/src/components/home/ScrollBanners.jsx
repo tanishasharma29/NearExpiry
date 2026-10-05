@@ -256,9 +256,15 @@ export const ScrollBanners = () => {
             <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
               <img
                 src="/images/banners/banner4-pharmacy.jpg"
+                onError={(e) => {
+                  if (!e.target.dataset.triedJpeg) {
+                    e.target.dataset.triedJpeg = 'true';
+                    e.target.src = '/images/banners/banner4-pharmacy.jpeg';
+                  }
+                }}
                 alt="NearExpiry Health, Wellness and Pharmacy Rescue"
                 className="w-full h-full object-cover object-center scale-105 animate-cinematic-pan"
-                loading="lazy"
+                loading="eager"
               />
               {/* Dark gradient overlays so text remains 100% crisp and readable over the background */}
               <div className="absolute inset-0 bg-gradient-to-r from-teal-950/95 via-teal-950/70 to-teal-950/20 z-10" />
@@ -311,7 +317,7 @@ export const ScrollBanners = () => {
                 src="/images/banners/banner5-beauty.jpg"
                 alt="NearExpiry Personal Care and Hair Beauty Rescue"
                 className="w-full h-full object-cover object-center scale-105 animate-cinematic-pan"
-                loading="lazy"
+                loading="eager"
               />
               {/* Subtle dark gradient overlay so text remains 100% crisp and readable */}
               <div className="absolute inset-0 bg-gradient-to-r from-stone-950/90 via-stone-950/60 to-transparent z-10" />
