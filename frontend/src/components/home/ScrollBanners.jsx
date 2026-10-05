@@ -30,7 +30,7 @@ export const ScrollBanners = () => {
   const totalBanners = 5;
 
   const bannerLabels = [
-    'Grocery Rescue',
+    'NearExpiry',
     'Healthy Snacks',
     'Everyday Household',
     'Health & Wellness',
@@ -105,7 +105,7 @@ export const ScrollBanners = () => {
                     e.target.src = '/images/banners/banner1-NearExpiry.jpeg';
                   }
                 }}
-                alt="NearExpiry Dynamic Hyperlocal Grocery Rescue"
+                alt="NearExpiry"
                 className="w-full h-full object-cover object-center scale-105 animate-cinematic-pan"
                 loading="eager"
               />
@@ -119,7 +119,7 @@ export const ScrollBanners = () => {
             <div className="relative z-20 max-w-2xl space-y-6">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-semibold text-emerald-200">
                 <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                Dynamic Hyperlocal Grocery Rescue
+                NearExpiry
               </div>
               <h1 className="text-4xl md:text-6xl font-black tracking-tight leading-tight">
                 Eat Fresh, <br />
