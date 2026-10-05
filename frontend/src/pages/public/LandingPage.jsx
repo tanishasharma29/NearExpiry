@@ -6,7 +6,7 @@ import { categoryService } from '../../services/categoryService';
 import { ProductCard } from '../../components/common/ProductCard';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { ScrollBanners } from '../../components/home/ScrollBanners';
-import { WhyChooseSection } from '../../components/home/WhyChooseSection';
+import { WhyChooseNearExpiry } from '../../components/home/WhyChooseNearExpiry';
 
 export const LandingPage = () => {
   const [urgentDeals, setUrgentDeals] = useState([]);
@@ -124,7 +124,7 @@ export const LandingPage = () => {
       </section>
 
       {/* Interactive Why Choose NearExpiry Section */}
-      <WhyChooseSection />
+      <WhyChooseNearExpiry />
 
       {/* How It Works */}
       <section id="how-it-works" className="bg-white py-16 border-y border-gray-200">
