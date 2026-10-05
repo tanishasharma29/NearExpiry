@@ -248,57 +248,53 @@ export const ScrollBanners = () => {
         </div>
 
         {/* =========================================================
-            BANNER 4: PHARMACY & WELLNESS (From Reference 3)
+            BANNER 4: PHARMACY & WELLNESS (Whole Background Image)
             ========================================================= */}
         <div className="w-full flex-shrink-0 snap-center min-w-full">
-          <div className="relative rounded-3xl bg-gradient-to-br from-emerald-950 via-teal-950 to-slate-950 text-white p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[500px] md:min-h-[520px] flex flex-col justify-center">
-            <div className="absolute left-1/3 top-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-              <div className="lg:col-span-7 space-y-6 max-w-2xl">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 backdrop-blur-md border border-emerald-400/30 text-xs font-semibold text-emerald-300">
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                  Health, Wellness & Nutrition Essentials
-                </div>
-                <h2 className="text-3xl sm:text-4xl md:text-6xl font-black tracking-tight leading-tight">
-                  Better Wellness. <br />
-                  <span className="text-emerald-400">Smart Savings.</span>
-                </h2>
-                <p className="text-base md:text-lg text-emerald-100/90 leading-relaxed font-normal">
-                  Find genuine dietary supplements, daily vitamins, and wellness essentials verified under NearExpiry's strict FEFO expiry protocols.
-                </p>
-                {/* Same 2 buttons */}
-                <div className="flex flex-wrap items-center gap-4 pt-2">
-                  <Link
-                    to="/marketplace"
-                    className="px-6 py-3.5 bg-amber-400 hover:bg-amber-300 text-gray-950 font-bold text-sm rounded-xl shadow-lg hover:shadow-xl transition flex items-center gap-2"
-                  >
-                    Browse Today's Deals
-                    <ArrowRight className="w-4 h-4" />
-                  </Link>
-                  <Link
-                    to="/register-seller"
-                    className="px-6 py-3.5 bg-white/10 hover:bg-white/20 text-white font-semibold text-sm rounded-xl backdrop-blur-md border border-white/20 transition flex items-center gap-2"
-                  >
-                    <Store className="w-4 h-4" />
-                    Become a Retail Partner
-                  </Link>
-                </div>
+          <div className="relative rounded-3xl bg-teal-950 text-white p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[500px] md:min-h-[520px] flex flex-col justify-center">
+            {/* Whole Background Image */}
+            <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+              <img
+                src="/images/banners/banner4-pharmacy.jpeg"
+                alt="NearExpiry Health, Wellness and Pharmacy Rescue"
+                className="w-full h-full object-cover object-center scale-105 animate-cinematic-pan"
+                loading="lazy"
+              />
+              {/* Dark gradient overlays so text remains 100% crisp and readable over the background */}
+              <div className="absolute inset-0 bg-gradient-to-r from-teal-950/95 via-teal-950/70 to-teal-950/20 z-10" />
+              <div className="absolute inset-0 bg-gradient-to-t from-teal-950/80 via-transparent to-teal-950/30 z-10" />
+              <div className="absolute right-1/4 top-1/4 w-80 h-80 bg-emerald-500/15 rounded-full blur-3xl animate-soft-float z-10" />
+            </div>
+
+            {/* Foreground UI Layer with full functionality */}
+            <div className="relative z-20 max-w-2xl space-y-6">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 backdrop-blur-md border border-emerald-400/30 text-xs font-semibold text-emerald-300">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                Health, Wellness & Nutrition Essentials
               </div>
-              <div className="lg:col-span-5 flex justify-center lg:justify-end">
-                <div className="relative rounded-2xl overflow-hidden border border-white/15 shadow-2xl bg-black/30 backdrop-blur-sm max-w-md w-full">
-                  <img
-                    src="/images/banners/banner4-pharmacy.jpg"
-                    alt="NearExpiry Health and Wellness Deals"
-                    className="w-full h-56 sm:h-64 md:h-72 object-cover object-center"
-                    loading="lazy"
-                  />
-                  <div className="absolute bottom-3 left-3 right-3 px-3 py-2 rounded-xl bg-black/60 backdrop-blur-md border border-white/15 flex items-center justify-between text-xs">
-                    <span className="font-semibold text-emerald-300 flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5" /> FEFO Verified
-                    </span>
-                    <span className="text-amber-300 font-bold">Smart Discounts</span>
-                  </div>
-                </div>
+              <h2 className="text-3xl sm:text-4xl md:text-6xl font-black tracking-tight leading-tight">
+                Better Wellness. <br />
+                <span className="text-emerald-400">Smart Savings.</span>
+              </h2>
+              <p className="text-base md:text-lg text-emerald-100/90 leading-relaxed font-normal">
+                Find genuine dietary supplements, daily vitamins, and wellness essentials verified under NearExpiry's strict FEFO expiry protocols.
+              </p>
+              {/* Same 2 functional CTA buttons just like other banners */}
+              <div className="flex flex-wrap items-center gap-4 pt-2">
+                <Link
+                  to="/marketplace"
+                  className="px-6 py-3.5 bg-amber-400 hover:bg-amber-300 text-gray-950 font-bold text-sm rounded-xl shadow-lg hover:shadow-xl transition flex items-center gap-2"
+                >
+                  Browse Today's Deals
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+                <Link
+                  to="/register-seller"
+                  className="px-6 py-3.5 bg-white/10 hover:bg-white/20 text-white font-semibold text-sm rounded-xl backdrop-blur-md border border-white/20 transition flex items-center gap-2"
+                >
+                  <Store className="w-4 h-4" />
+                  Become a Retail Partner
+                </Link>
               </div>
             </div>
           </div>
