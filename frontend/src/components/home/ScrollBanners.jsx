@@ -15,10 +15,10 @@ import {
  *
  * Horizontal scroll-to-right multi-banner hero sequence:
  * Banner 1: Exact, 100% unmodified NearExpiry Hero
- * Banner 2: Grocery & Balanced Snacks (from Reference 1)
- * Banner 3: Everyday Household & Cleaners (from Reference 2)
- * Banner 4: Health, Wellness & Nutrition (from Reference 3)
- * Banner 5: Hair Care & Personal Beauty (from Reference 4)
+ * Banner 2: Grocery & Balanced Snacks (Seamlessly Composed Background)
+ * Banner 3: Everyday Household & Cleaners (Seamlessly Composed Background)
+ * Banner 4: Health, Wellness & Nutrition (Seamlessly Composed Background)
+ * Banner 5: Hair Care & Personal Beauty (Full-Bleed Cinematic Background Blend)
  *
  * Every banner contains the identical two CTA buttons:
  * 1. "Browse Today's Deals" -> /marketplace
@@ -83,7 +83,7 @@ export const ScrollBanners = () => {
       {/* Horizontal Scroll Track */}
       <div
         ref={scrollRef}
-        className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth rounded-3xl shadow-2xl"
+        className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth rounded-3xl shadow-2xl select-none"
         style={{
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
@@ -134,228 +134,215 @@ export const ScrollBanners = () => {
         </div>
 
         {/* =========================================================
-            BANNER 2: SNACKS & GROCERY (From Reference 1)
+            BANNER 2: SNACKS & GROCERY (Seamless Background Blend)
             ========================================================= */}
         <div className="w-full flex-shrink-0 snap-center min-w-full">
-          <div className="relative rounded-3xl bg-gradient-to-br from-emerald-900 via-teal-900 to-slate-950 text-white p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[500px] md:min-h-[520px] flex flex-col justify-center">
-            <div className="absolute -right-20 -top-20 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-              <div className="lg:col-span-7 space-y-6 max-w-2xl">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 backdrop-blur-md border border-emerald-400/30 text-xs font-semibold text-emerald-300">
-                  <Leaf className="w-3.5 h-3.5 text-emerald-400" />
-                  100% Genuine · Quality Assured Snacks
-                </div>
-                <h2 className="text-3xl sm:text-4xl md:text-6xl font-black tracking-tight leading-tight">
-                  Good Food. <br />
-                  <span className="text-emerald-400">Better Prices.</span>
-                </h2>
-                <p className="text-base md:text-lg text-emerald-100/90 leading-relaxed font-normal">
-                  Discover wholesome organic snacks, artisan granola, and pantry favorites from verified local grocers at dynamic discounts before expiry.
-                </p>
-                {/* Same 2 buttons */}
-                <div className="flex flex-wrap items-center gap-4 pt-2">
-                  <Link
-                    to="/marketplace"
-                    className="px-6 py-3.5 bg-amber-400 hover:bg-amber-300 text-gray-950 font-bold text-sm rounded-xl shadow-lg hover:shadow-xl transition flex items-center gap-2"
-                  >
-                    Browse Today's Deals
-                    <ArrowRight className="w-4 h-4" />
-                  </Link>
-                  <Link
-                    to="/register-seller"
-                    className="px-6 py-3.5 bg-white/10 hover:bg-white/20 text-white font-semibold text-sm rounded-xl backdrop-blur-md border border-white/20 transition flex items-center gap-2"
-                  >
-                    <Store className="w-4 h-4" />
-                    Become a Retail Partner
-                  </Link>
-                </div>
+          <div className="relative rounded-3xl bg-emerald-950 text-white p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[500px] md:min-h-[520px] flex flex-col justify-center">
+            {/* Seamless Background Image Layer */}
+            <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+              <img
+                src="/images/banners/banner2-snacks.jpg"
+                alt=""
+                className="absolute right-0 top-0 w-full sm:w-4/5 lg:w-[58%] h-full object-cover object-right opacity-90 scale-105 animate-cinematic-pan"
+                loading="lazy"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-emerald-950 via-emerald-950/95 via-35% sm:via-48% to-transparent z-10" />
+              <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/80 via-transparent to-emerald-950/40 z-10" />
+              <div className="absolute right-1/4 top-1/4 w-80 h-80 bg-emerald-500/15 rounded-full blur-3xl animate-soft-float z-10" />
+            </div>
+
+            {/* Content Layer */}
+            <div className="relative z-20 max-w-2xl space-y-6">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 backdrop-blur-md border border-emerald-400/30 text-xs font-semibold text-emerald-300">
+                <Leaf className="w-3.5 h-3.5 text-emerald-400" />
+                100% Genuine · Quality Assured Snacks
               </div>
-              <div className="lg:col-span-5 flex justify-center lg:justify-end">
-                <div className="relative rounded-2xl overflow-hidden border border-white/15 shadow-2xl bg-black/30 backdrop-blur-sm max-w-md w-full">
-                  <img
-                    src="/images/banners/banner2-snacks.jpg"
-                    alt="NearExpiry Balanced Organic Snacks"
-                    className="w-full h-56 sm:h-64 md:h-72 object-cover object-center"
-                    loading="lazy"
-                  />
-                  <div className="absolute bottom-3 left-3 right-3 px-3 py-2 rounded-xl bg-black/60 backdrop-blur-md border border-white/15 flex items-center justify-between text-xs">
-                    <span className="font-semibold text-emerald-300 flex items-center gap-1.5">
-                      <Leaf className="w-3.5 h-3.5" /> Healthy Snack Rescue
-                    </span>
-                    <span className="text-amber-300 font-bold">Up to 70% Off</span>
-                  </div>
-                </div>
+              <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-tight">
+                Good Food. <br />
+                <span className="text-emerald-400">Better Prices.</span>
+              </h2>
+              <p className="text-base md:text-lg text-emerald-100/90 leading-relaxed font-normal">
+                Discover wholesome organic snacks, artisan granola, and pantry favorites from verified local grocers at dynamic discounts before expiry.
+              </p>
+              <div className="flex flex-wrap items-center gap-4 pt-2">
+                <Link
+                  to="/marketplace"
+                  className="px-6 py-3.5 bg-amber-400 hover:bg-amber-300 text-gray-950 font-bold text-sm rounded-xl shadow-lg hover:shadow-xl transition flex items-center gap-2"
+                >
+                  Browse Today's Deals
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+                <Link
+                  to="/register-seller"
+                  className="px-6 py-3.5 bg-white/10 hover:bg-white/20 text-white font-semibold text-sm rounded-xl backdrop-blur-md border border-white/20 transition flex items-center gap-2"
+                >
+                  <Store className="w-4 h-4" />
+                  Become a Retail Partner
+                </Link>
               </div>
             </div>
           </div>
         </div>
 
         {/* =========================================================
-            BANNER 3: HOUSEHOLD ESSENTIALS (From Reference 2)
+            BANNER 3: HOUSEHOLD ESSENTIALS (Seamless Background Blend)
             ========================================================= */}
         <div className="w-full flex-shrink-0 snap-center min-w-full">
-          <div className="relative rounded-3xl bg-gradient-to-br from-teal-900 via-cyan-950 to-slate-950 text-white p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[500px] md:min-h-[520px] flex flex-col justify-center">
-            <div className="absolute right-0 top-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-              <div className="lg:col-span-7 space-y-6 max-w-2xl">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/20 backdrop-blur-md border border-cyan-400/30 text-xs font-semibold text-cyan-200">
-                  <ShieldCheck className="w-3.5 h-3.5 text-cyan-300" />
-                  Everyday Home & Care Essentials
-                </div>
-                <h2 className="text-3xl sm:text-4xl md:text-6xl font-black tracking-tight leading-tight">
-                  Everyday Essentials. <br />
-                  <span className="text-cyan-300">Smarter Prices.</span>
-                </h2>
-                <p className="text-base md:text-lg text-cyan-100/90 leading-relaxed font-normal">
-                  Stock up on top-quality cleaning products, paper goods, and daily home essentials from your neighborhood supermarkets at steep dynamic markdowns.
-                </p>
-                {/* Same 2 buttons */}
-                <div className="flex flex-wrap items-center gap-4 pt-2">
-                  <Link
-                    to="/marketplace"
-                    className="px-6 py-3.5 bg-amber-400 hover:bg-amber-300 text-gray-950 font-bold text-sm rounded-xl shadow-lg hover:shadow-xl transition flex items-center gap-2"
-                  >
-                    Browse Today's Deals
-                    <ArrowRight className="w-4 h-4" />
-                  </Link>
-                  <Link
-                    to="/register-seller"
-                    className="px-6 py-3.5 bg-white/10 hover:bg-white/20 text-white font-semibold text-sm rounded-xl backdrop-blur-md border border-white/20 transition flex items-center gap-2"
-                  >
-                    <Store className="w-4 h-4" />
-                    Become a Retail Partner
-                  </Link>
-                </div>
+          <div className="relative rounded-3xl bg-slate-950 text-white p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[500px] md:min-h-[520px] flex flex-col justify-center">
+            {/* Seamless Background Image Layer */}
+            <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+              <img
+                src="/images/banners/banner3-household.jpg"
+                alt=""
+                className="absolute right-0 top-0 w-full sm:w-4/5 lg:w-[58%] h-full object-cover object-right opacity-90 scale-105 animate-cinematic-pan"
+                loading="lazy"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/95 via-35% sm:via-48% to-transparent z-10" />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-slate-950/40 z-10" />
+              <div className="absolute right-1/4 top-1/4 w-80 h-80 bg-cyan-500/15 rounded-full blur-3xl animate-soft-float z-10" />
+            </div>
+
+            {/* Content Layer */}
+            <div className="relative z-20 max-w-2xl space-y-6">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/20 backdrop-blur-md border border-cyan-400/30 text-xs font-semibold text-cyan-200">
+                <ShieldCheck className="w-3.5 h-3.5 text-cyan-300" />
+                Everyday Home & Care Essentials
               </div>
-              <div className="lg:col-span-5 flex justify-center lg:justify-end">
-                <div className="relative rounded-2xl overflow-hidden border border-white/15 shadow-2xl bg-black/30 backdrop-blur-sm max-w-md w-full">
-                  <img
-                    src="/images/banners/banner3-household.jpg"
-                    alt="NearExpiry Everyday Household Essentials"
-                    className="w-full h-56 sm:h-64 md:h-72 object-cover object-center"
-                    loading="lazy"
-                  />
-                  <div className="absolute bottom-3 left-3 right-3 px-3 py-2 rounded-xl bg-black/60 backdrop-blur-md border border-white/15 flex items-center justify-between text-xs">
-                    <span className="font-semibold text-cyan-200 flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5" /> Household Rescue
-                    </span>
-                    <span className="text-amber-300 font-bold">Up to 50% Off</span>
-                  </div>
-                </div>
+              <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-tight">
+                Everyday Essentials. <br />
+                <span className="text-cyan-300">Smarter Prices.</span>
+              </h2>
+              <p className="text-base md:text-lg text-cyan-100/90 leading-relaxed font-normal">
+                Stock up on top-quality cleaning products, paper goods, and daily home essentials from your neighborhood supermarkets at steep dynamic markdowns.
+              </p>
+              <div className="flex flex-wrap items-center gap-4 pt-2">
+                <Link
+                  to="/marketplace"
+                  className="px-6 py-3.5 bg-amber-400 hover:bg-amber-300 text-gray-950 font-bold text-sm rounded-xl shadow-lg hover:shadow-xl transition flex items-center gap-2"
+                >
+                  Browse Today's Deals
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+                <Link
+                  to="/register-seller"
+                  className="px-6 py-3.5 bg-white/10 hover:bg-white/20 text-white font-semibold text-sm rounded-xl backdrop-blur-md border border-white/20 transition flex items-center gap-2"
+                >
+                  <Store className="w-4 h-4" />
+                  Become a Retail Partner
+                </Link>
               </div>
             </div>
           </div>
         </div>
 
         {/* =========================================================
-            BANNER 4: PHARMACY & WELLNESS (From Reference 3)
+            BANNER 4: PHARMACY & WELLNESS (Seamless Background Blend)
             ========================================================= */}
         <div className="w-full flex-shrink-0 snap-center min-w-full">
-          <div className="relative rounded-3xl bg-gradient-to-br from-emerald-950 via-teal-950 to-slate-950 text-white p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[500px] md:min-h-[520px] flex flex-col justify-center">
-            <div className="absolute left-1/3 top-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-              <div className="lg:col-span-7 space-y-6 max-w-2xl">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 backdrop-blur-md border border-emerald-400/30 text-xs font-semibold text-emerald-300">
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                  Health, Wellness & Nutrition Essentials
-                </div>
-                <h2 className="text-3xl sm:text-4xl md:text-6xl font-black tracking-tight leading-tight">
-                  Better Wellness. <br />
-                  <span className="text-emerald-400">Smart Savings.</span>
-                </h2>
-                <p className="text-base md:text-lg text-emerald-100/90 leading-relaxed font-normal">
-                  Find genuine dietary supplements, daily vitamins, and wellness essentials verified under NearExpiry's strict FEFO expiry protocols.
-                </p>
-                {/* Same 2 buttons */}
-                <div className="flex flex-wrap items-center gap-4 pt-2">
-                  <Link
-                    to="/marketplace"
-                    className="px-6 py-3.5 bg-amber-400 hover:bg-amber-300 text-gray-950 font-bold text-sm rounded-xl shadow-lg hover:shadow-xl transition flex items-center gap-2"
-                  >
-                    Browse Today's Deals
-                    <ArrowRight className="w-4 h-4" />
-                  </Link>
-                  <Link
-                    to="/register-seller"
-                    className="px-6 py-3.5 bg-white/10 hover:bg-white/20 text-white font-semibold text-sm rounded-xl backdrop-blur-md border border-white/20 transition flex items-center gap-2"
-                  >
-                    <Store className="w-4 h-4" />
-                    Become a Retail Partner
-                  </Link>
-                </div>
+          <div className="relative rounded-3xl bg-teal-950 text-white p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[500px] md:min-h-[520px] flex flex-col justify-center">
+            {/* Seamless Background Image Layer */}
+            <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+              <img
+                src="/images/banners/banner4-pharmacy.jpg"
+                alt=""
+                className="absolute right-0 top-0 w-full sm:w-4/5 lg:w-[58%] h-full object-cover object-right opacity-90 scale-105 animate-cinematic-pan"
+                loading="lazy"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-teal-950 via-teal-950/95 via-35% sm:via-48% to-transparent z-10" />
+              <div className="absolute inset-0 bg-gradient-to-t from-teal-950/80 via-transparent to-teal-950/40 z-10" />
+              <div className="absolute right-1/4 top-1/4 w-80 h-80 bg-emerald-500/15 rounded-full blur-3xl animate-soft-float z-10" />
+            </div>
+
+            {/* Content Layer */}
+            <div className="relative z-20 max-w-2xl space-y-6">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 backdrop-blur-md border border-emerald-400/30 text-xs font-semibold text-emerald-300">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                Health, Wellness & Nutrition Essentials
               </div>
-              <div className="lg:col-span-5 flex justify-center lg:justify-end">
-                <div className="relative rounded-2xl overflow-hidden border border-white/15 shadow-2xl bg-black/30 backdrop-blur-sm max-w-md w-full">
-                  <img
-                    src="/images/banners/banner4-pharmacy.jpg"
-                    alt="NearExpiry Health and Wellness Deals"
-                    className="w-full h-56 sm:h-64 md:h-72 object-cover object-center"
-                    loading="lazy"
-                  />
-                  <div className="absolute bottom-3 left-3 right-3 px-3 py-2 rounded-xl bg-black/60 backdrop-blur-md border border-white/15 flex items-center justify-between text-xs">
-                    <span className="font-semibold text-emerald-300 flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5" /> FEFO Verified
-                    </span>
-                    <span className="text-amber-300 font-bold">Smart Discounts</span>
-                  </div>
-                </div>
+              <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-tight">
+                Better Wellness. <br />
+                <span className="text-emerald-400">Smart Savings.</span>
+              </h2>
+              <p className="text-base md:text-lg text-emerald-100/90 leading-relaxed font-normal">
+                Find genuine dietary supplements, daily vitamins, and wellness essentials verified under NearExpiry's strict FEFO expiry protocols.
+              </p>
+              <div className="flex flex-wrap items-center gap-4 pt-2">
+                <Link
+                  to="/marketplace"
+                  className="px-6 py-3.5 bg-amber-400 hover:bg-amber-300 text-gray-950 font-bold text-sm rounded-xl shadow-lg hover:shadow-xl transition flex items-center gap-2"
+                >
+                  Browse Today's Deals
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+                <Link
+                  to="/register-seller"
+                  className="px-6 py-3.5 bg-white/10 hover:bg-white/20 text-white font-semibold text-sm rounded-xl backdrop-blur-md border border-white/20 transition flex items-center gap-2"
+                >
+                  <Store className="w-4 h-4" />
+                  Become a Retail Partner
+                </Link>
               </div>
             </div>
           </div>
         </div>
 
         {/* =========================================================
-            BANNER 5: HAIR CARE & BEAUTY (From Reference 4)
+            BANNER 5: HAIR CARE & BEAUTY (Seamless Cinematic Hero)
             ========================================================= */}
         <div className="w-full flex-shrink-0 snap-center min-w-full">
-          <div className="relative rounded-3xl bg-gradient-to-br from-amber-950 via-stone-900 to-slate-950 text-white p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[500px] md:min-h-[520px] flex flex-col justify-center">
-            <div className="absolute right-10 bottom-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-              <div className="lg:col-span-7 space-y-6 max-w-2xl">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 backdrop-blur-md border border-amber-400/30 text-xs font-semibold text-amber-300">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                  Personal Care & Hair Beauty Rescue
-                </div>
-                <h2 className="text-3xl sm:text-4xl md:text-6xl font-black tracking-tight leading-tight">
-                  Care More. <br />
-                  <span className="text-amber-300">Spend Less.</span>
-                </h2>
-                <p className="text-base md:text-lg text-amber-100/90 leading-relaxed font-normal">
-                  Discover premium hair care, nourishing serums, and personal care essentials rescued from supermarket surplus at remarkable price cuts before expiry.
-                </p>
-                {/* Same 2 buttons */}
-                <div className="flex flex-wrap items-center gap-4 pt-2">
-                  <Link
-                    to="/marketplace"
-                    className="px-6 py-3.5 bg-amber-400 hover:bg-amber-300 text-gray-950 font-bold text-sm rounded-xl shadow-lg hover:shadow-xl transition flex items-center gap-2"
-                  >
-                    Browse Today's Deals
-                    <ArrowRight className="w-4 h-4" />
-                  </Link>
-                  <Link
-                    to="/register-seller"
-                    className="px-6 py-3.5 bg-white/10 hover:bg-white/20 text-white font-semibold text-sm rounded-xl backdrop-blur-md border border-white/20 transition flex items-center gap-2"
-                  >
-                    <Store className="w-4 h-4" />
-                    Become a Retail Partner
-                  </Link>
-                </div>
+          <div className="relative rounded-3xl bg-stone-950 text-white p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[500px] md:min-h-[520px] flex flex-col justify-center">
+            {/* Cinematic Background Layer - Products seamlessly on the right */}
+            <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+              <img
+                src="/images/banners/banner5-beauty.jpg"
+                alt=""
+                className="absolute right-0 top-0 w-full sm:w-4/5 lg:w-[62%] h-full object-cover object-right opacity-90 scale-105 animate-cinematic-pan"
+                loading="lazy"
+              />
+
+              {/* Seamless dark gradient fade from left to right */}
+              <div className="absolute inset-0 bg-gradient-to-r from-stone-950 via-stone-950/95 via-35% sm:via-48% to-transparent z-10" />
+
+              {/* Subtle top & bottom vignette for depth */}
+              <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-transparent to-stone-950/40 z-10" />
+
+              {/* Soft floating warm bokeh & ambient lighting */}
+              <div className="absolute right-1/4 top-1/4 w-80 h-80 bg-amber-500/15 rounded-full blur-3xl animate-soft-float z-10" />
+              <div className="absolute right-10 bottom-10 w-96 h-96 bg-emerald-800/15 rounded-full blur-3xl z-10" />
+            </div>
+
+            {/* Left Content Layer - 100% readable with exact copy & buttons */}
+            <div className="relative z-20 max-w-2xl space-y-6">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 backdrop-blur-md border border-amber-400/30 text-xs font-semibold text-amber-300">
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                Personal Care & Hair Beauty Rescue
               </div>
-              <div className="lg:col-span-5 flex justify-center lg:justify-end">
-                <div className="relative rounded-2xl overflow-hidden border border-white/15 shadow-2xl bg-black/30 backdrop-blur-sm max-w-md w-full">
-                  <img
-                    src="/images/banners/banner5-beauty.jpg"
-                    alt="NearExpiry Personal Care and Beauty"
-                    className="w-full h-56 sm:h-64 md:h-72 object-cover object-center"
-                    loading="lazy"
-                  />
-                  <div className="absolute bottom-3 left-3 right-3 px-3 py-2 rounded-xl bg-black/60 backdrop-blur-md border border-white/15 flex items-center justify-between text-xs">
-                    <span className="font-semibold text-amber-300 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5" /> Premium Personal Care
-                    </span>
-                    <span className="text-emerald-300 font-bold">Up to 65% Off</span>
-                  </div>
-                </div>
+
+              <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-tight">
+                Care More. <br />
+                <span className="text-amber-400">Spend Less.</span>
+              </h2>
+
+              <p className="text-base md:text-lg text-amber-100/90 leading-relaxed font-normal">
+                Discover premium hair care, nourishing serums, and personal care essentials rescued from supermarket surplus at remarkable price cuts before expiry.
+              </p>
+
+              {/* Exact same 2 buttons */}
+              <div className="flex flex-wrap items-center gap-4 pt-2">
+                <Link
+                  to="/marketplace"
+                  className="px-6 py-3.5 bg-amber-400 hover:bg-amber-300 text-gray-950 font-bold text-sm rounded-xl shadow-lg hover:shadow-xl transition flex items-center gap-2"
+                >
+                  Browse Today's Deals
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+                <Link
+                  to="/register-seller"
+                  className="px-6 py-3.5 bg-white/10 hover:bg-white/20 text-white font-semibold text-sm rounded-xl backdrop-blur-md border border-white/20 transition flex items-center gap-2"
+                >
+                  <Store className="w-4 h-4" />
+                  Become a Retail Partner
+                </Link>
               </div>
             </div>
           </div>

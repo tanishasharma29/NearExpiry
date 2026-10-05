@@ -7,3 +7,42 @@ body {
   padding: 0;
   min-height: 100vh;
 }
+
+@keyframes cinematicPan {
+  0% {
+    transform: scale(1.02) translateX(0);
+  }
+  50% {
+    transform: scale(1.06) translateX(-1.5%);
+  }
+  100% {
+    transform: scale(1.02) translateX(0);
+  }
+}
+
+@keyframes softFloat {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+    opacity: 0.15;
+  }
+  50% {
+    transform: translateY(-8px) scale(1.06);
+    opacity: 0.25;
+  }
+}
+
+.animate-cinematic-pan {
+  animation: cinematicPan 20s ease-in-out infinite alternate;
+}
+
+.animate-soft-float {
+  animation: softFloat 7s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-cinematic-pan,
+  .animate-soft-float {
+    animation: none !important;
+    transform: none !important;
+  }
+}
