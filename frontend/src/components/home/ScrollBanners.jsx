@@ -18,7 +18,7 @@ import {
  * Banner 2: Grocery & Balanced Snacks (from Reference 1)
  * Banner 3: Everyday Household & Cleaners (from Reference 2)
  * Banner 4: Health, Wellness & Nutrition (from Reference 3)
- * Banner 5: Hair Care & Personal Beauty (Uses banner5-beauty-cinematic.jpg with fully active CTA buttons)
+ * Banner 5: Hair Care & Personal Beauty (Full-bleed user image with functional CTA buttons)
  *
  * Every banner contains the identical two CTA buttons:
  * 1. "Browse Today's Deals" -> /marketplace
@@ -138,7 +138,7 @@ export const ScrollBanners = () => {
             ========================================================= */}
         <div className="w-full flex-shrink-0 snap-center min-w-full">
           <div className="relative rounded-3xl bg-emerald-950 text-white p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[500px] md:min-h-[520px] flex flex-col justify-center">
-            {/* Seamless Background Image Layer */}
+            {/* Background Image Layer */}
             <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
               <img
                 src="/images/banners/banner2-snacks.jpg"
@@ -189,7 +189,7 @@ export const ScrollBanners = () => {
             ========================================================= */}
         <div className="w-full flex-shrink-0 snap-center min-w-full">
           <div className="relative rounded-3xl bg-slate-950 text-white p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[500px] md:min-h-[520px] flex flex-col justify-center">
-            {/* Seamless Background Image Layer */}
+            {/* Background Image Layer */}
             <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
               <img
                 src="/images/banners/banner3-household.jpg"
@@ -240,7 +240,7 @@ export const ScrollBanners = () => {
             ========================================================= */}
         <div className="w-full flex-shrink-0 snap-center min-w-full">
           <div className="relative rounded-3xl bg-teal-950 text-white p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[500px] md:min-h-[520px] flex flex-col justify-center">
-            {/* Seamless Background Image Layer */}
+            {/* Background Image Layer */}
             <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
               <img
                 src="/images/banners/banner4-pharmacy.jpg"
@@ -290,7 +290,7 @@ export const ScrollBanners = () => {
             BANNER 5: HAIR CARE & BEAUTY (Using Attached Banner 5 Image)
             ========================================================= */}
         <div className="w-full flex-shrink-0 snap-center min-w-full">
-          <div className="relative rounded-3xl bg-stone-950 text-white overflow-hidden shadow-2xl min-h-[480px] md:min-h-[520px] flex flex-col justify-center">
+          <div className="relative rounded-3xl bg-stone-950 text-white overflow-hidden shadow-2xl min-h-[500px] md:min-h-[520px] flex flex-col justify-center">
             {/* The exact cinematic Banner 5 image provided by user */}
             <img
               src="/images/banners/banner5-beauty-cinematic.jpg"
@@ -299,14 +299,14 @@ export const ScrollBanners = () => {
               loading="lazy"
             />
 
-            {/* Seamless gradient depth enhancements */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/20 pointer-events-none z-10" />
+            {/* Seamless subtle depth vignette */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/20 pointer-events-none z-10" />
 
             {/* 100% Fully Functional Clickable Buttons over the image buttons */}
-            <div className="relative z-20 w-full h-full min-h-[480px] md:min-h-[520px] flex flex-col justify-end p-6 sm:p-10 md:p-14 lg:p-16 pointer-events-none">
+            <div className="relative z-20 w-full h-full min-h-[500px] md:min-h-[520px] flex flex-col justify-end p-6 sm:p-10 md:p-14 lg:p-16 pointer-events-none">
               <div className="max-w-2xl space-y-4">
-                {/* Desktop and Tablet Interactive Overlay Buttons */}
-                <div className="hidden sm:flex items-center gap-4 pointer-events-auto pt-44 md:pt-48 lg:pt-52">
+                {/* Desktop and Tablet Interactive Buttons aligned over the image */}
+                <div className="hidden sm:flex items-center gap-4 pointer-events-auto pt-44 md:pt-48 lg:pt-56">
                   <Link
                     to="/marketplace"
                     className="px-6 py-3.5 bg-amber-400 hover:bg-amber-300 text-gray-950 font-bold text-sm rounded-xl shadow-xl hover:shadow-2xl transition-all duration-200 flex items-center gap-2 hover:scale-105 active:scale-95 cursor-pointer"
@@ -316,7 +316,7 @@ export const ScrollBanners = () => {
                   </Link>
                   <Link
                     to="/register-seller"
-                    className="px-6 py-3.5 bg-black/40 hover:bg-black/70 text-white font-semibold text-sm rounded-xl backdrop-blur-md border border-white/30 transition-all duration-200 flex items-center gap-2 hover:scale-105 active:scale-95 cursor-pointer"
+                    className="px-6 py-3.5 bg-black/50 hover:bg-black/80 text-white font-semibold text-sm rounded-xl backdrop-blur-md border border-white/30 transition-all duration-200 flex items-center gap-2 hover:scale-105 active:scale-95 cursor-pointer"
                   >
                     <Store className="w-4 h-4" />
                     Become a Retail Partner
@@ -334,7 +334,7 @@ export const ScrollBanners = () => {
                   </Link>
                   <Link
                     to="/register-seller"
-                    className="w-full py-2.5 bg-black/60 text-white font-semibold text-xs rounded-xl backdrop-blur-md border border-white/20 text-center flex items-center justify-center gap-2"
+                    className="w-full py-2.5 bg-black/70 text-white font-semibold text-xs rounded-xl backdrop-blur-md border border-white/20 text-center flex items-center justify-center gap-2"
                   >
                     <Store className="w-4 h-4" />
                     Become a Retail Partner
