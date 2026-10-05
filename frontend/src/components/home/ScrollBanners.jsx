@@ -91,11 +91,32 @@ export const ScrollBanners = () => {
         }}
       >
         {/* =========================================================
-            BANNER 1: EXISTING NEAREXPIRY HERO (100% UNCHANGED)
+            BANNER 1: GROCERY RESCUE (Whole Background Image)
             ========================================================= */}
         <div className="w-full flex-shrink-0 snap-center min-w-full">
-          <div className="relative rounded-3xl bg-gradient-to-br from-brand-700 via-emerald-800 to-slate-900 text-white p-8 md:p-16 overflow-hidden shadow-2xl min-h-[500px] md:min-h-[520px] flex flex-col justify-center">
-            <div className="relative z-10 max-w-2xl space-y-6">
+          <div className="relative rounded-3xl bg-emerald-950 text-white p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[500px] md:min-h-[520px] flex flex-col justify-center">
+            {/* Whole Background Image */}
+            <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+              <img
+                src="/images/banners/banner1-NearExpiry.jpg"
+                onError={(e) => {
+                  if (!e.target.dataset.triedJpeg) {
+                    e.target.dataset.triedJpeg = 'true';
+                    e.target.src = '/images/banners/banner1-NearExpiry.jpeg';
+                  }
+                }}
+                alt="NearExpiry Dynamic Hyperlocal Grocery Rescue"
+                className="w-full h-full object-cover object-center scale-105 animate-cinematic-pan"
+                loading="eager"
+              />
+              {/* Dark gradient overlays so text remains 100% crisp and readable over the background */}
+              <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/95 via-emerald-950/70 to-emerald-950/20 z-10" />
+              <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/80 via-transparent to-emerald-950/30 z-10" />
+              <div className="absolute right-1/4 top-1/4 w-80 h-80 bg-emerald-500/15 rounded-full blur-3xl animate-soft-float z-10" />
+            </div>
+
+            {/* Foreground UI Layer with full functionality */}
+            <div className="relative z-20 max-w-2xl space-y-6">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-semibold text-emerald-200">
                 <Sparkles className="w-3.5 h-3.5 text-amber-300" />
                 Dynamic Hyperlocal Grocery Rescue
@@ -124,11 +145,6 @@ export const ScrollBanners = () => {
                   Become a Retail Partner
                 </Link>
               </div>
-            </div>
-
-            {/* Decorative Floating Badges */}
-            <div className="absolute -bottom-8 -right-8 opacity-20 pointer-events-none text-9xl">
-              ⏳
             </div>
           </div>
         </div>
