@@ -5,6 +5,7 @@ import { productService } from '../../services/productService';
 import { categoryService } from '../../services/categoryService';
 import { ProductCard } from '../../components/common/ProductCard';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
+import { ScrollBanners } from '../../components/home/ScrollBanners';
 
 export const LandingPage = () => {
   const [urgentDeals, setUrgentDeals] = useState([]);
@@ -33,46 +34,8 @@ export const LandingPage = () => {
 
   return (
     <div className="space-y-16 py-6">
-      {/* Hero Section */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="relative rounded-3xl bg-gradient-to-br from-brand-700 via-emerald-800 to-slate-900 text-white p-8 md:p-16 overflow-hidden shadow-2xl">
-          <div className="relative z-10 max-w-2xl space-y-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-semibold text-emerald-200">
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              Dynamic Hyperlocal Grocery Rescue
-            </div>
-            <h1 className="text-4xl md:text-6xl font-black tracking-tight leading-tight">
-              Eat Fresh, <br />
-              <span className="text-amber-300">Save Big,</span> <br />
-              Waste Nothing.
-            </h1>
-            <p className="text-base md:text-lg text-emerald-100/90 leading-relaxed font-normal">
-              NearExpiry connects local neighborhood supermarkets with smart shoppers. Enjoy genuine groceries at steep dynamic discounts before they expire.
-            </p>
-            <div className="flex flex-wrap items-center gap-4 pt-2">
-              <Link
-                to="/marketplace"
-                className="px-6 py-3.5 bg-amber-400 hover:bg-amber-300 text-gray-950 font-bold text-sm rounded-xl shadow-lg hover:shadow-xl transition flex items-center gap-2"
-              >
-                Browse Today's Deals
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-              <Link
-                to="/register-seller"
-                className="px-6 py-3.5 bg-white/10 hover:bg-white/20 text-white font-semibold text-sm rounded-xl backdrop-blur-md border border-white/20 transition flex items-center gap-2"
-              >
-                <Store className="w-4 h-4" />
-                Become a Retail Partner
-              </Link>
-            </div>
-          </div>
-
-          {/* Decorative Floating Badges */}
-          <div className="absolute -bottom-8 -right-8 opacity-20 pointer-events-none text-9xl">
-            ⏳
-          </div>
-        </div>
-      </section>
+      {/* Horizontal Scroll Multi-Banner Hero (Banner 1 + Banners 2-5) */}
+      <ScrollBanners />
 
       {/* Impact Counters */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
