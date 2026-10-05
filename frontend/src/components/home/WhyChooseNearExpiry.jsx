@@ -30,7 +30,7 @@ export const WhyChooseNearExpiry = () => {
   // Track active expanded card: 'sellers' | 'buyers' | 'everyone' | null
   const [activeCard, setActiveCard] = useState('sellers');
   const [hoveredCard, setHoveredCard] = useState(null);
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
   const sectionRef = useRef(null);
 
   // Scroll reveal with IntersectionObserver
