@@ -6,6 +6,7 @@ import { categoryService } from '../../services/categoryService';
 import { ProductCard } from '../../components/common/ProductCard';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { ScrollBanners } from '../../components/home/ScrollBanners';
+import { WhyChooseNearExpiry } from '../../components/home/WhyChooseNearExpiry';
 
 export const LandingPage = () => {
   const [urgentDeals, setUrgentDeals] = useState([]);
@@ -122,8 +123,11 @@ export const LandingPage = () => {
         )}
       </section>
 
+      {/* Interactive Why Choose NearExpiry Section */}
+      <WhyChooseNearExpiry />
+
       {/* How It Works */}
-      <section className="bg-white py-16 border-y border-gray-200">
+      <section id="how-it-works" className="bg-white py-16 border-y border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-12">
             <h2 className="text-3xl font-black text-gray-900">How NearExpiry Works</h2>
