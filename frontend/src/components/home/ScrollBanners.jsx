@@ -255,7 +255,7 @@ export const ScrollBanners = () => {
             {/* Whole Background Image */}
             <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
               <img
-                src="/images/banners/banner4-pharmacy.jpeg"
+                src="/images/banners/banner4-pharmacy.jpg"
                 alt="NearExpiry Health, Wellness and Pharmacy Rescue"
                 className="w-full h-full object-cover object-center scale-105 animate-cinematic-pan"
                 loading="lazy"
