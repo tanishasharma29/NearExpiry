@@ -12,27 +12,70 @@ const getItemImage = (item, product) => {
     product?.imageUrl ||
     (Array.isArray(product?.images) && product?.images[0]);
 
-  if (direct && typeof direct === 'string' && !direct.includes('placehold.co')) {
+  const isBroken =
+    !direct ||
+    typeof direct !== 'string' ||
+    direct.includes('placehold.co') ||
+    direct.includes('photo-1622484216850') ||
+    direct.includes('photo-1517093157656') ||
+    direct.includes('photo-1608248597359');
+
+  if (!isBroken) {
     return direct;
   }
 
   const name = (item?.productName || product?.name || '').toLowerCase();
   if (name.includes('protein') || name.includes('bar')) {
-    return 'https://images.unsplash.com/photo-1622484216850-252a9261bf03?auto=format&fit=crop&w=300&q=80';
+    return 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=300&q=80';
+  }
+  if (name.includes('granola') || name.includes('oat') || name.includes('cereal')) {
+    return 'https://images.unsplash.com/photo-1514733670139-4d87a1941d55?auto=format&fit=crop&w=300&q=80';
   }
   if (name.includes('biscuit') || name.includes('cookie') || name.includes('quinoa') || name.includes('chia') || name.includes('snack')) {
     return 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?auto=format&fit=crop&w=300&q=80';
   }
   if (name.includes('almond') || name.includes('nut')) {
-    return 'https://images.unsplash.com/photo-1508061252224-432822452317?auto=format&fit=crop&w=300&q=80';
+    return 'https://images.unsplash.com/photo-1508061253366-f7da158b6d46?auto=format&fit=crop&w=300&q=80';
   }
-  if (name.includes('dish') || name.includes('cleaner') || name.includes('detergent')) {
+  if (name.includes('date') || name.includes('fig')) {
+    return 'https://images.unsplash.com/photo-1546548970-71785318a17b?auto=format&fit=crop&w=300&q=80';
+  }
+  if (name.includes('dish') || name.includes('cleaner') || name.includes('detergent') || name.includes('towel') || name.includes('paper')) {
     return 'https://images.unsplash.com/photo-1585421514738-01798e348b17?auto=format&fit=crop&w=300&q=80';
   }
-  if (name.includes('tea') || name.includes('honey')) {
+  if (name.includes('tea') || name.includes('honey') || name.includes('drink')) {
     return 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=300&q=80';
   }
+  if (name.includes('hair') || name.includes('oil')) {
+    return 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=300&q=80';
+  }
+  if (name.includes('shampoo') || name.includes('serum') || name.includes('beauty') || name.includes('wash')) {
+    return 'https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&w=300&q=80';
+  }
+  if (name.includes('yogurt') || name.includes('milk') || name.includes('cheese') || name.includes('dairy')) {
+    return 'https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=300&q=80';
+  }
   return 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=300&q=80';
+};
+
+const handleImgError = (e, productName) => {
+  e.target.onerror = null;
+  const name = (productName || '').toLowerCase();
+  if (name.includes('protein') || name.includes('bar')) {
+    e.target.src = 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=300&q=80';
+  } else if (name.includes('granola') || name.includes('oat') || name.includes('cereal')) {
+    e.target.src = 'https://images.unsplash.com/photo-1514733670139-4d87a1941d55?auto=format&fit=crop&w=300&q=80';
+  } else if (name.includes('biscuit') || name.includes('cookie') || name.includes('quinoa') || name.includes('chia') || name.includes('snack')) {
+    e.target.src = 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?auto=format&fit=crop&w=300&q=80';
+  } else if (name.includes('almond') || name.includes('nut')) {
+    e.target.src = 'https://images.unsplash.com/photo-1508061253366-f7da158b6d46?auto=format&fit=crop&w=300&q=80';
+  } else if (name.includes('dish') || name.includes('cleaner') || name.includes('detergent')) {
+    e.target.src = 'https://images.unsplash.com/photo-1585421514738-01798e348b17?auto=format&fit=crop&w=300&q=80';
+  } else if (name.includes('hair') || name.includes('oil')) {
+    e.target.src = 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=300&q=80';
+  } else {
+    e.target.src = 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=300&q=80';
+  }
 };
 
 export const CartPage = () => {
@@ -133,6 +176,7 @@ export const CartPage = () => {
                   src={image}
                   alt={productName}
                   className="w-20 h-20 rounded-xl object-cover bg-gray-100 flex-shrink-0 border border-gray-100"
+                  onError={(e) => handleImgError(e, productName)}
                 />
 
                 <div className="flex-1 min-w-0">

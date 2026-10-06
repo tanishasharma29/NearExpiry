@@ -5,6 +5,52 @@ import { useAuth } from './AuthContext';
 const CartContext = createContext(null);
 const GUEST_CART_KEY = 'nearexpiry_cart';
 
+const sanitizeProductImage = (img, name = '') => {
+  const isBroken =
+    !img ||
+    typeof img !== 'string' ||
+    img.includes('placehold.co') ||
+    img.includes('photo-1622484216850') ||
+    img.includes('photo-1517093157656') ||
+    img.includes('photo-1608248597359');
+
+  if (isBroken) {
+    const n = (name || '').toLowerCase();
+    if (n.includes('protein') || n.includes('bar')) {
+      return 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=600&q=80';
+    }
+    if (n.includes('granola') || n.includes('oat') || n.includes('cereal')) {
+      return 'https://images.unsplash.com/photo-1514733670139-4d87a1941d55?auto=format&fit=crop&w=600&q=80';
+    }
+    if (n.includes('biscuit') || n.includes('cookie') || n.includes('quinoa') || n.includes('chia')) {
+      return 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?auto=format&fit=crop&w=600&q=80';
+    }
+    if (n.includes('almond') || n.includes('nut')) {
+      return 'https://images.unsplash.com/photo-1508061253366-f7da158b6d46?auto=format&fit=crop&w=600&q=80';
+    }
+    if (n.includes('date') || n.includes('fig')) {
+      return 'https://images.unsplash.com/photo-1546548970-71785318a17b?auto=format&fit=crop&w=600&q=80';
+    }
+    if (n.includes('dish') || n.includes('detergent') || n.includes('cleaner') || n.includes('towel') || n.includes('paper')) {
+      return 'https://images.unsplash.com/photo-1585421514738-01798e348b17?auto=format&fit=crop&w=600&q=80';
+    }
+    if (n.includes('tea') || n.includes('honey') || n.includes('drink')) {
+      return 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=600&q=80';
+    }
+    if (n.includes('hair') || n.includes('oil')) {
+      return 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=600&q=80';
+    }
+    if (n.includes('shampoo') || n.includes('serum') || n.includes('beauty') || n.includes('wash')) {
+      return 'https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&w=600&q=80';
+    }
+    if (n.includes('yogurt') || n.includes('milk') || n.includes('cheese') || n.includes('dairy')) {
+      return 'https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=600&q=80';
+    }
+    return 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80';
+  }
+  return img;
+};
+
 export const normalizeCartData = (cartData) => {
   if (!cartData) {
     return { items: [], pricingSummary: { subtotal: 0, discounts: 0, finalTotal: 0 } };
@@ -43,15 +89,18 @@ export const normalizeCartData = (cartData) => {
 
     const quantity = Number(it.quantity ?? it.requestedQuantity ?? 1);
     const lineTotal = Number(it.lineTotal ?? it.pricing?.lineFinalTotal ?? (unitPrice * quantity));
+    const productName = it.productName || product.name || 'Product';
+    const rawImage = it.image || product.image || product.imageUrl || (Array.isArray(product.images) && product.images[0]) || '';
+    const image = sanitizeProductImage(rawImage, productName);
 
     return {
       ...it,
       _id: it._id || productId,
       productId: product._id ? product : (it.productId || productId),
       product: product._id ? product : (it.product || product),
-      productName: it.productName || product.name || 'Product',
+      productName,
       brand: it.brand || product.brand || '',
-      image: it.image || product.image || product.imageUrl || (Array.isArray(product.images) && product.images[0]) || '',
+      image,
       quantity,
       requestedQuantity: quantity,
       unitPrice,

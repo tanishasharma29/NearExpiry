@@ -17,8 +17,20 @@ const getProductImage = (product) => {
   const name = (product?.name || '').toLowerCase();
   const cat = (product?.category?.name || product?.category || '').toLowerCase();
   
-  if (name.includes('protein') || name.includes('bar') || name.includes('granola') || name.includes('snack') || name.includes('almond') || name.includes('biscuit') || name.includes('date') || cat.includes('snack')) {
-    return 'https://images.unsplash.com/photo-1622484216850-252a9261bf03?auto=format&fit=crop&w=600&q=80';
+  if (name.includes('protein') || name.includes('bar')) {
+    return 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=600&q=80';
+  }
+  if (name.includes('granola') || name.includes('oat') || name.includes('cereal')) {
+    return 'https://images.unsplash.com/photo-1514733670139-4d87a1941d55?auto=format&fit=crop&w=600&q=80';
+  }
+  if (name.includes('biscuit') || name.includes('cookie') || name.includes('quinoa') || name.includes('chia')) {
+    return 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?auto=format&fit=crop&w=600&q=80';
+  }
+  if (name.includes('almond') || name.includes('nut')) {
+    return 'https://images.unsplash.com/photo-1508061253366-f7da158b6d46?auto=format&fit=crop&w=600&q=80';
+  }
+  if (name.includes('date') || name.includes('fig')) {
+    return 'https://images.unsplash.com/photo-1546548970-71785318a17b?auto=format&fit=crop&w=600&q=80';
   }
   if (name.includes('dish') || name.includes('detergent') || name.includes('cleaner') || name.includes('towel') || name.includes('paper') || cat.includes('household')) {
     return 'https://images.unsplash.com/photo-1585421514738-01798e348b17?auto=format&fit=crop&w=600&q=80';
@@ -26,7 +38,10 @@ const getProductImage = (product) => {
   if (name.includes('tea') || name.includes('honey') || name.includes('wellness') || name.includes('drink') || cat.includes('wellness')) {
     return 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=600&q=80';
   }
-  if (name.includes('shampoo') || name.includes('serum') || name.includes('hair') || name.includes('beauty') || name.includes('wash') || cat.includes('beauty')) {
+  if (name.includes('hair') || name.includes('oil')) {
+    return 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=600&q=80';
+  }
+  if (name.includes('shampoo') || name.includes('serum') || name.includes('beauty') || name.includes('wash') || cat.includes('beauty')) {
     return 'https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&w=600&q=80';
   }
   if (name.includes('yogurt') || name.includes('milk') || name.includes('cheese') || name.includes('dairy')) {
