@@ -9,12 +9,45 @@ import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
 import { useAuth } from '../../context/AuthContext';
 
+const getProductImage = (product) => {
+  const img = product?.image || product?.imageUrl || (Array.isArray(product?.images) && product.images[0]);
+  if (img && typeof img === 'string' && !img.includes('placehold.co')) {
+    return img;
+  }
+  const name = (product?.name || '').toLowerCase();
+  const cat = (product?.category?.name || product?.category || '').toLowerCase();
+  
+  if (name.includes('protein') || name.includes('bar') || name.includes('granola') || name.includes('snack') || name.includes('almond') || name.includes('biscuit') || name.includes('date') || cat.includes('snack')) {
+    return 'https://images.unsplash.com/photo-1622484216850-252a9261bf03?auto=format&fit=crop&w=600&q=80';
+  }
+  if (name.includes('dish') || name.includes('detergent') || name.includes('cleaner') || name.includes('towel') || name.includes('paper') || cat.includes('household')) {
+    return 'https://images.unsplash.com/photo-1585421514738-01798e348b17?auto=format&fit=crop&w=600&q=80';
+  }
+  if (name.includes('tea') || name.includes('honey') || name.includes('wellness') || name.includes('drink') || cat.includes('wellness')) {
+    return 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=600&q=80';
+  }
+  if (name.includes('shampoo') || name.includes('serum') || name.includes('hair') || name.includes('beauty') || name.includes('wash') || cat.includes('beauty')) {
+    return 'https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&w=600&q=80';
+  }
+  if (name.includes('yogurt') || name.includes('milk') || name.includes('cheese') || name.includes('dairy')) {
+    return 'https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=600&q=80';
+  }
+  return 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80';
+};
+
 export const ProductCard = ({ product }) => {
   const { addToCart, loading: cartLoading } = useCart();
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
   const { isAuthenticated, isCustomer } = useAuth();
 
-  const primaryBatch = product.primaryBatch || product.earliestBatch || {};
+  const primaryBatch = product.primaryBatch || product.earliestBatch || product.leadBatch || {};
+  const currentPrice = product.effectivePrice ?? primaryBatch.currentPrice ?? product.pricingAndInventory?.fefoPrice ?? product.pricingAndInventory?.lowestPrice;
+  const originalPrice = product.basePrice ?? primaryBatch.originalPrice ?? product.pricingAndInventory?.originalPrice ?? product.pricingAndInventory?.highestOriginalPrice;
+  const discountPercentage = product.discountPercentage ?? primaryBatch.discountPercentage ?? product.pricingAndInventory?.fefoDiscountPercentage ?? product.pricingAndInventory?.highestDiscountPercentage;
+  const remainingDays = primaryBatch.remainingDays ?? product.remainingDays ?? product.pricingAndInventory?.minRemainingDays;
+  const batchStatus = primaryBatch.status ?? product.batchStatus ?? product.pricingAndInventory?.expiryStatus;
+  const totalQuantity = product.totalQuantity ?? primaryBatch.quantity ?? product.pricingAndInventory?.totalAvailableQuantity;
+
   const inWish = isInWishlist(product._id);
 
   const handleWishlistToggle = (e) => {
@@ -38,24 +71,28 @@ export const ProductCard = ({ product }) => {
     }
   };
 
-  const isPurchasable = product.isPurchasable !== false && (product.totalQuantity || primaryBatch.quantity) > 0;
+  const isPurchasable = product.isPurchasable !== false && (totalQuantity > 0 || (currentPrice !== undefined && currentPrice !== null));
 
   return (
     <div className="group relative bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition duration-200 flex flex-col justify-between">
       {/* Top Media Area */}
       <div className="relative aspect-[4/3] bg-gray-100 overflow-hidden">
         <img
-          src={product.image || 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80'}
+          src={getProductImage(product)}
           alt={product.name}
           className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
           loading="lazy"
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80';
+          }}
         />
 
         {/* Expiry Badge overlay */}
         <div className="absolute top-2 left-2 z-10">
           <ExpiryBadge
-            remainingDays={primaryBatch.remainingDays ?? product.remainingDays}
-            status={primaryBatch.status ?? product.batchStatus}
+            remainingDays={remainingDays}
+            status={batchStatus}
           />
         </div>
 
@@ -103,13 +140,13 @@ export const ProductCard = ({ product }) => {
         <div className="mt-auto pt-3 border-t border-gray-100 flex items-end justify-between">
           <div>
             <PriceTag
-              currentPrice={product.effectivePrice ?? primaryBatch.currentPrice}
-              originalPrice={product.basePrice ?? primaryBatch.originalPrice}
-              discountPercentage={product.discountPercentage ?? primaryBatch.discountPercentage}
+              currentPrice={currentPrice}
+              originalPrice={originalPrice}
+              discountPercentage={discountPercentage}
             />
             <div className="mt-1">
               <StockBadge
-                quantity={product.totalQuantity ?? primaryBatch.quantity}
+                quantity={totalQuantity}
                 isPurchasable={isPurchasable}
               />
             </div>
@@ -133,3 +170,4 @@ export const ProductCard = ({ product }) => {
     </div>
   );
 };
+

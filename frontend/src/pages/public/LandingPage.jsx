@@ -1,6 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Sparkles, Clock, ShieldCheck, ArrowRight, TrendingDown, Store, Leaf, ShoppingBag } from 'lucide-react';
+import {
+  Sparkles,
+  Clock,
+  ShieldCheck,
+  ArrowRight,
+  ChevronLeft,
+  ChevronRight,
+  TrendingDown,
+  Store,
+  Leaf,
+  ShoppingBag,
+  PackageOpen,
+} from 'lucide-react';
 import { productService } from '../../services/productService';
 import { categoryService } from '../../services/categoryService';
 import { ProductCard } from '../../components/common/ProductCard';
@@ -9,11 +21,56 @@ import { ScrollBanners } from '../../components/home/ScrollBanners';
 import { WhyChooseNearExpiry } from '../../components/home/WhyChooseNearExpiry';
 import { HowItWorksSection } from '../../components/home/HowItWorksSection';
 
+const CURATED_CATEGORIES = [
+  {
+    key: 'healthy-snacks',
+    name: 'Healthy Snacks',
+    tagline: 'Protein Bars, Granola & Roasted Nuts',
+    image: 'https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?auto=format&fit=crop&w=600&q=80',
+    description: 'Protein bars, artisanal muesli, healthy biscuits, dry fruits, and clean snack packs.',
+    badge: 'Popular',
+  },
+  {
+    key: 'everyday-household',
+    name: 'Everyday Household',
+    tagline: 'Dishwashing, Detergents & Cleaners',
+    image: 'https://images.unsplash.com/photo-1583947215259-38e31be8751f?auto=format&fit=crop&w=600&q=80',
+    description: 'Eco dishwashing liquids, laundry detergents, surface cleaners, and home essentials.',
+    badge: 'Essential',
+  },
+  {
+    key: 'health-wellness',
+    name: 'Health & Wellness',
+    tagline: 'Herbal Teas, Pure Honey & Vitality',
+    image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=600&q=80',
+    description: 'Daily natural personal essentials, soothing herbal blends, and whole wellness products.',
+    badge: 'Holistic',
+  },
+  {
+    key: 'hair-care-beauty',
+    name: 'Hair Care & Beauty',
+    tagline: 'Shampoos, Botanical Serums & Oils',
+    image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=600&q=80',
+    description: 'Nourishing shampoos, conditioners, face serums, cold-pressed oils, and skin care.',
+    badge: 'Self-Care',
+  },
+];
+
 export const LandingPage = () => {
   const [urgentDeals, setUrgentDeals] = useState([]);
-  const [categories, setCategories] = useState([]);
+  const [categories, setCategories] = useState(CURATED_CATEGORIES);
+  const [activeCategoryKey, setActiveCategoryKey] = useState('healthy-snacks');
+  const [categoryProducts, setCategoryProducts] = useState({});
+  const [loadingCatProducts, setLoadingCatProducts] = useState(false);
   const [loading, setLoading] = useState(true);
+  const categoryCarouselRef = useRef(null);
 
+  // Active category object
+  const activeCategory =
+    categories.find((c) => c.key === activeCategoryKey) || categories[0] || CURATED_CATEGORIES[0];
+  const currentCatDeals = categoryProducts[activeCategoryKey] || [];
+
+  // Fetch initial landing data (Urgent deals & matching active categories)
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -21,10 +78,49 @@ export const LandingPage = () => {
         // Fetch near-expiry deals (0-7 days window, sorted by expiry ascending)
         const [prodData, catData] = await Promise.all([
           productService.getMarketplaceProducts({ limit: 8, sortBy: 'expiry', sortOrder: 'asc' }),
-          categoryService.getCategories({ status: 'ACTIVE' }),
+          categoryService.getCategories({ status: 'ACTIVE', limit: 100 }),
         ]);
         setUrgentDeals(prodData?.products || []);
-        setCategories(catData?.categories?.slice(0, 6) || (Array.isArray(catData) ? catData.slice(0, 6) : []));
+
+        const rawList = catData?.categories || (Array.isArray(catData) ? catData : []);
+        const cleanList = rawList.filter((c) => {
+          if (!c.name) return false;
+          const n = c.name.trim();
+          if (/^Admin Category/i.test(n)) return false;
+          if (/^Notif /i.test(n)) return false;
+          if (/^QR /i.test(n)) return false;
+          if (/\d{6,}/.test(n)) return false;
+          return true;
+        });
+
+        const mapped = CURATED_CATEGORIES.map((curated) => {
+          const match = cleanList.find(
+            (c) =>
+              c.name.toLowerCase() === curated.name.toLowerCase() ||
+              c.slug === curated.key ||
+              c.slug?.includes(curated.key.replace(/-/g, ''))
+          );
+          return {
+            ...curated,
+            _id: match?._id || null,
+            slug: match?.slug || curated.key,
+          };
+        });
+        setCategories(mapped);
+
+        // Pre-fetch initial category products for instant display
+        const defaultCat = mapped.find((c) => c.key === activeCategoryKey) || mapped[0];
+        if (defaultCat?._id) {
+          try {
+            const catProdRes = await productService.getMarketplaceProducts({
+              category: defaultCat._id,
+              limit: 12,
+            });
+            setCategoryProducts({
+              [defaultCat.key]: catProdRes?.products || [],
+            });
+          } catch (_) {}
+        }
       } catch (err) {
         console.warn('Failed to load landing data', err);
       } finally {
@@ -33,6 +129,55 @@ export const LandingPage = () => {
     };
     fetchData();
   }, []);
+
+  // Fetch products for currently active category
+  useEffect(() => {
+    if (!activeCategory?._id) return;
+    if (categoryProducts[activeCategory.key]) return;
+
+    let isSubscribed = true;
+    const fetchCategoryDeals = async () => {
+      try {
+        setLoadingCatProducts(true);
+        const res = await productService.getMarketplaceProducts({
+          category: activeCategory._id,
+          limit: 12,
+        });
+        if (isSubscribed) {
+          setCategoryProducts((prev) => ({
+            ...prev,
+            [activeCategory.key]: res?.products || [],
+          }));
+        }
+      } catch (err) {
+        console.warn('Failed to load products for category', err);
+        if (isSubscribed) {
+          setCategoryProducts((prev) => ({
+            ...prev,
+            [activeCategory.key]: [],
+          }));
+        }
+      } finally {
+        if (isSubscribed) {
+          setLoadingCatProducts(false);
+        }
+      }
+    };
+    fetchCategoryDeals();
+    return () => {
+      isSubscribed = false;
+    };
+  }, [activeCategory?._id, activeCategory?.key, categoryProducts]);
+
+  // Carousel scroll buttons
+  const scrollCategoryCarousel = (direction) => {
+    if (!categoryCarouselRef.current) return;
+    const scrollAmount = 340;
+    categoryCarouselRef.current.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth',
+    });
+  };
 
   return (
     <div className="space-y-16 py-6">
@@ -61,34 +206,221 @@ export const LandingPage = () => {
         </div>
       </section>
 
-      {/* Featured Categories */}
-      {categories.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">Explore by Category</h2>
-              <p className="text-sm text-gray-500">Find rescue specials in your neighborhood stores</p>
+      {/* Explore by Category Section */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Section Header */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+          <div>
+            <div className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full mb-2 border border-emerald-200 shadow-sm">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+              Curated Rescue Specials
             </div>
-            <Link to="/marketplace" className="text-sm font-semibold text-brand-600 hover:text-brand-700 flex items-center gap-1">
-              View All <ArrowRight className="w-4 h-4" />
-            </Link>
+            <h2 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
+              Explore by Category
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">
+              Browse high-demand essentials expiring soon with verified shelf-life & deep discounts
+            </p>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
-            {categories.map((cat) => (
-              <Link
-                key={cat._id}
-                to={`/marketplace?category=${cat._id}`}
-                className="bg-white p-4 rounded-xl border border-gray-200 text-center hover:border-brand-500 hover:shadow-md transition group"
+
+          <Link
+            to="/marketplace"
+            className="inline-flex items-center gap-1.5 text-sm font-bold text-emerald-600 hover:text-emerald-700 transition group self-start md:self-auto"
+          >
+            <span>View All Deals</span>
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition duration-200" />
+          </Link>
+        </div>
+
+        {/* 4 Customer-Facing Category Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+          {categories.map((cat) => {
+            const isSelected = activeCategoryKey === cat.key;
+            return (
+              <div
+                key={cat.key}
+                onClick={() => setActiveCategoryKey(cat.key)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setActiveCategoryKey(cat.key);
+                  }
+                }}
+                className={`group relative bg-white rounded-2xl border cursor-pointer overflow-hidden transition-all duration-300 text-left flex flex-col justify-between ${
+                  isSelected
+                    ? 'border-emerald-500 ring-2 ring-emerald-400/30 shadow-lg -translate-y-1'
+                    : 'border-gray-200 hover:border-emerald-400 hover:shadow-md hover:-translate-y-1'
+                }`}
               >
-                <div className="w-12 h-12 mx-auto rounded-full bg-brand-50 text-brand-600 flex items-center justify-center font-bold text-lg mb-2 group-hover:scale-110 transition">
-                  {cat.name.slice(0, 2).toUpperCase()}
+                {/* Category Image Header */}
+                <div className="relative aspect-[16/10] bg-gray-100 overflow-hidden">
+                  <img
+                    src={cat.image}
+                    alt={cat.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-gray-900/60 via-transparent to-transparent opacity-80" />
+
+                  {/* Badge Tag */}
+                  <div className="absolute top-3 left-3 z-10">
+                    <span className="text-[11px] font-bold tracking-wide uppercase px-2.5 py-0.5 rounded-full bg-white/90 backdrop-blur-md text-emerald-700 shadow-sm border border-emerald-100">
+                      {cat.badge}
+                    </span>
+                  </div>
+
+                  {/* Active Indicator Pin */}
+                  {isSelected && (
+                    <div className="absolute top-3 right-3 z-10">
+                      <span className="flex h-2.5 w-2.5 relative">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                      </span>
+                    </div>
+                  )}
                 </div>
-                <div className="text-xs font-semibold text-gray-800 line-clamp-1">{cat.name}</div>
-              </Link>
-            ))}
+
+                {/* Card Body */}
+                <div className="p-4 sm:p-5 flex flex-col flex-grow justify-between">
+                  <div>
+                    <h3
+                      className={`font-bold text-base transition-colors ${
+                        isSelected ? 'text-emerald-700' : 'text-gray-900 group-hover:text-emerald-600'
+                      }`}
+                    >
+                      {cat.name}
+                    </h3>
+                    <p className="text-xs text-gray-500 line-clamp-1 mt-1 font-medium">{cat.tagline}</p>
+                  </div>
+
+                  {/* Footer Action */}
+                  <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                    <span
+                      className={`text-xs font-bold flex items-center gap-1 transition ${
+                        isSelected ? 'text-emerald-600' : 'text-gray-600 group-hover:text-emerald-600'
+                      }`}
+                    >
+                      Explore Deals
+                      <ArrowRight
+                        className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                          isSelected ? 'translate-x-1 text-emerald-600' : 'group-hover:translate-x-1'
+                        }`}
+                      />
+                    </span>
+
+                    {isSelected && (
+                      <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                        Active View
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Selected Category Products Carousel */}
+        <div className="bg-slate-50/70 border border-slate-200/80 rounded-3xl p-5 sm:p-7 shadow-sm">
+          {/* Category Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-5 mb-5 border-b border-gray-200/80 gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold shadow-sm">
+                <ShoppingBag className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg sm:text-xl font-bold text-gray-900">{activeCategory.name}</h3>
+                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    {loadingCatProducts ? 'Updating...' : `${currentCatDeals.length} deals`}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mt-0.5 hidden sm:block">
+                  {activeCategory.description}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between sm:justify-end gap-3">
+              {/* Carousel Arrows */}
+              {currentCatDeals.length > 0 && (
+                <div className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-xl p-1 shadow-sm">
+                  <button
+                    onClick={() => scrollCategoryCarousel('left')}
+                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-700 hover:text-gray-900 transition"
+                    title="Scroll Left"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <div className="h-4 w-px bg-gray-200" />
+                  <button
+                    onClick={() => scrollCategoryCarousel('right')}
+                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-700 hover:text-gray-900 transition"
+                    title="Scroll Right"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              {activeCategory._id && (
+                <Link
+                  to={`/marketplace?category=${activeCategory._id}`}
+                  className="text-xs font-bold text-emerald-700 hover:text-emerald-800 bg-white hover:bg-emerald-50/50 border border-emerald-200 px-3.5 py-2 rounded-xl transition shadow-sm flex items-center gap-1"
+                >
+                  <span>Filter in Marketplace</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              )}
+            </div>
           </div>
-        </section>
-      )}
+
+          {/* Product Carousel Content */}
+          {loadingCatProducts ? (
+            <div className="py-16">
+              <LoadingSpinner text={`Finding best discounts in ${activeCategory.name}...`} />
+            </div>
+          ) : currentCatDeals.length > 0 ? (
+            <div
+              ref={categoryCarouselRef}
+              className="flex gap-5 overflow-x-auto scroll-smooth snap-x pb-2 pt-1 scrollbar-thin scrollbar-thumb-gray-200 focus:outline-none"
+              style={{ scrollbarWidth: 'thin' }}
+            >
+              {currentCatDeals.map((product) => (
+                <div
+                  key={product._id}
+                  className="w-[270px] sm:w-[290px] md:w-[305px] flex-shrink-0 snap-start"
+                >
+                  <ProductCard product={product} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl p-8 sm:p-12 text-center border border-dashed border-gray-300">
+              <div className="w-12 h-12 mx-auto rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mb-3">
+                <PackageOpen className="w-6 h-6" />
+              </div>
+              <h4 className="text-base font-bold text-gray-800">
+                No deals available in this category yet.
+              </h4>
+              <p className="text-xs text-gray-500 max-w-md mx-auto mt-1 mb-5">
+                Local retail partners update near-expiry stock daily. Try switching categories or check
+                all current flash deals in the marketplace.
+              </p>
+              <div className="flex flex-wrap justify-center gap-3">
+                <Link
+                  to="/marketplace"
+                  className="text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl transition shadow-sm"
+                >
+                  Browse All Marketplace Deals
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* Urgent Flash Deals */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -132,3 +464,5 @@ export const LandingPage = () => {
     </div>
   );
 };
+
+export default LandingPage;
