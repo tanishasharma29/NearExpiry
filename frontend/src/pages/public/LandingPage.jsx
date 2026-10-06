@@ -7,6 +7,7 @@ import { ProductCard } from '../../components/common/ProductCard';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { ScrollBanners } from '../../components/home/ScrollBanners';
 import { WhyChooseNearExpiry } from '../../components/home/WhyChooseNearExpiry';
+import { HowItWorksSection } from '../../components/home/HowItWorksSection';
 
 export const LandingPage = () => {
   const [urgentDeals, setUrgentDeals] = useState([]);
@@ -126,49 +127,8 @@ export const LandingPage = () => {
       {/* Interactive Why Choose NearExpiry Section */}
       <WhyChooseNearExpiry />
 
-      {/* How It Works */}
-      <section id="how-it-works" className="bg-white py-16 border-y border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-12">
-            <h2 className="text-3xl font-black text-gray-900">How NearExpiry Works</h2>
-            <p className="text-sm text-gray-500 mt-2">
-              Our automated First-Expired-First-Out (FEFO) engine recalculates dynamic pricing every 24 hours.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="p-6 rounded-2xl bg-gray-50 border border-gray-200">
-              <div className="w-12 h-12 rounded-xl bg-brand-100 text-brand-700 flex items-center justify-center font-black text-xl mb-4">
-                1
-              </div>
-              <h3 className="font-bold text-lg text-gray-900 mb-2">Stores Register Batches</h3>
-              <p className="text-sm text-gray-600 leading-relaxed">
-                Supermarkets register stock with exact manufacturing & expiry dates. Every batch receives a unique cryptographic QR token.
-              </p>
-            </div>
-
-            <div className="p-6 rounded-2xl bg-gray-50 border border-gray-200">
-              <div className="w-12 h-12 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-black text-xl mb-4">
-                2
-              </div>
-              <h3 className="font-bold text-lg text-gray-900 mb-2">Dynamic Algorithm Discounts</h3>
-              <p className="text-sm text-gray-600 leading-relaxed">
-                As expiry dates draw nearer, prices drop automatically (10% → 25% → 40% → 60% → 75%). Safe food never goes to waste.
-              </p>
-            </div>
-
-            <div className="p-6 rounded-2xl bg-gray-50 border border-gray-200">
-              <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-black text-xl mb-4">
-                3
-              </div>
-              <h3 className="font-bold text-lg text-gray-900 mb-2">Pickup or Local Delivery</h3>
-              <p className="text-sm text-gray-600 leading-relaxed">
-                Shoppers order directly, saving hundreds of rupees. Stores mark orders ready and avoid write-off inventory losses.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* How NearExpiry Works Section (Interactive Motion & Dashboard UI) */}
+      <HowItWorksSection />
     </div>
   );
 };

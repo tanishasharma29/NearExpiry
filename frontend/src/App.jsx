@@ -16,6 +16,7 @@ import { LandingPage } from './pages/public/LandingPage';
 import { LoginPage } from './pages/public/LoginPage';
 import { RegisterPage } from './pages/public/RegisterPage';
 import { RegisterSellerPage } from './pages/public/RegisterSellerPage';
+import { AboutUsPage } from './pages/public/AboutUsPage';
 import { MarketplacePage } from './pages/customer/MarketplacePage';
 import { ProductDetailsPage } from './pages/customer/ProductDetailsPage';
 import { CartPage } from './pages/customer/CartPage';
@@ -60,6 +61,8 @@ export default function App() {
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
                 <Route path="/register-seller" element={<RegisterSellerPage />} />
+                <Route path="/about" element={<AboutUsPage />} />
+                <Route path="/about-us" element={<AboutUsPage />} />
 
                 {/* 2. Customer Protected Routes */}
                 <Route

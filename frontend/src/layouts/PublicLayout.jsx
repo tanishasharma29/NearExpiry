@@ -200,6 +200,7 @@ export const PublicLayout = () => {
               <h4 className="text-sm font-semibold text-white uppercase tracking-wider mb-3">For Shoppers</h4>
               <ul className="space-y-2 text-xs">
                 <li><Link to="/marketplace" className="hover:text-brand-400 transition">Browse Deals</Link></li>
+                <li><Link to="/about" className="hover:text-brand-400 transition font-medium text-brand-300">About NearExpiry</Link></li>
                 <li><Link to="/orders" className="hover:text-brand-400 transition">Order History</Link></li>
                 <li><Link to="/wishlist" className="hover:text-brand-400 transition">My Wishlist</Link></li>
                 <li><Link to="/cart" className="hover:text-brand-400 transition">Shopping Cart</Link></li>
