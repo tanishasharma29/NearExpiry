@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingCart, Heart, ShieldAlert } from 'lucide-react';
+import { ShoppingCart, Heart, ShieldAlert, Check } from 'lucide-react';
 import { ExpiryBadge } from './ExpiryBadge';
 import { PriceTag } from './PriceTag';
 import { StockBadge } from './StockBadge';
@@ -48,26 +48,37 @@ export const ProductCard = ({ product }) => {
   const batchStatus = primaryBatch.status ?? product.batchStatus ?? product.pricingAndInventory?.expiryStatus;
   const totalQuantity = product.totalQuantity ?? primaryBatch.quantity ?? product.pricingAndInventory?.totalAvailableQuantity;
 
+  const [addedAnimation, setAddedAnimation] = useState(false);
+  const [wishlistAnimation, setWishlistAnimation] = useState(false);
+
   const inWish = isInWishlist(product._id);
 
-  const handleWishlistToggle = (e) => {
+  const handleWishlistToggle = async (e) => {
     e.preventDefault();
-    if (!isAuthenticated) return alert('Please log in to manage your wishlist');
-    if (inWish) {
-      removeFromWishlist(product._id);
-    } else {
-      addToWishlist(product._id);
+    e.stopPropagation();
+    setWishlistAnimation(true);
+    setTimeout(() => setWishlistAnimation(false), 500);
+    try {
+      if (inWish) {
+        await removeFromWishlist(product._id);
+      } else {
+        await addToWishlist(product);
+      }
+    } catch (err) {
+      console.warn('Failed to toggle wishlist:', err);
     }
   };
 
   const handleAddToCart = async (e) => {
     e.preventDefault();
-    if (!isAuthenticated) return alert('Please log in as a customer to add items to your cart');
-    if (!isCustomer) return alert('Only customers can purchase items');
+    e.stopPropagation();
+    if (!isPurchasable) return;
     try {
-      await addToCart(product._id, 1);
+      setAddedAnimation(true);
+      await addToCart(product, 1);
+      setTimeout(() => setAddedAnimation(false), 1200);
     } catch (err) {
-      alert(err.message || 'Failed to add item to cart');
+      console.warn('Failed to add item to cart:', err);
     }
   };
 
@@ -98,13 +109,19 @@ export const ProductCard = ({ product }) => {
 
         {/* Wishlist Button */}
         <button
+          type="button"
           onClick={handleWishlistToggle}
-          className={`absolute top-2 right-2 p-1.5 rounded-full shadow-md transition ${
-            inWish ? 'bg-red-50 text-red-500' : 'bg-white/80 backdrop-blur-sm text-gray-500 hover:text-red-500'
+          className={`absolute top-2 right-2 p-1.5 rounded-full shadow-md transition-all duration-200 z-20 ${
+            wishlistAnimation ? 'scale-125' : 'hover:scale-110 active:scale-90'
+          } ${
+            inWish
+              ? 'bg-red-50 text-red-500 border border-red-200 shadow-red-500/20'
+              : 'bg-white/90 backdrop-blur-sm text-gray-500 hover:text-red-500 hover:bg-white'
           }`}
           title={inWish ? 'Remove from wishlist' : 'Add to wishlist'}
+          aria-label={inWish ? 'Remove from wishlist' : 'Add to wishlist'}
         >
-          <Heart className={`w-4 h-4 ${inWish ? 'fill-red-500' : ''}`} />
+          <Heart className={`w-4 h-4 transition-transform duration-200 ${inWish ? 'fill-red-500 text-red-500' : ''}`} />
         </button>
       </div>
 
@@ -154,16 +171,30 @@ export const ProductCard = ({ product }) => {
 
           {/* Quick Add Button */}
           <button
+            type="button"
             onClick={handleAddToCart}
             disabled={!isPurchasable || cartLoading}
-            className={`p-2.5 rounded-lg flex items-center justify-center transition shadow-sm ${
-              isPurchasable
-                ? 'bg-brand-600 hover:bg-brand-700 text-white'
+            className={`p-2.5 rounded-xl flex items-center justify-center transition-all duration-200 shadow-sm ${
+              addedAnimation
+                ? 'bg-emerald-600 text-white scale-105 shadow-md ring-2 ring-emerald-300'
+                : isPurchasable
+                ? 'bg-brand-600 hover:bg-brand-700 active:scale-95 text-white'
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
             }`}
-            title={isPurchasable ? 'Add 1 to Cart' : 'Item is expired or out of stock'}
+            title={
+              addedAnimation
+                ? 'Added to cart!'
+                : isPurchasable
+                ? 'Add 1 to Cart'
+                : 'Item is expired or out of stock'
+            }
+            aria-label="Add to cart"
           >
-            <ShoppingCart className="w-4 h-4" />
+            {addedAnimation ? (
+              <Check className="w-4 h-4 animate-in zoom-in" />
+            ) : (
+              <ShoppingCart className="w-4 h-4" />
+            )}
           </button>
         </div>
       </div>

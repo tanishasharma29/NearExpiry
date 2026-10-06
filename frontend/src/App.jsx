@@ -63,6 +63,7 @@ export default function App() {
                 <Route path="/register-seller" element={<RegisterSellerPage />} />
                 <Route path="/about" element={<AboutUsPage />} />
                 <Route path="/about-us" element={<AboutUsPage />} />
+                <Route path="/wishlist" element={<WishlistPage />} />
 
                 {/* 2. Customer Protected Routes */}
                 <Route
@@ -86,14 +87,6 @@ export default function App() {
                   element={
                     <ProtectedRoute allowedRoles={['CUSTOMER']}>
                       <OrderDetailsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/wishlist"
-                  element={
-                    <ProtectedRoute allowedRoles={['CUSTOMER']}>
-                      <WishlistPage />
                     </ProtectedRoute>
                   }
                 />

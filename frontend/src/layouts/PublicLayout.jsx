@@ -72,20 +72,18 @@ export const PublicLayout = () => {
               </Link>
 
               {/* Wishlist Icon */}
-              {isAuthenticated && (
-                <Link
-                  to="/wishlist"
-                  className="relative p-2 text-gray-600 hover:text-red-500 transition rounded-full hover:bg-gray-100"
-                  title="Wishlist"
-                >
-                  <Heart className="w-5 h-5" />
-                  {wishlist?.length > 0 && (
-                    <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white rounded-full text-[10px] font-bold flex items-center justify-center">
-                      {wishlist.length}
-                    </span>
-                  )}
-                </Link>
-              )}
+              <Link
+                to="/wishlist"
+                className="relative p-2 text-gray-600 hover:text-red-500 transition rounded-full hover:bg-gray-100"
+                title="Wishlist"
+              >
+                <Heart className="w-5 h-5" />
+                {wishlist?.length > 0 && (
+                  <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white rounded-full text-[10px] font-bold flex items-center justify-center animate-pulse">
+                    {wishlist.length}
+                  </span>
+                )}
+              </Link>
 
               {/* Cart Icon */}
               <Link

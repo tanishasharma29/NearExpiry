@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ShoppingCart, Heart, Store, Calendar, ShieldCheck, AlertCircle, ArrowLeft, PackageCheck, Layers } from 'lucide-react';
+import { ShoppingCart, Heart, Store, Calendar, ShieldCheck, AlertCircle, ArrowLeft, PackageCheck, Layers, Check } from 'lucide-react';
 import { productService } from '../../services/productService';
 import { ExpiryBadge } from '../../components/common/ExpiryBadge';
 import { PriceTag } from '../../components/common/PriceTag';
@@ -17,6 +17,8 @@ export const ProductDetailsPage = () => {
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [addingToCart, setAddingToCart] = useState(false);
+  const [addedAnimation, setAddedAnimation] = useState(false);
+  const [wishlistAnimation, setWishlistAnimation] = useState(false);
 
   const { addToCart } = useCart();
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
@@ -55,25 +57,29 @@ export const ProductDetailsPage = () => {
   const isPurchasable = product.isPurchasable !== false && totalStock > 0;
 
   const handleAddToCart = async () => {
-    if (!isAuthenticated) return alert('Please sign in to add items to your cart');
-    if (!isCustomer) return alert('Only customers can purchase items');
     try {
       setAddingToCart(true);
-      await addToCart(product._id, quantity);
-      alert(`Added ${quantity} item(s) to cart!`);
+      await addToCart(product, quantity);
+      setAddedAnimation(true);
+      setTimeout(() => setAddedAnimation(false), 1500);
     } catch (err) {
-      alert(err.message || 'Failed to add to cart');
+      console.error('Failed to add to cart', err);
     } finally {
       setAddingToCart(false);
     }
   };
 
-  const handleWishlistToggle = () => {
-    if (!isAuthenticated) return alert('Please sign in to manage wishlist');
-    if (inWish) {
-      removeFromWishlist(product._id);
-    } else {
-      addToWishlist(product._id);
+  const handleWishlistToggle = async () => {
+    setWishlistAnimation(true);
+    setTimeout(() => setWishlistAnimation(false), 500);
+    try {
+      if (inWish) {
+        await removeFromWishlist(product._id);
+      } else {
+        await addToWishlist(product);
+      }
+    } catch (err) {
+      console.warn('Failed to update wishlist:', err);
     }
   };
 
@@ -101,9 +107,12 @@ export const ProductDetailsPage = () => {
             </div>
             <button
               onClick={handleWishlistToggle}
-              className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-md rounded-full text-gray-600 hover:text-red-500 shadow transition"
+              className={`absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-md rounded-full shadow transition-all duration-300 ${
+                wishlistAnimation ? 'scale-125' : 'hover:scale-110'
+              }`}
+              title={inWish ? 'Remove from wishlist' : 'Add to wishlist'}
             >
-              <Heart className={`w-5 h-5 ${inWish ? 'fill-red-500 text-red-500' : ''}`} />
+              <Heart className={`w-5 h-5 transition-colors ${inWish ? 'fill-red-500 text-red-500' : 'text-gray-600 hover:text-red-500'}`} />
             </button>
           </div>
         </div>
@@ -166,10 +175,23 @@ export const ProductDetailsPage = () => {
                 <button
                   onClick={handleAddToCart}
                   disabled={addingToCart}
-                  className="flex-1 py-3.5 bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm rounded-xl shadow-lg transition flex items-center justify-center gap-2"
+                  className={`flex-1 py-3.5 font-bold text-sm rounded-xl shadow-lg transition-all duration-200 flex items-center justify-center gap-2 ${
+                    addedAnimation
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-brand-600 hover:bg-brand-700 text-white'
+                  }`}
                 >
-                  <ShoppingCart className="w-4 h-4" />
-                  {addingToCart ? 'Adding...' : `Add ${quantity} to Cart`}
+                  {addedAnimation ? (
+                    <>
+                      <Check className="w-4 h-4 animate-scale" />
+                      Added to Cart!
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingCart className="w-4 h-4" />
+                      {addingToCart ? 'Adding...' : `Add ${quantity} to Cart`}
+                    </>
+                  )}
                 </button>
               </div>
             ) : (

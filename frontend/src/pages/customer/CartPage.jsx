@@ -5,6 +5,36 @@ import { useCart } from '../../context/CartContext';
 import { EmptyState } from '../../components/common/EmptyState';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 
+const getItemImage = (item, product) => {
+  const direct =
+    item?.image ||
+    product?.image ||
+    product?.imageUrl ||
+    (Array.isArray(product?.images) && product?.images[0]);
+
+  if (direct && typeof direct === 'string' && !direct.includes('placehold.co')) {
+    return direct;
+  }
+
+  const name = (item?.productName || product?.name || '').toLowerCase();
+  if (name.includes('protein') || name.includes('bar')) {
+    return 'https://images.unsplash.com/photo-1622484216850-252a9261bf03?auto=format&fit=crop&w=300&q=80';
+  }
+  if (name.includes('biscuit') || name.includes('cookie') || name.includes('quinoa') || name.includes('chia') || name.includes('snack')) {
+    return 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?auto=format&fit=crop&w=300&q=80';
+  }
+  if (name.includes('almond') || name.includes('nut')) {
+    return 'https://images.unsplash.com/photo-1508061252224-432822452317?auto=format&fit=crop&w=300&q=80';
+  }
+  if (name.includes('dish') || name.includes('cleaner') || name.includes('detergent')) {
+    return 'https://images.unsplash.com/photo-1585421514738-01798e348b17?auto=format&fit=crop&w=300&q=80';
+  }
+  if (name.includes('tea') || name.includes('honey')) {
+    return 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=300&q=80';
+  }
+  return 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=300&q=80';
+};
+
 export const CartPage = () => {
   const { cart, loading, updateQuantity, removeFromCart, clearCart } = useCart();
   const navigate = useNavigate();
@@ -61,29 +91,66 @@ export const CartPage = () => {
         {/* Items List */}
         <div className="lg:col-span-2 space-y-4">
           {items.map((item) => {
-            const product = item.productId || {};
+            const product =
+              (typeof item.productId === 'object' && item.productId !== null)
+                ? item.productId
+                : (item.product && typeof item.product === 'object' ? item.product : {});
+
+            const productId =
+              product._id ||
+              (typeof item.productId === 'string' ? item.productId : item.productId?._id) ||
+              item._id;
+
+            const productName = item.productName || product.name || 'Product';
+            const brand = item.brand || product.brand || 'NearExpiry';
+
+            const effectivePrice = Number(
+              item.effectivePrice ??
+              item.currentPrice ??
+              item.unitPrice ??
+              item.pricing?.unitFinalPrice ??
+              product.effectivePrice ??
+              product.basePrice ??
+              0
+            );
+
+            const originalPrice = Number(
+              item.originalPrice ??
+              item.pricing?.unitOriginalPrice ??
+              product.basePrice ??
+              effectivePrice
+            );
+
+            const quantity = Number(item.quantity ?? item.requestedQuantity ?? 1);
+            const image = getItemImage(item, product);
+
             return (
               <div
-                key={item._id || product._id}
-                className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center gap-4"
+                key={item._id || productId}
+                className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center gap-4 hover:shadow-md transition"
               >
                 <img
-                  src={product.image || 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=200&q=80'}
-                  alt={item.productName || product.name}
-                  className="w-20 h-20 rounded-xl object-cover bg-gray-100 flex-shrink-0"
+                  src={image}
+                  alt={productName}
+                  className="w-20 h-20 rounded-xl object-cover bg-gray-100 flex-shrink-0 border border-gray-100"
                 />
 
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs font-bold text-brand-700 uppercase">{item.brand || product.brand}</div>
-                  <h3 className="font-bold text-gray-900 text-sm truncate">{item.productName || product.name}</h3>
+                  <div className="text-xs font-bold text-brand-700 uppercase">{brand}</div>
+                  <h3 className="font-bold text-gray-900 text-sm truncate">{productName}</h3>
 
                   <div className="flex items-baseline gap-2 mt-1">
                     <span className="font-black text-gray-900 text-base">
-                      ₹{Number(item.effectivePrice || item.currentPrice || 0).toFixed(2)}
+                      ₹{effectivePrice.toFixed(2)}
                     </span>
-                    {Number(item.originalPrice) > Number(item.effectivePrice) && (
+                    {originalPrice > effectivePrice && (
                       <span className="text-xs text-gray-400 line-through">
-                        ₹{Number(item.originalPrice).toFixed(2)}
+                        ₹{originalPrice.toFixed(2)}
+                      </span>
+                    )}
+                    {originalPrice > effectivePrice && (
+                      <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+                        {Math.round(((originalPrice - effectivePrice) / originalPrice) * 100)}% OFF
                       </span>
                     )}
                   </div>
@@ -93,23 +160,26 @@ export const CartPage = () => {
                 <div className="flex items-center gap-2">
                   <div className="flex items-center border border-gray-200 rounded-lg bg-gray-50 p-1">
                     <button
-                      onClick={() => updateQuantity(product._id || item.productId, Math.max(1, item.quantity - 1))}
-                      className="w-7 h-7 rounded bg-white font-bold text-xs shadow-sm hover:bg-gray-100"
+                      onClick={() => updateQuantity(productId, Math.max(1, quantity - 1))}
+                      className="w-7 h-7 rounded bg-white font-bold text-xs shadow-sm hover:bg-gray-100 transition"
+                      title="Decrease quantity"
                     >
                       -
                     </button>
-                    <span className="w-8 text-center text-xs font-bold">{item.quantity}</span>
+                    <span className="w-8 text-center text-xs font-bold">{quantity}</span>
                     <button
-                      onClick={() => updateQuantity(product._id || item.productId, item.quantity + 1)}
-                      className="w-7 h-7 rounded bg-white font-bold text-xs shadow-sm hover:bg-gray-100"
+                      onClick={() => updateQuantity(productId, quantity + 1)}
+                      className="w-7 h-7 rounded bg-white font-bold text-xs shadow-sm hover:bg-gray-100 transition"
+                      title="Increase quantity"
                     >
                       +
                     </button>
                   </div>
 
                   <button
-                    onClick={() => removeFromCart(product._id || item.productId)}
+                    onClick={() => removeFromCart(productId)}
                     className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition"
+                    title="Remove item"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>

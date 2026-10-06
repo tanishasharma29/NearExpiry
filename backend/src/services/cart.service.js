@@ -113,7 +113,11 @@ export const getCartSummaryService = async (userId) => {
       _id: item._id,
       productId: item.productId,
       storeId: item.storeId,
+      quantity: item.quantity,
       requestedQuantity: item.quantity,
+      productName: product?.name || '',
+      brand: product?.brand || '',
+      image: product?.image || '',
       batchId: item.batchId || null,
       product: product
         ? {
@@ -141,6 +145,12 @@ export const getCartSummaryService = async (userId) => {
       priceChanged: false,
       priceChangeNotice: null,
       batchAllocations: [],
+      effectivePrice: 0,
+      currentPrice: 0,
+      unitPrice: 0,
+      originalPrice: 0,
+      discountPercentage: 0,
+      lineTotal: 0,
       pricing: {
         unitOriginalPrice: 0,
         unitFinalPrice: 0,
@@ -330,6 +340,14 @@ export const getCartSummaryService = async (userId) => {
 
     itemResult.isAvailable = true;
     itemResult.itemStatus = 'AVAILABLE';
+    itemResult.quantity = item.quantity;
+    itemResult.requestedQuantity = item.quantity;
+    itemResult.unitPrice = blendedUnitPrice;
+    itemResult.effectivePrice = blendedUnitPrice;
+    itemResult.currentPrice = blendedUnitPrice;
+    itemResult.originalPrice = blendedOriginalPrice;
+    itemResult.discountPercentage = effectiveDiscountPercent;
+    itemResult.lineTotal = lineFinal;
     itemResult.batchAllocations = allocations;
     itemResult.pricing = {
       unitOriginalPrice: blendedOriginalPrice,
@@ -655,13 +673,16 @@ export const validateCartForCheckoutService = async (userId, options = {}) => {
     pricingSummary: summary.pricingSummary,
     items: summary.items.map((item) => ({
       productId: item.productId,
-      productName: item.product.name,
-      quantity: item.requestedQuantity,
-      unitPrice: item.pricing.unitFinalPrice,
-      originalPrice: item.pricing.unitOriginalPrice,
-      discountPercentage: item.pricing.discountPercentage,
-      lineTotal: item.pricing.lineFinalTotal,
-      batchAllocations: item.batchAllocations,
+      productName: item.productName || item.product?.name || 'Product',
+      brand: item.brand || item.product?.brand || '',
+      image: item.image || item.product?.image || '',
+      unit: item.product?.unit || 'pcs',
+      quantity: item.quantity || item.requestedQuantity || 1,
+      unitPrice: item.pricing?.unitFinalPrice ?? item.unitPrice ?? 0,
+      originalPrice: item.pricing?.unitOriginalPrice ?? item.originalPrice ?? 0,
+      discountPercentage: item.pricing?.discountPercentage ?? item.discountPercentage ?? 0,
+      lineTotal: item.pricing?.lineFinalTotal ?? item.lineTotal ?? 0,
+      batchAllocations: item.batchAllocations || [],
     })),
     validatedAt: new Date(),
   };
