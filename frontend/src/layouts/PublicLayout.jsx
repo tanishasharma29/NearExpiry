@@ -79,7 +79,7 @@ export const PublicLayout = () => {
               >
                 <Heart className="w-5 h-5" />
                 {wishlist?.length > 0 && (
-                  <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white rounded-full text-[10px] font-bold flex items-center justify-center animate-pulse">
+                  <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white rounded-full text-[10px] font-bold flex items-center justify-center">
                     {wishlist.length}
                   </span>
                 )}
@@ -93,7 +93,7 @@ export const PublicLayout = () => {
               >
                 <ShoppingCart className="w-5 h-5" />
                 {totalItemCount > 0 && (
-                  <span className="absolute top-1 right-1 w-4 h-4 bg-brand-600 text-white rounded-full text-[10px] font-bold flex items-center justify-center animate-bounce">
+                  <span className="absolute top-1 right-1 w-4 h-4 bg-brand-600 text-white rounded-full text-[10px] font-bold flex items-center justify-center">
                     {totalItemCount}
                   </span>
                 )}
