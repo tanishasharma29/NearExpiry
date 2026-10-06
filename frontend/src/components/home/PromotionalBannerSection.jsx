@@ -114,32 +114,18 @@ export const PromotionalBannerSection = () => {
               ======================================================== */}
           <div className="lg:col-span-5 relative flex items-center justify-center pt-4 lg:pt-0">
             {/* Playful angled pastel accent shape (matching reference image) */}
-            <div className="relative w-full max-w-[380px] sm:max-w-[420px] aspect-[4/3] flex items-center justify-center">
+            <div className="relative w-full max-w-[310px] sm:max-w-[340px] aspect-[4/3.2] flex items-center justify-center">
               
               {/* Tilted soft coral/pink polygon background */}
-              <div className="absolute inset-0 bg-[#f8cfcb]/70 rounded-[32px] transform rotate-3 scale-95 transition-transform duration-500 hover:rotate-1" />
+              <div className="absolute inset-0 bg-[#f8cfcb]/70 rounded-[28px] transform rotate-3 scale-95 transition-transform duration-500 hover:rotate-1" />
 
-              {/* Main Illustration / Photo Container */}
-              <div className="relative z-10 w-[92%] h-[92%] rounded-2xl overflow-hidden bg-white/40 shadow-sm border border-white/60">
+              {/* Main Photo Container with White Background */}
+              <div className="relative z-10 w-[92%] h-[92%] rounded-2xl overflow-hidden bg-white shadow-sm border border-white/80 p-2 flex items-center justify-center">
                 <img
-                  src="/images/banners/banner1-NearExpiry.jpg"
-                  onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80';
-                  }}
+                  src="/images/promo-tote-bag.jpg"
                   alt="NearExpiry 10% Off Grocery Rescue Bag & Essentials"
-                  className="w-full h-full object-cover object-center transform hover:scale-105 transition-transform duration-700"
+                  className="w-full h-full object-contain object-center transform hover:scale-105 transition-transform duration-500"
                 />
-                
-                {/* Brand Green Bag Badge Overlay */}
-                <div className="absolute top-3 right-3 bg-[#15803d] text-white px-3 py-1 rounded-xl text-xs font-black shadow-md flex items-center gap-1">
-                  <span>10% OFF</span>
-                </div>
-
-                <div className="absolute bottom-3 left-3 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/80 shadow-xs flex items-center gap-1.5">
-                  <ShoppingBag className="w-3.5 h-3.5 text-emerald-600" />
-                  <span className="text-xs font-bold text-gray-900">NearExpiry Rescue Bag</span>
-                </div>
               </div>
             </div>
           </div>
