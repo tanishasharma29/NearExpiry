@@ -59,6 +59,12 @@ export const PublicLayout = () => {
             {/* Nav Actions */}
             <div className="flex items-center gap-3">
               <Link
+                to="/about"
+                className="hidden md:inline-flex items-center text-sm font-semibold text-gray-700 hover:text-brand-600 transition"
+              >
+                About Us
+              </Link>
+              <Link
                 to="/marketplace"
                 className="hidden md:inline-flex items-center text-sm font-semibold text-gray-700 hover:text-brand-600 transition"
               >

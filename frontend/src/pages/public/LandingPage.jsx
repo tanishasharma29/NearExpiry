@@ -18,6 +18,7 @@ import { categoryService } from '../../services/categoryService';
 import { ProductCard } from '../../components/common/ProductCard';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { ScrollBanners } from '../../components/home/ScrollBanners';
+import { PromotionalBannerSection } from '../../components/home/PromotionalBannerSection';
 import { WhyChooseNearExpiry } from '../../components/home/WhyChooseNearExpiry';
 import { HowItWorksSection } from '../../components/home/HowItWorksSection';
 
@@ -455,6 +456,9 @@ export const LandingPage = () => {
           </div>
         )}
       </section>
+
+      {/* Promotional CTA / Banner Section */}
+      <PromotionalBannerSection />
 
       {/* Interactive Why Choose NearExpiry Section */}
       <WhyChooseNearExpiry />

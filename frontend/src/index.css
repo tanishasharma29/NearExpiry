@@ -31,6 +31,35 @@ body {
   }
 }
 
+@keyframes floatGentle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes floatGentleReverse {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(8px);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.65;
+    transform: scale(1.06);
+  }
+}
+
 .animate-cinematic-pan {
   animation: cinematicPan 20s ease-in-out infinite alternate;
 }
@@ -39,10 +68,26 @@ body {
   animation: softFloat 7s ease-in-out infinite;
 }
 
+.animate-float-gentle {
+  animation: floatGentle 5s ease-in-out infinite;
+}
+
+.animate-float-gentle-reverse {
+  animation: floatGentleReverse 6s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 4s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-cinematic-pan,
-  .animate-soft-float {
+  .animate-soft-float,
+  .animate-float-gentle,
+  .animate-float-gentle-reverse,
+  .animate-pulse-glow {
     animation: none !important;
     transform: none !important;
   }
 }
+
