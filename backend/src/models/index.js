@@ -9,3 +9,4 @@ export { PriceAuditLog, PRICE_CHANGE_TRIGGERS } from './priceAudit.model.js';
 export { ExpiryAlert, EXPIRY_ALERT_TYPES, ALERT_SEVERITY } from './expiryAlert.model.js';
 export { SchedulerExecutionLog } from './schedulerLog.model.js';
 export { Wishlist } from './wishlist.model.js';
+export { BillReceipt } from './billReceipt.model.js';

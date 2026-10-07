@@ -41,11 +41,13 @@ export const SellerProductsPage = () => {
     try {
       setLoading(true);
       const [prodData, catData] = await Promise.all([
-        productService.getMyProducts().catch(() => productService.getProducts()),
-        categoryService.getCategories({ status: 'ACTIVE' }),
+        productService.getMyProducts({ limit: 100 }).catch(() => productService.getProducts({ limit: 100 })),
+        categoryService.getCategories({ status: 'ACTIVE', limit: 100 }),
       ]);
-      setProducts(prodData?.products || []);
-      setCategories(catData?.categories || []);
+      const pList = prodData?.products || prodData?.data?.products || (Array.isArray(prodData) ? prodData : []);
+      const cList = catData?.categories || catData?.data?.categories || (Array.isArray(catData) ? catData : []);
+      setProducts(pList);
+      setCategories(cList);
     } catch (err) {
       console.error(err);
     } finally {

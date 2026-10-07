@@ -16,6 +16,7 @@ import {
   notifySellerNewOrder,
   notifySellerLowStock,
 } from './notification.service.js';
+import { generateBillReceiptService } from './billing.service.js';
 
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 
@@ -185,6 +186,8 @@ export const createOrderService = async (customerId, payload, userActor) => {
         itemCount: checkoutData.pricingSummary.itemCount,
       },
       fulfillmentType: payload.fulfillmentType || FULFILLMENT_TYPES.PICKUP,
+      paymentMethod: payload.paymentMethod || 'MOCK_PAYMENT',
+      paymentStatus: 'PENDING',
       deliveryAddress: payload.deliveryAddress || {},
       status: ORDER_STATUS.PLACED,
       statusTimeline: [
@@ -508,6 +511,13 @@ export const updateOrderStatusService = async (orderId, newStatus, userActor, no
         newStatus,
         store,
       }).catch((err) => console.error('[Notification] Order status update notify error:', err));
+    }
+
+    // Automatically generate Bill Receipt & dispatch email when delivered
+    if (newStatus === ORDER_STATUS.DELIVERED) {
+      generateBillReceiptService(order._id, {
+        verifiedBy: userActor.name || userActor.email,
+      }).catch((billErr) => console.error('[Billing] Order delivery bill generation error:', billErr));
     }
   } catch (notifErr) {
     console.error('[Notification] Error dispatching status update notification:', notifErr);

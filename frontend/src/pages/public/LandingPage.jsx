@@ -24,43 +24,83 @@ import { HowItWorksSection } from '../../components/home/HowItWorksSection';
 
 const CURATED_CATEGORIES = [
   {
-    key: 'healthy-snacks',
-    name: 'Healthy Snacks',
-    tagline: 'Protein Bars, Granola & Roasted Nuts',
-    image: 'https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?auto=format&fit=crop&w=600&q=80',
-    description: 'Protein bars, artisanal muesli, healthy biscuits, dry fruits, and clean snack packs.',
-    badge: 'Popular',
+    key: 'dairy-eggs',
+    name: 'Dairy & Eggs',
+    tagline: 'Fresh Milk, Curd, Butter & Cheeses',
+    image: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&w=600&q=80',
+    description: 'Farm fresh milk, yogurts, butter, paneer, and eggs at unbeatable markdown prices.',
+    badge: 'Fresh Deals',
   },
   {
-    key: 'everyday-household',
-    name: 'Everyday Household',
-    tagline: 'Dishwashing, Detergents & Cleaners',
+    key: 'bakery-bread',
+    name: 'Bakery & Bread',
+    tagline: 'Pav, Artisan Breads & Tea Bakes',
+    image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80',
+    description: 'Fresh daily baked loaves, buns, croissants, and cookies from neighborhood bakeries.',
+    badge: 'Daily Fresh',
+  },
+  {
+    key: 'beverages-juices',
+    name: 'Beverages & Juices',
+    tagline: 'Cold Juices, Soft Drinks & Brews',
+    image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=600&q=80',
+    description: 'Cold-pressed juices, iced teas, soft drinks, milkshakes, and specialty roasted coffees.',
+    badge: 'Refreshing',
+  },
+  {
+    key: 'meat-seafood-poultry',
+    name: 'Meat, Seafood & Poultry',
+    tagline: 'Fresh Cuts, Farm Poultry & Catch',
+    image: 'https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?auto=format&fit=crop&w=600&q=80',
+    description: 'Hygienically prepped chicken, tender mutton cuts, fresh fish, and farm protein.',
+    badge: 'Protein Rich',
+  },
+  {
+    key: 'pantry-staples',
+    name: 'Pantry & Staples',
+    tagline: 'Rice, Atta, Pulses & Pure Oils',
+    image: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=600&q=80',
+    description: 'Everyday kitchen essentials, aged basmati rice, lentils, organic flours, and cooking oils.',
+    badge: 'Staples',
+  },
+  {
+    key: 'packaged-instant-foods',
+    name: 'Packaged & Instant Foods',
+    tagline: 'Noodles, Pasta, Cereals & Spreads',
+    image: 'https://images.unsplash.com/photo-1612927601601-6638404737ce?auto=format&fit=crop&w=600&q=80',
+    description: 'Instant ramen, breakfast muesli, gourmet pasta, sandwich spreads, and ready-to-cook meals.',
+    badge: 'Instant',
+  },
+  {
+    key: 'chocolates-sweets',
+    name: 'Chocolates & Sweets',
+    tagline: 'Dark Chocolates, Mithai & Desserts',
+    image: 'https://images.unsplash.com/photo-1549007994-cb92caebd54b?auto=format&fit=crop&w=600&q=80',
+    description: 'Artisan cocoa bars, Indian sweets, assorted gift boxes, and confectionery delights.',
+    badge: 'Sweet Tooth',
+  },
+  {
+    key: 'personal-care-household',
+    name: 'Personal Care & Household',
+    tagline: 'Bath Soaps, Sanitizers & Cleaners',
     image: 'https://images.unsplash.com/photo-1583947215259-38e31be8751f?auto=format&fit=crop&w=600&q=80',
-    description: 'Eco dishwashing liquids, laundry detergents, surface cleaners, and home essentials.',
+    description: 'Eco dishwashing liquids, body washes, laundry detergents, and everyday home care.',
     badge: 'Essential',
   },
   {
-    key: 'health-wellness',
-    name: 'Health & Wellness',
-    tagline: 'Herbal Teas, Pure Honey & Vitality',
-    image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=600&q=80',
-    description: 'Daily natural personal essentials, soothing herbal blends, and whole wellness products.',
-    badge: 'Holistic',
-  },
-  {
-    key: 'hair-care-beauty',
-    name: 'Hair Care & Beauty',
-    tagline: 'Shampoos, Botanical Serums & Oils',
-    image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=600&q=80',
-    description: 'Nourishing shampoos, conditioners, face serums, cold-pressed oils, and skin care.',
-    badge: 'Self-Care',
+    key: 'medicine',
+    name: 'Medicine',
+    tagline: 'First Aid, OTC Relief & Wellness',
+    image: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=600&q=80',
+    description: 'Over-the-counter essentials, daily vitamins, first-aid bandages, and healthcare items.',
+    badge: 'Healthcare',
   },
 ];
 
 export const LandingPage = () => {
   const [urgentDeals, setUrgentDeals] = useState([]);
   const [categories, setCategories] = useState(CURATED_CATEGORIES);
-  const [activeCategoryKey, setActiveCategoryKey] = useState('healthy-snacks');
+  const [activeCategoryKey, setActiveCategoryKey] = useState('dairy-eggs');
   const [categoryProducts, setCategoryProducts] = useState({});
   const [loadingCatProducts, setLoadingCatProducts] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -101,13 +141,28 @@ export const LandingPage = () => {
               c.slug === curated.key ||
               c.slug?.includes(curated.key.replace(/-/g, ''))
           );
+          if (!match) return null;
           return {
             ...curated,
-            _id: match?._id || null,
-            slug: match?.slug || curated.key,
+            _id: match._id,
+            slug: match.slug || curated.key,
           };
-        });
-        setCategories(mapped);
+        }).filter(Boolean);
+
+        setCategories(
+          mapped.length > 0
+            ? mapped
+            : cleanList.map((c) => ({
+                key: c.slug,
+                name: c.name,
+                _id: c._id,
+                slug: c.slug,
+                tagline: c.description,
+                description: c.description,
+                image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80',
+                badge: 'Deals',
+              }))
+        );
 
         // Pre-fetch initial category products for instant display
         const defaultCat = mapped.find((c) => c.key === activeCategoryKey) || mapped[0];
@@ -233,8 +288,8 @@ export const LandingPage = () => {
           </Link>
         </div>
 
-        {/* 4 Customer-Facing Category Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+        {/* Customer-Facing Category Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-5 mb-8">
           {categories.map((cat) => {
             const isSelected = activeCategoryKey === cat.key;
             return (

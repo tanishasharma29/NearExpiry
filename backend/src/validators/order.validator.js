@@ -9,6 +9,10 @@ export const createOrderSchema = z.object({
       .enum(Object.values(FULFILLMENT_TYPES))
       .optional()
       .default(FULFILLMENT_TYPES.PICKUP),
+    paymentMethod: z
+      .enum(['CASH_ON_DELIVERY', 'MOCK_PAYMENT'])
+      .optional()
+      .default('MOCK_PAYMENT'),
     deliveryAddress: z
       .object({
         recipientName: z.string().trim().optional(),

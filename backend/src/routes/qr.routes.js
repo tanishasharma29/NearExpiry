@@ -5,13 +5,19 @@ import { validateRequest } from '../middleware/validate.middleware.js';
 import {
   verifyQrSchema,
   batchIdParamSchema,
+  orderIdParamSchema,
+  verifyPickupQrSchema,
   revokeQrSchema,
 } from '../validators/qr.validator.js';
 import {
   generateBatchQr,
+  getBatchQr,
   verifyBatchQr,
   revokeBatchQr,
   getBatchQrAuditLogs,
+  getPickupQr,
+  generatePickupQr,
+  verifyPickupQr,
 } from '../controllers/qr.controller.js';
 
 const router = Router();
@@ -20,8 +26,16 @@ const router = Router();
 router.get('/verify', validateRequest(verifyQrSchema), verifyBatchQr);
 router.post('/verify', validateRequest(verifyQrSchema), verifyBatchQr);
 
-// 2. Protected Seller & Admin Management Endpoints
+// 2. Protected Endpoints (Requires Authentication)
 router.use(authenticate);
+
+// Batch QR Management (GET & POST for seller/admin)
+router.get(
+  '/batch/:batchId',
+  authorizeRoles('SELLER', 'ADMIN'),
+  validateRequest(batchIdParamSchema),
+  getBatchQr
+);
 
 router.post(
   '/batch/:batchId',
@@ -44,4 +58,33 @@ router.get(
   getBatchQrAuditLogs
 );
 
+// Customer Pickup QR Endpoints (GET & POST generate)
+router.get(
+  '/pickup/:orderId',
+  validateRequest(orderIdParamSchema),
+  getPickupQr
+);
+
+router.post(
+  '/pickup/:orderId/generate',
+  validateRequest(orderIdParamSchema),
+  generatePickupQr
+);
+
+// Seller Pickup Verification Endpoint (Counter Scan)
+router.post(
+  '/pickup/verify',
+  authorizeRoles('SELLER', 'ADMIN'),
+  validateRequest(verifyPickupQrSchema),
+  verifyPickupQr
+);
+
+router.post(
+  '/verify-pickup',
+  authorizeRoles('SELLER', 'ADMIN'),
+  validateRequest(verifyPickupQrSchema),
+  verifyPickupQr
+);
+
 export default router;
+

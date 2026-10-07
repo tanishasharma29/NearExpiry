@@ -40,6 +40,16 @@ export const orderService = {
     const res = await api.get(`/orders/${id}/track`);
     return res.data;
   },
+
+  getPickupQr: async (orderId) => {
+    const res = await api.get(`/qr/pickup/${orderId}`);
+    return res.data;
+  },
+
+  verifyPickupQr: async (token) => {
+    const res = await api.post('/qr/pickup/verify', { token });
+    return res.data;
+  },
 };
 
 export default orderService;

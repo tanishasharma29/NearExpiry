@@ -23,6 +23,7 @@ import { CartPage } from './pages/customer/CartPage';
 import { CheckoutPage } from './pages/customer/CheckoutPage';
 import { OrdersPage } from './pages/customer/OrdersPage';
 import { OrderDetailsPage } from './pages/customer/OrderDetailsPage';
+import { OrderInvoicePage } from './pages/customer/OrderInvoicePage';
 import { WishlistPage } from './pages/customer/WishlistPage';
 import { ProfilePage } from './pages/customer/ProfilePage';
 
@@ -33,6 +34,7 @@ import { SellerBatchesPage } from './pages/seller/SellerBatchesPage';
 import { SellerInventoryPage } from './pages/seller/SellerInventoryPage';
 import { SellerExpiryAlertsPage } from './pages/seller/SellerExpiryAlertsPage';
 import { SellerOrdersPage } from './pages/seller/SellerOrdersPage';
+import { SellerBillingPage } from './pages/seller/SellerBillingPage';
 import { SellerAnalyticsPage } from './pages/seller/SellerAnalyticsPage';
 
 // Admin Pages
@@ -91,6 +93,14 @@ export default function App() {
                   }
                 />
                 <Route
+                  path="/orders/:id/invoice"
+                  element={
+                    <ProtectedRoute allowedRoles={['CUSTOMER', 'SELLER', 'ADMIN']}>
+                      <OrderInvoicePage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
                   path="/profile"
                   element={
                     <ProtectedRoute>
@@ -116,6 +126,7 @@ export default function App() {
                 <Route path="inventory" element={<SellerInventoryPage />} />
                 <Route path="alerts" element={<SellerExpiryAlertsPage />} />
                 <Route path="orders" element={<SellerOrdersPage />} />
+                <Route path="billing" element={<SellerBillingPage />} />
                 <Route path="analytics" element={<SellerAnalyticsPage />} />
               </Route>
 

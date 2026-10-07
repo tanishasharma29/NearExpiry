@@ -9,6 +9,8 @@ import { Category } from '../src/models/category.model.js';
 import { Product } from '../src/models/product.model.js';
 import { Batch, BATCH_STATUS } from '../src/models/batch.model.js';
 import { QrVerification, QR_STATUS } from '../src/models/qrVerification.model.js';
+import { Order, ORDER_STATUS } from '../src/models/order.model.js';
+import { Cart } from '../src/models/cart.model.js';
 import { resetDefaultPriceRulesService } from '../src/services/priceRule.service.js';
 
 describe('NearExpiry QR Batch Verification Module Test Suite', () => {
@@ -186,6 +188,15 @@ describe('NearExpiry QR Batch Verification Module Test Suite', () => {
   });
 
   after(async () => {
+    await Order.deleteMany({});
+    await Cart.deleteMany({});
+    await QrVerification.deleteMany({});
+    await Batch.deleteMany({ batchNumber: new RegExp(ts) });
+    await Product.deleteMany({ name: new RegExp(ts) });
+    await Category.deleteMany({ name: new RegExp(ts) });
+    await Store.deleteMany({ storeName: new RegExp(ts) });
+    await User.deleteMany({ email: /@nearexpiry\.test$/ });
+
     if (server) {
       await new Promise((resolve) => server.close(resolve));
     }
@@ -221,6 +232,22 @@ describe('NearExpiry QR Batch Verification Module Test Suite', () => {
       assert.equal(qrDoc.status, QR_STATUS.ACTIVE);
       assert.ok(qrDoc.tokenNonce, 'Document must store cryptographic nonce');
       assert.ok(qrDoc.tokenHash, 'Document must store SHA-256 token hash');
+    });
+
+    it('should support idempotent GET /api/v1/qr/batch/:batchId (fixing FEFO QR page bug)', async () => {
+      const res = await fetch(`${baseUrl}/qr/batch/${activeBatchId}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${sellerToken}`,
+        },
+      });
+
+      const body = await res.json();
+      assert.equal(res.status, 200, `Expected 200, got ${res.status}`);
+      assert.equal(body.success, true);
+      assert.ok(body.data.qrCodeDataUrl || body.data.qrDataUrl, 'Must return QR data URL');
+      assert.ok(body.data.batchNumber, 'Must return batch number');
+      assert.equal(body.data.batchId, activeBatchId);
     });
 
     it('should forbid unauthorized seller from generating QR for another store lot', async () => {
@@ -458,4 +485,263 @@ describe('NearExpiry QR Batch Verification Module Test Suite', () => {
       assert.equal(res.status, 403);
     });
   });
+
+  describe('6. Customer Self-Pickup QR Generation & Security', () => {
+    let pickupOrderId;
+    let deliveryOrderId;
+    let pickupToken;
+
+    before(async () => {
+      // Customer adds product to cart
+      await fetch(`${baseUrl}/cart/items`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${customerToken}`,
+        },
+        body: JSON.stringify({
+          productId,
+          quantity: 2,
+        }),
+      });
+
+      // Customer creates PICKUP order
+      const pickupOrderRes = await fetch(`${baseUrl}/orders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${customerToken}`,
+        },
+        body: JSON.stringify({
+          fulfillmentType: 'PICKUP',
+        }),
+      });
+      const pickupBody = await pickupOrderRes.json();
+      pickupOrderId = pickupBody.data._id;
+
+      // Also create a DELIVERY order for testing negative cases
+      await fetch(`${baseUrl}/cart/items`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${customerToken}`,
+        },
+        body: JSON.stringify({
+          productId,
+          quantity: 1,
+        }),
+      });
+
+      const deliveryOrderRes = await fetch(`${baseUrl}/orders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${customerToken}`,
+        },
+        body: JSON.stringify({
+          fulfillmentType: 'LOCAL_DELIVERY',
+          deliveryAddress: {
+            street: '123 Main St',
+            city: 'Bengaluru',
+            state: 'Karnataka',
+            pincode: '560034',
+          },
+        }),
+      });
+      const deliveryBody = await deliveryOrderRes.json();
+      deliveryOrderId = deliveryBody.data._id;
+    });
+
+    it('should generate secure pickup QR token for customer order', async () => {
+      const res = await fetch(`${baseUrl}/qr/pickup/${pickupOrderId}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${customerToken}`,
+        },
+      });
+
+      const body = await res.json();
+      assert.equal(res.status, 200);
+      assert.equal(body.success, true);
+      assert.ok(body.data.token, 'Must return token');
+      assert.ok(body.data.qrDataUrl.startsWith('data:image/png;base64,'), 'Must return QR data URL');
+      assert.equal(body.data.status, 'ACTIVE');
+      assert.equal(body.data.fulfillmentType, 'PICKUP');
+
+      pickupToken = body.data.token;
+
+      // Verify token is HMAC signed and contains NO plaintext sensitive customer details
+      assert.ok(pickupToken.includes('.'), 'Token must be composed of signed segments');
+      assert.equal(pickupToken.includes('qr.shopper'), false, 'Token must not leak customer email');
+      assert.equal(pickupToken.includes('9876540004'), false, 'Token must not leak phone number');
+      assert.equal(pickupToken.includes('Password123'), false, 'Token must not leak credentials');
+    });
+
+    it('should reject pickup QR generation for non-pickup orders', async () => {
+      const res = await fetch(`${baseUrl}/qr/pickup/${deliveryOrderId}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${customerToken}`,
+        },
+      });
+
+      const body = await res.json();
+      assert.equal(res.status, 400);
+      assert.ok(body.message.includes('not a self-pickup order'));
+    });
+
+    it('should forbid other customers from generating/viewing someone else pickup QR', async () => {
+      // Register customer 2
+      const c2Res = await fetch(`${baseUrl}/auth/register/customer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: 'Another Customer',
+          email: `another.${ts}@nearexpiry.test`,
+          phone: '9876540099',
+          password: 'Password123!',
+        }),
+      });
+      const customer2Token = (await c2Res.json()).data.token;
+
+      const res = await fetch(`${baseUrl}/qr/pickup/${pickupOrderId}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${customer2Token}`,
+        },
+      });
+
+      assert.equal(res.status, 403);
+    });
+  });
+
+  describe('7. Store Counter QR Verification & Atomic Handover', () => {
+    let verifiedOrderId;
+    let validToken;
+
+    before(async () => {
+      // Place another pickup order for verification
+      await fetch(`${baseUrl}/cart/items`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${customerToken}`,
+        },
+        body: JSON.stringify({
+          productId,
+          quantity: 1,
+        }),
+      });
+
+      const res = await fetch(`${baseUrl}/orders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${customerToken}`,
+        },
+        body: JSON.stringify({
+          fulfillmentType: 'PICKUP',
+        }),
+      });
+      const body = await res.json();
+      verifiedOrderId = body.data._id;
+
+      // Transition order status to READY_FOR_PICKUP & set COD payment method
+      await Order.findByIdAndUpdate(verifiedOrderId, {
+        status: ORDER_STATUS.READY_FOR_PICKUP,
+        paymentMethod: 'CASH_ON_DELIVERY',
+        paymentStatus: 'PENDING',
+      });
+
+      // Generate pickup QR
+      const qrRes = await fetch(`${baseUrl}/qr/pickup/${verifiedOrderId}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${customerToken}`,
+        },
+      });
+      const qrBody = await qrRes.json();
+      validToken = qrBody.data.token;
+    });
+
+    it('should forbid seller of a different store from scanning pickup QR', async () => {
+      const res = await fetch(`${baseUrl}/qr/pickup/verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${seller2Token}`,
+        },
+        body: JSON.stringify({
+          token: validToken,
+        }),
+      });
+
+      const body = await res.json();
+      assert.equal(res.status, 403);
+      assert.ok(body.message.includes('different store'));
+    });
+
+    it('should successfully verify valid pickup QR by store seller and transition to DELIVERED', async () => {
+      const res = await fetch(`${baseUrl}/qr/pickup/verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${sellerToken}`,
+        },
+        body: JSON.stringify({
+          token: validToken,
+        }),
+      });
+
+      const body = await res.json();
+      assert.equal(res.status, 200);
+      assert.equal(body.success, true);
+      assert.equal(body.data.order.status, 'DELIVERED');
+      assert.equal(body.data.order.paymentStatus, 'PAID');
+      assert.ok(body.data.order.verifiedAt);
+
+      // Verify in DB that Order is DELIVERED
+      const updatedOrder = await Order.findById(verifiedOrderId);
+      assert.equal(updatedOrder.status, ORDER_STATUS.DELIVERED);
+
+      // Verify in DB that QrVerification is USED
+      const qrRecord = await QrVerification.findOne({ orderId: verifiedOrderId, qrType: 'PICKUP' });
+      assert.equal(qrRecord.status, QR_STATUS.USED);
+      assert.ok(qrRecord.usedAt);
+    });
+
+    it('should prevent double scanning and reject already used pickup QR', async () => {
+      const res = await fetch(`${baseUrl}/qr/pickup/verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${sellerToken}`,
+        },
+        body: JSON.stringify({
+          token: validToken,
+        }),
+      });
+
+      const body = await res.json();
+      assert.equal(res.status, 400);
+      assert.ok(body.message.includes('already been used'));
+    });
+
+    it('should reject tampered or invalid pickup QR token', async () => {
+      const res = await fetch(`${baseUrl}/qr/pickup/verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${sellerToken}`,
+        },
+        body: JSON.stringify({
+          token: 'invalid.pickup.token.12345678901234567890',
+        }),
+      });
+
+      const body = await res.json();
+      assert.equal(res.status, 400);
+    });
+  });
 });
+

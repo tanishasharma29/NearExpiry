@@ -31,14 +31,42 @@ export const createCategoryService = async (adminUserId, payload) => {
   return category;
 };
 
+export const DEFAULT_CURATED_CATEGORIES = [
+  { name: 'Dairy & Eggs', description: 'Fresh milk, curd, paneer, yogurts, cheeses, and farm eggs with short shelf-life deals.' },
+  { name: 'Bakery & Bread', description: 'Fresh bread, pav, buns, cakes, cookies, croissants, and daily artisanal bakes.' },
+  { name: 'Fruits & Vegetables', description: 'Farm fresh fruits, seasonal green veggies, salads, and ripe produce at markdown prices.' },
+  { name: 'Snacks & Munchies', description: 'Chips, crisps, namkeen, roasted nuts, biscuits, and savory evening snacks.' },
+  { name: 'Beverages & Juices', description: 'Cold-pressed juices, milkshakes, soft drinks, artisan tea, and brewed coffees.' },
+  { name: 'Meat, Seafood & Poultry', description: 'High-protein fresh chicken, mutton cuts, farm eggs, and fresh fish.' },
+  { name: 'Pantry & Staples', description: 'Grains, organic flours, rice, pulses, cooking oils, ghee, and everyday spices.' },
+  { name: 'Packaged & Instant Foods', description: 'Noodles, pasta, gourmet sauces, breakfast cereals, spreads, and ready meals.' },
+  { name: 'Chocolates & Sweets', description: 'Premium chocolates, Indian sweets, confectionery, and dessert treats.' },
+  { name: 'Personal Care & Household', description: 'Bath soaps, shampoos, skincare essentials, sanitizers, and cleaning supplies.' },
+  { name: 'Medicine', description: 'Prescription OTC healthcare, first-aid, wellness supplements, and medical essentials.' },
+];
+
+export const seedCuratedCategoriesIfEmpty = async () => {
+  const count = await Category.countDocuments();
+  if (count === 0) {
+    for (const cat of DEFAULT_CURATED_CATEGORIES) {
+      await Category.create({ ...cat, status: CATEGORY_STATUS.ACTIVE });
+    }
+  }
+};
+
 /**
  * List Categories with Pagination, Sorting, and Filtering.
  * - Customers / Public see only ACTIVE categories by default.
  * - Admin can view both ACTIVE and INACTIVE categories.
  */
 export const listCategoriesService = async (query = {}, requesterUser = null) => {
+  const count = await Category.countDocuments();
+  if (count === 0) {
+    await seedCuratedCategoriesIfEmpty();
+  }
+
   const page = Math.max(parseInt(query.page || '1', 10), 1);
-  const limit = Math.min(Math.max(parseInt(query.limit || '20', 10), 1), 100);
+  const limit = Math.min(Math.max(parseInt(query.limit || '100', 10), 1), 100);
   const skip = (page - 1) * limit;
 
   const isAdmin = requesterUser && requesterUser.role === USER_ROLES.ADMIN;

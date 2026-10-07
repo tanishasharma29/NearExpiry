@@ -10,7 +10,8 @@ import {
   BarChart3,
   Store,
   LogOut,
-  ExternalLink
+  ExternalLink,
+  Receipt,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -25,6 +26,7 @@ export const SellerLayout = () => {
     { label: 'Inventory & Stock', path: '/seller/inventory', icon: Boxes },
     { label: 'Expiry Alerts', path: '/seller/alerts', icon: BellRing },
     { label: 'Store Orders', path: '/seller/orders', icon: ShoppingBag },
+    { label: 'Billing & Receipts', path: '/seller/billing', icon: Receipt },
     { label: 'Store Analytics', path: '/seller/analytics', icon: BarChart3 },
   ];
 

@@ -23,6 +23,23 @@ export const batchIdParamSchema = z.object({
   }),
 });
 
+export const orderIdParamSchema = z.object({
+  params: z.object({
+    orderId: z
+      .string({ required_error: 'Order ID is required' })
+      .regex(objectIdRegex, 'Invalid Order ID format'),
+  }),
+});
+
+export const verifyPickupQrSchema = z.object({
+  body: z.object({
+    token: z
+      .string({ required_error: 'Pickup QR token is required' })
+      .trim()
+      .min(20, 'Invalid pickup QR token length'),
+  }),
+});
+
 export const revokeQrSchema = z.object({
   params: z.object({
     batchId: z

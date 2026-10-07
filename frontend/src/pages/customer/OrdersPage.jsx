@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Package, Clock, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Package, Clock, ChevronRight, CheckCircle2, QrCode } from 'lucide-react';
 import { orderService } from '../../services/orderService';
 import { EmptyState } from '../../components/common/EmptyState';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
@@ -61,6 +61,11 @@ export const OrdersPage = () => {
                   <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-brand-100 text-brand-800">
                     {order.status}
                   </span>
+                  {order.fulfillmentType === 'PICKUP' && order.status !== 'DELIVERED' && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200 shadow-xs">
+                      <QrCode className="w-3 h-3 text-amber-600" /> Pickup QR Ready
+                    </span>
+                  )}
                 </div>
                 <div className="text-xs text-gray-400">
                   {new Date(order.createdAt).toLocaleDateString()} at{' '}

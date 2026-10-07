@@ -40,11 +40,13 @@ export const SellerBatchesPage = () => {
     try {
       setLoading(true);
       const [bData, pData] = await Promise.all([
-        batchService.getBatches(),
-        productService.getProducts(),
+        batchService.getBatches({ limit: 100 }),
+        productService.getMyProducts({ limit: 100 }).catch(() => productService.getProducts({ limit: 100 })),
       ]);
-      setBatches(bData?.batches || []);
-      setProducts(pData?.products || []);
+      const bList = bData?.batches || bData?.data?.batches || (Array.isArray(bData) ? bData : []);
+      const pList = pData?.products || pData?.data?.products || (Array.isArray(pData) ? pData : []);
+      setBatches(bList);
+      setProducts(pList);
     } catch (err) {
       console.error(err);
     } finally {
@@ -70,8 +72,9 @@ export const SellerBatchesPage = () => {
 
   const handleShowQr = async (batchId) => {
     try {
-      const qrData = await batchService.getBatchQrCode(batchId);
-      setQrData(qrData);
+      const res = await batchService.getBatchQrCode(batchId);
+      const data = res?.data || res;
+      setQrData(data);
       setQrModalOpen(true);
     } catch (err) {
       alert(err.message || 'Failed to generate QR code');
@@ -168,11 +171,19 @@ export const SellerBatchesPage = () => {
               <option value="">Select Catalog Item</option>
               {products.map((p) => (
                 <option key={p._id} value={p._id}>
-                  {p.name} ({p.brand})
+                  {p.name} {p.brand ? `(${p.brand})` : ''}
                 </option>
               ))}
             </select>
             {errors.productId && <p className="text-red-600 mt-1">{errors.productId.message}</p>}
+            {products.length === 0 && (
+              <div className="mt-1.5 p-2 bg-amber-50 rounded-lg border border-amber-200 text-amber-900 text-[11px] flex items-center justify-between">
+                <span>No master catalog items registered yet.</span>
+                <a href="/seller/products" className="font-bold underline text-amber-950">
+                  + Add Product First
+                </a>
+              </div>
+            )}
           </div>
 
           <div>
@@ -252,13 +263,13 @@ export const SellerBatchesPage = () => {
         {qrData && (
           <div className="space-y-4 text-center">
             <div className="p-4 bg-white border border-gray-200 rounded-2xl inline-block shadow-inner">
-              <img src={qrData.qrCodeDataUrl} alt="Batch QR Code" className="w-56 h-56 mx-auto" />
+              <img src={qrData.qrCodeDataUrl || qrData.qrDataUrl} alt="Batch QR Code" className="w-56 h-56 mx-auto" />
             </div>
 
             <div className="text-left text-xs bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-1">
               <div><span className="font-bold text-gray-700">Batch Number:</span> {qrData.batchNumber}</div>
               <div><span className="font-bold text-gray-700">Expiry Date:</span> {new Date(qrData.expiryDate).toLocaleDateString()}</div>
-              <div><span className="font-bold text-gray-700">Verification Nonce:</span> <code className="text-gray-600 font-mono text-[10px] break-all">{qrData.nonce}</code></div>
+              <div><span className="font-bold text-gray-700">Verification Nonce:</span> <code className="text-gray-600 font-mono text-[10px] break-all">{qrData.nonce || qrData.tokenNonce}</code></div>
               <div className="text-[11px] text-emerald-700 font-semibold pt-1 flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5" />
                 Live server verification required upon customer scanning.
