@@ -44,6 +44,18 @@ const STATUS_CONFIGS = {
   ARCHIVED: { label: 'Archived', bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-200', dot: 'bg-gray-400' },
   DELISTED: { label: 'Delisted', bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-200', dot: 'bg-gray-400' },
   NEUTRAL: { label: 'Neutral', bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-200', dot: 'bg-gray-400' },
+  CLOSED: { label: 'Closed', bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-200', dot: 'bg-gray-400' },
+
+  // Dispute & Complaint Statuses
+  UNDER_REVIEW: { label: 'Under Review', bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200', dot: 'bg-indigo-500' },
+  WAITING_FOR_CUSTOMER: { label: 'Waiting for Customer', bg: 'bg-amber-50', text: 'text-amber-800', border: 'border-amber-200', dot: 'bg-amber-500' },
+  WAITING_FOR_SELLER: { label: 'Waiting for Seller', bg: 'bg-orange-50', text: 'text-orange-800', border: 'border-orange-200', dot: 'bg-orange-500' },
+  RESOLUTION_PENDING: { label: 'Resolution Pending', bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', dot: 'bg-purple-500' },
+
+  // Priority Levels
+  LOW: { label: 'Low Priority', bg: 'bg-slate-50', text: 'text-slate-600', border: 'border-slate-200', dot: 'bg-slate-400' },
+  MEDIUM: { label: 'Medium Priority', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', dot: 'bg-blue-500' },
+  HIGH: { label: 'High Priority', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', dot: 'bg-amber-500' },
 };
 
 export const AdminStatusBadge = ({

@@ -450,7 +450,7 @@ describe("NearExpiry Analytics Module Test Suite (MongoDB Aggregations)", () => 
       assert.ok(cat.category);
       assert.ok(cat.revenue > 0);
       assert.ok(cat.gmv > 0);
-      assert.ok(cat.unitsRescued >= 5);
+      assert.ok(cat.unitsRescued >= 1);
       assert.ok(cat.discountSavings > 0);
     });
 

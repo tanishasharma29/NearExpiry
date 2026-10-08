@@ -26,6 +26,7 @@ import { OrderDetailsPage } from './pages/customer/OrderDetailsPage';
 import { OrderInvoicePage } from './pages/customer/OrderInvoicePage';
 import { WishlistPage } from './pages/customer/WishlistPage';
 import { ProfilePage } from './pages/customer/ProfilePage';
+import { MyComplaintsPage } from './pages/customer/MyComplaintsPage';
 
 // Seller Pages
 import { SellerDashboardPage } from './pages/seller/SellerDashboardPage';
@@ -108,6 +109,22 @@ export default function App() {
                   element={
                     <ProtectedRoute>
                       <ProfilePage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/customer/complaints"
+                  element={
+                    <ProtectedRoute allowedRoles={['CUSTOMER']}>
+                      <MyComplaintsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/complaints"
+                  element={
+                    <ProtectedRoute allowedRoles={['CUSTOMER']}>
+                      <MyComplaintsPage />
                     </ProtectedRoute>
                   }
                 />

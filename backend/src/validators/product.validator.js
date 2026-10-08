@@ -51,7 +51,10 @@ export const createProductSchema = z.object({
       image: z
         .string()
         .trim()
-        .url('Image must be a valid URL')
+        .refine(
+          (val) => !val || /^https?:\/\/.+/i.test(val) || /^data:image\/[a-zA-Z0-9.+-]+;base64,/i.test(val),
+          { message: 'Image must be a valid web URL (http/https) or an image data file' }
+        )
         .optional()
         .default('https://placehold.co/600x600?text=NearExpiry+Product'),
       unit: z.enum(PRODUCT_UNITS, {
@@ -78,7 +81,14 @@ export const updateProductSchema = z.object({
         .string()
         .regex(/^[0-9a-fA-F]{24}$/, 'Category must be a valid MongoDB ObjectId')
         .optional(),
-      image: z.string().trim().url('Image must be a valid URL').optional(),
+      image: z
+        .string()
+        .trim()
+        .refine(
+          (val) => !val || /^https?:\/\/.+/i.test(val) || /^data:image\/[a-zA-Z0-9.+-]+;base64,/i.test(val),
+          { message: 'Image must be a valid web URL (http/https) or an image data file' }
+        )
+        .optional(),
       unit: z.enum(PRODUCT_UNITS).optional(),
       status: z.enum(Object.values(PRODUCT_STATUS)).optional(),
     })

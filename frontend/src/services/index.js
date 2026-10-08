@@ -10,3 +10,4 @@ export { paymentService } from './paymentService';
 export { notificationService } from './notificationService';
 export { analyticsService } from './analyticsService';
 export { adminService } from './adminService';
+export { complaintService } from './complaintService';

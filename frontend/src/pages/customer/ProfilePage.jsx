@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Mail, Phone, Shield, Package, LogOut } from 'lucide-react';
+import { User, Mail, Phone, Shield, Package, LogOut, LifeBuoy } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
@@ -46,13 +46,22 @@ export const ProfilePage = () => {
         </div>
 
         <div className="pt-4 flex flex-wrap gap-4 items-center justify-between border-t border-gray-100">
-          <Link
-            to="/orders"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-brand-50 text-brand-700 hover:bg-brand-100 rounded-xl font-semibold text-sm transition"
-          >
-            <Package className="w-4 h-4" />
-            View Past Orders
-          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              to="/orders"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-brand-50 text-brand-700 hover:bg-brand-100 rounded-xl font-semibold text-sm transition"
+            >
+              <Package className="w-4 h-4" />
+              View Past Orders
+            </Link>
+            <Link
+              to="/customer/complaints"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-900 hover:bg-amber-100 rounded-xl font-semibold text-sm transition"
+            >
+              <LifeBuoy className="w-4 h-4 text-amber-600" />
+              Support & Complaints
+            </Link>
+          </div>
 
           <button
             onClick={logout}

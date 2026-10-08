@@ -16,10 +16,14 @@ import {
   Maximize2,
   Receipt,
   FileText,
+  ExternalLink,
+  CheckCircle2,
 } from 'lucide-react';
 import { orderService } from '../../services/orderService';
+import { complaintService } from '../../services/complaintService';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { Modal } from '../../components/common/Modal';
+import { CreateComplaintModal } from './CreateComplaintModal';
 
 const STATUS_STEPS = ['PLACED', 'CONFIRMED', 'PACKED', 'READY_FOR_PICKUP', 'DELIVERED'];
 
@@ -35,6 +39,23 @@ export const OrderDetailsPage = () => {
   const [qrData, setQrData] = useState(null);
   const [qrError, setQrError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [complaintModalOpen, setComplaintModalOpen] = useState(false);
+  const [orderComplaints, setOrderComplaints] = useState([]);
+  const [loadingComplaints, setLoadingComplaints] = useState(false);
+
+  const fetchOrderComplaints = async (orderId) => {
+    if (!orderId) return;
+    try {
+      setLoadingComplaints(true);
+      const res = await complaintService.getComplaints({ orderId });
+      const list = res?.complaints || res?.data || (Array.isArray(res) ? res : []);
+      setOrderComplaints(list);
+    } catch (err) {
+      console.warn('Could not load complaints for order:', err);
+    } finally {
+      setLoadingComplaints(false);
+    }
+  };
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -43,6 +64,10 @@ export const OrderDetailsPage = () => {
         const data = await orderService.getOrderById(id);
         const orderDoc = data?.order || data;
         setOrder(orderDoc);
+
+        if (orderDoc?._id) {
+          fetchOrderComplaints(orderDoc._id);
+        }
 
         // Auto-fetch pickup QR immediately if it is an active self-pickup order
         if (orderDoc?.fulfillmentType === 'PICKUP' && orderDoc?.status !== 'DELIVERED') {
@@ -120,15 +145,130 @@ export const OrderDetailsPage = () => {
           <h1 className="text-2xl font-black text-gray-900 font-mono">{order.orderNumber}</h1>
           <p className="text-xs text-gray-500 mt-1">Placed on {new Date(order.createdAt).toLocaleString()}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="px-3 py-1.5 rounded-full font-bold text-sm bg-brand-100 text-brand-800">
             {order.status}
           </span>
           <span className="px-3 py-1.5 rounded-full font-bold text-sm bg-gray-100 text-gray-800">
             {order.fulfillmentType}
           </span>
+          <button
+            type="button"
+            onClick={() => setComplaintModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-gray-950 rounded-xl font-black text-xs transition shadow-sm active:scale-95"
+            title="Report problem with order or items"
+          >
+            <AlertCircle className="w-4 h-4 text-gray-950" />
+            <span>Report an Issue</span>
+          </button>
         </div>
       </div>
+
+      {/* Existing Dispute & Resolution Notice (If already filed) */}
+      {orderComplaints.length > 0 ? (
+        <div className="space-y-3 animate-fade-in">
+          {orderComplaints.map((c) => {
+            const isResolvedOrClosed = c.status === 'RESOLVED' || c.status === 'CLOSED';
+            const isRejected = c.status === 'REJECTED';
+            const isWaiting = c.status === 'WAITING_FOR_CUSTOMER';
+
+            return (
+              <div
+                key={c._id}
+                className={`p-4 sm:p-5 rounded-3xl border shadow-xs transition ${
+                  isResolvedOrClosed
+                    ? 'bg-emerald-50/80 border-emerald-300'
+                    : isRejected
+                    ? 'bg-rose-50/80 border-rose-300'
+                    : isWaiting
+                    ? 'bg-orange-50/80 border-orange-300'
+                    : 'bg-purple-50/80 border-purple-300'
+                }`}
+              >
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono font-bold text-xs text-gray-900 bg-white px-2.5 py-1 rounded-xl border border-gray-200 shadow-xs">
+                        {c.complaintNumber}
+                      </span>
+                      <span
+                        className={`text-[11px] font-black px-2.5 py-0.5 rounded-full border uppercase tracking-wider ${
+                          isResolvedOrClosed
+                            ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                            : isRejected
+                            ? 'bg-rose-100 text-rose-900 border-rose-300'
+                            : isWaiting
+                            ? 'bg-orange-100 text-orange-900 border-orange-300'
+                            : 'bg-purple-100 text-purple-900 border-purple-300'
+                        }`}
+                      >
+                        {c.status.replace(/_/g, ' ')}
+                      </span>
+                      <span className="text-[11px] text-gray-500 font-medium">
+                        Filed on {new Date(c.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+
+                    <h4 className="font-extrabold text-gray-950 text-sm">
+                      {c.subject}
+                    </h4>
+
+                    {/* Official Resolution Summary (if resolved/closed) */}
+                    {c.resolution?.decision && (
+                      <div className="bg-white/90 p-3 rounded-2xl border border-emerald-200 text-xs space-y-1 mt-1">
+                        <div className="flex items-center gap-2 font-bold text-emerald-900">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>Resolution: {c.resolution.decision.replace(/_/g, ' ')}</span>
+                          {c.resolution.refundAmount > 0 && (
+                            <span className="text-emerald-700 font-mono">
+                              (₹{Number(c.resolution.refundAmount).toFixed(2)} Refund Processed)
+                            </span>
+                          )}
+                        </div>
+                        {c.resolution.notes && (
+                          <p className="text-gray-700 italic text-[11px] pl-6">
+                            &ldquo;{c.resolution.notes}&rdquo;
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <Link
+                    to={`/customer/complaints?id=${c._id}`}
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white hover:bg-gray-50 text-gray-900 font-bold text-xs rounded-xl border border-gray-300 transition shadow-xs self-start sm:self-center shrink-0 active:scale-95"
+                  >
+                    <span>View in My Complaints</span>
+                    <ExternalLink className="w-3.5 h-3.5 text-gray-500" />
+                  </Link>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        /* Need Help / Dispute Callout Banner (when no dispute filed yet) */
+        <div className="bg-amber-50/70 border border-amber-300 rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-900 shrink-0 shadow-xs">
+              <AlertCircle className="w-5 h-5 text-amber-700" />
+            </div>
+            <div>
+              <h4 className="font-extrabold text-gray-900 text-sm">Have a problem with this order?</h4>
+              <p className="text-xs text-gray-600 mt-0.5">
+                Expired items, missing products, or damaged package? File a complaint with our resolution team.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setComplaintModalOpen(true)}
+            className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition shrink-0 active:scale-95"
+          >
+            File Complaint / Dispute
+          </button>
+        </div>
+      )}
 
       {/* Self Pickup Verification Card */}
       {isPickup && (
@@ -399,6 +539,41 @@ export const OrderDetailsPage = () => {
           </div>
         ) : null}
       </Modal>
+
+      {/* Order Help & Dispute Resolution Section */}
+      <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-brand-600" />
+            <h3 className="text-sm font-bold text-gray-900">
+              {orderComplaints.length > 0 ? 'Need Additional Help with this Order?' : 'Need Help with this Order?'}
+            </h3>
+          </div>
+          <p className="text-xs text-gray-500 max-w-lg">
+            {orderComplaints.length > 0
+              ? 'You have dispute case(s) on file above. If you discovered an issue with another item or need further help, you can submit an additional inquiry.'
+              : 'If any item was damaged, expired, missing, or handover was refused, submit an inquiry. Our moderation team will investigate store records and assist you.'}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setComplaintModalOpen(true)}
+          className="px-4 py-2.5 bg-gray-900 hover:bg-black text-white text-xs font-bold rounded-xl shadow-md transition transform active:scale-95 flex items-center gap-2 shrink-0"
+        >
+          <AlertCircle className="w-4 h-4 text-amber-400" />
+          {orderComplaints.length > 0 ? 'File Another Dispute / Issue' : 'Report an Issue / File Complaint'}
+        </button>
+      </div>
+
+      {/* Customer Complaint Modal */}
+      <CreateComplaintModal
+        isOpen={complaintModalOpen}
+        onClose={() => setComplaintModalOpen(false)}
+        order={order}
+        onSuccess={() => {
+          if (order?._id) fetchOrderComplaints(order._id);
+        }}
+      />
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Outlet, Link, useNavigate } from 'react-router-dom';
+import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { ShoppingBag, Search, ShoppingCart, User, Heart, Store, Shield, LogOut, Menu, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
@@ -12,6 +12,7 @@ export const PublicLayout = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -70,6 +71,14 @@ export const PublicLayout = () => {
               >
                 Marketplace
               </Link>
+              {isAuthenticated && (
+                <Link
+                  to="/customer/complaints"
+                  className="hidden md:inline-flex items-center text-sm font-semibold text-gray-700 hover:text-brand-600 transition"
+                >
+                  My Complaints
+                </Link>
+              )}
 
               {/* Wishlist Icon */}
               <Link
@@ -206,6 +215,7 @@ export const PublicLayout = () => {
                 <li><Link to="/marketplace" className="hover:text-brand-400 transition">Browse Deals</Link></li>
                 <li><Link to="/about" className="hover:text-brand-400 transition font-medium text-brand-300">About NearExpiry</Link></li>
                 <li><Link to="/orders" className="hover:text-brand-400 transition">Order History</Link></li>
+                <li><Link to="/customer/complaints" className="hover:text-brand-400 transition">Disputes & Complaints</Link></li>
                 <li><Link to="/wishlist" className="hover:text-brand-400 transition">My Wishlist</Link></li>
                 <li><Link to="/cart" className="hover:text-brand-400 transition">Shopping Cart</Link></li>
               </ul>

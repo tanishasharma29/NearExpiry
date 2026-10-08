@@ -21,6 +21,8 @@ import {
   X,
   Boxes,
   IndianRupee,
+  Upload,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { productService } from '../../services/productService';
 import { categoryService } from '../../services/categoryService';
@@ -41,6 +43,7 @@ const productSchema = z.object({
   category: z.string().min(1, 'Please select a product category'),
   unit: z.enum(['pcs', 'g', 'kg', 'ml', 'l', 'pack', 'box', 'bottle']),
   packageSize: z.string().optional(),
+  image: z.string().optional(),
 });
 
 export const SellerProductsPage = () => {
@@ -56,6 +59,8 @@ export const SellerProductsPage = () => {
   const [modalMode, setModalMode] = useState('CREATE'); // 'CREATE' | 'EDIT'
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [serverError, setServerError] = useState('');
+  const [imagePreview, setImagePreview] = useState('');
+  const [imageInputMode, setImageInputMode] = useState('upload'); // 'upload' | 'url'
 
   // Filter & Search State
   const [searchTerm, setSearchTerm] = useState('');
@@ -227,11 +232,47 @@ export const SellerProductsPage = () => {
     (p) => p.health === 'CRITICAL' || p.health === 'AT_RISK'
   ).length;
 
+  // Image Handlers
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload a valid image file (PNG, JPG, WEBP, etc.)');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image file size must be less than 5MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      setImagePreview(result);
+      setValue('image', result, { shouldValidate: true, shouldDirty: true });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleUrlChange = (url) => {
+    setImagePreview(url);
+    setValue('image', url, { shouldValidate: true, shouldDirty: true });
+  };
+
+  const handleRemoveImage = () => {
+    setImagePreview('');
+    setValue('image', '', { shouldValidate: true, shouldDirty: true });
+  };
+
   // Open Create Modal
   const handleOpenCreateModal = () => {
     setServerError('');
     setModalMode('CREATE');
     setSelectedProduct(null);
+    setImagePreview('');
+    setImageInputMode('upload');
     reset({
       name: '',
       description: '',
@@ -239,6 +280,7 @@ export const SellerProductsPage = () => {
       category: '',
       unit: 'pack',
       packageSize: '1 pc',
+      image: '',
     });
     setModalOpen(true);
   };
@@ -248,6 +290,8 @@ export const SellerProductsPage = () => {
     setServerError('');
     setModalMode('EDIT');
     setSelectedProduct(p);
+    setImagePreview(p.image || '');
+    setImageInputMode(p.image && !p.image.startsWith('data:') ? 'url' : 'upload');
     const catId = typeof p.category === 'object' ? p.category?._id : p.category;
     reset({
       name: p.name || '',
@@ -256,6 +300,7 @@ export const SellerProductsPage = () => {
       category: catId || '',
       unit: p.unit || 'pack',
       packageSize: p.packageSize || '',
+      image: p.image || '',
     });
     setModalOpen(true);
   };
@@ -279,12 +324,17 @@ export const SellerProductsPage = () => {
   const onSubmit = async (data) => {
     try {
       setServerError('');
+      const payload = { ...data };
+      if (!payload.image?.trim()) {
+        delete payload.image;
+      }
       if (modalMode === 'CREATE') {
-        await productService.createProduct(data);
+        await productService.createProduct(payload);
       } else if (modalMode === 'EDIT' && selectedProduct?._id) {
-        await productService.updateProduct(selectedProduct._id, data);
+        await productService.updateProduct(selectedProduct._id, payload);
       }
       setModalOpen(false);
+      setImagePreview('');
       reset();
       loadData(true);
     } catch (err) {
@@ -507,16 +557,27 @@ export const SellerProductsPage = () => {
                     <tr key={p._id} className="hover:bg-slate-50/80 transition-colors group">
                       {/* Product Name & Brand */}
                       <td className="py-3.5 px-4">
-                        <div className="space-y-0.5">
-                          <div className="font-bold text-slate-900 text-sm group-hover:text-emerald-700 transition">
-                            {p.name}
-                          </div>
-                          <div className="flex items-center gap-2 text-slate-500 text-[11px]">
-                            {p.brand && (
-                              <span className="font-semibold text-slate-700">{p.brand}</span>
-                            )}
-                            {p.packageSize && <span>• {p.packageSize}</span>}
-                            <span>• ({p.unit})</span>
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={p.image || 'https://placehold.co/100x100?text=No+Photo'}
+                            alt={p.name}
+                            className="w-10 h-10 rounded-xl object-cover border border-slate-200 bg-slate-50 flex-shrink-0"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = 'https://placehold.co/100x100?text=No+Photo';
+                            }}
+                          />
+                          <div className="space-y-0.5 min-w-0">
+                            <div className="font-bold text-slate-900 text-sm group-hover:text-emerald-700 transition truncate">
+                              {p.name}
+                            </div>
+                            <div className="flex items-center gap-2 text-slate-500 text-[11px] truncate">
+                              {p.brand && (
+                                <span className="font-semibold text-slate-700">{p.brand}</span>
+                              )}
+                              {p.packageSize && <span>• {p.packageSize}</span>}
+                              <span>• ({p.unit})</span>
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -643,10 +704,21 @@ export const SellerProductsPage = () => {
               return (
                 <div key={p._id} className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <h4 className="font-bold text-slate-900 text-sm">{p.name}</h4>
-                      <div className="text-xs text-slate-500 font-medium mt-0.5">
-                        {p.brand} • {catName}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <img
+                        src={p.image || 'https://placehold.co/100x100?text=No+Photo'}
+                        alt={p.name}
+                        className="w-11 h-11 rounded-xl object-cover border border-slate-200 bg-slate-50 flex-shrink-0"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = 'https://placehold.co/100x100?text=No+Photo';
+                        }}
+                      />
+                      <div className="min-w-0">
+                        <h4 className="font-bold text-slate-900 text-sm truncate">{p.name}</h4>
+                        <div className="text-xs text-slate-500 font-medium mt-0.5 truncate">
+                          {p.brand} • {catName}
+                        </div>
                       </div>
                     </div>
                     <div>
@@ -858,6 +930,93 @@ export const SellerProductsPage = () => {
                 className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
               />
             </div>
+          </div>
+
+          {/* Product Photo Upload / URL Section */}
+          <div className="space-y-1.5">
+            <input type="hidden" {...register('image')} />
+            <div className="flex items-center justify-between">
+              <label className="block font-bold text-slate-700 uppercase tracking-wider text-[11px]">
+                Product Photo <span className="text-slate-400 font-normal lowercase">(optional)</span>
+              </label>
+              <div className="inline-flex rounded-lg bg-slate-100 p-0.5 text-[10px] font-bold">
+                <button
+                  type="button"
+                  onClick={() => setImageInputMode('upload')}
+                  className={`px-2.5 py-1 rounded-md transition ${
+                    imageInputMode === 'upload'
+                      ? 'bg-white text-emerald-700 shadow-xs'
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  Upload File
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setImageInputMode('url')}
+                  className={`px-2.5 py-1 rounded-md transition ${
+                    imageInputMode === 'url'
+                      ? 'bg-white text-emerald-700 shadow-xs'
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  Image URL
+                </button>
+              </div>
+            </div>
+
+            {imagePreview ? (
+              <div className="flex items-center gap-3 p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                <img
+                  src={imagePreview}
+                  alt="Product preview"
+                  className="w-14 h-14 rounded-lg object-cover border border-slate-200 bg-white flex-shrink-0"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = 'https://placehold.co/120x120?text=No+Preview';
+                  }}
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] font-semibold text-slate-800 truncate">Photo selected</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    Visible on public store & seller inventory
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRemoveImage}
+                  className="px-2.5 py-1.5 text-xs text-rose-600 hover:bg-rose-50 rounded-lg font-bold border border-rose-200 transition flex items-center gap-1"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  Remove
+                </button>
+              </div>
+            ) : imageInputMode === 'upload' ? (
+              <label className="border-2 border-dashed border-slate-300 hover:border-emerald-500 hover:bg-emerald-50/20 transition rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer group bg-slate-50/50">
+                <Upload className="w-5 h-5 text-slate-400 group-hover:text-emerald-600 mb-1 transition" />
+                <span className="text-xs font-semibold text-slate-700 group-hover:text-emerald-700">
+                  Click to select product photo from your device
+                </span>
+                <span className="text-[10px] text-slate-400 mt-0.5">PNG, JPG, WEBP up to 5MB</span>
+                <input
+                  type="file"
+                  accept="image/png, image/jpeg, image/webp, image/jpg"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+              </label>
+            ) : (
+              <div>
+                <input
+                  type="url"
+                  placeholder="https://images.example.com/item.jpg"
+                  value={imagePreview}
+                  onChange={(e) => handleUrlChange(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">Paste a direct web link to an image file</p>
+              </div>
+            )}
           </div>
 
           <div>

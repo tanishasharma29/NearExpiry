@@ -17,6 +17,12 @@ import {
   Calendar,
   Eye,
   RotateCcw,
+  Maximize2,
+  Copy,
+  Check,
+  Building,
+  Hash,
+  Info,
 } from 'lucide-react';
 import { adminService } from '../../services/adminService';
 import { Modal } from '../../components/common/Modal';
@@ -29,6 +35,99 @@ import {
   AdminEmptyState,
   AdminMotionContainer,
 } from '../../components/admin';
+
+/**
+ * Standardized Product Image Resolver
+ * Resolves the real photography for catalog products, sanitizing generic placehold.co
+ * fallbacks and matching product attributes with verified catalog photography.
+ */
+export const getProductImage = (product) => {
+  const raw =
+    product?.image ||
+    product?.imageUrl ||
+    (Array.isArray(product?.images) && product.images[0]);
+
+  // If a valid non-placeholder image exists, return it directly
+  if (raw && typeof raw === 'string' && !raw.includes('placehold.co')) {
+    return raw;
+  }
+
+  const name = (product?.name || '').toLowerCase();
+  const brand = (product?.brand || '').toLowerCase();
+  const cat = (
+    typeof product?.category === 'object'
+      ? product?.category?.name || ''
+      : product?.category || ''
+  ).toLowerCase();
+
+  // 1. Spices / Saffron / Kesar
+  if (
+    name.includes('kesar') ||
+    name.includes('saffron') ||
+    name.includes('spice') ||
+    brand.includes('bimal')
+  ) {
+    return 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=600&q=80';
+  }
+
+  // 2. Milk / Plant Milk
+  if (name.includes('almond') || name.includes('plant milk') || name.includes('soya')) {
+    return 'https://images.unsplash.com/photo-1508061253366-f7da158b6d46?auto=format&fit=crop&w=600&q=80';
+  }
+  if (name.includes('milk') || name.includes('toned milk') || name.includes('dairy')) {
+    return 'https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&w=600&q=80';
+  }
+
+  // 3. Granola / Oats / Cereal
+  if (name.includes('granola') || name.includes('oat') || name.includes('cereal') || name.includes('muesli')) {
+    return 'https://images.unsplash.com/photo-1514733670139-4d87a1941d55?auto=format&fit=crop&w=600&q=80';
+  }
+
+  // 4. Serum / Skincare / Personal Care
+  if (name.includes('serum') || name.includes('vitamin c') || name.includes('skincare')) {
+    return 'https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&w=600&q=80';
+  }
+  if (name.includes('shampoo') || name.includes('wash') || name.includes('cream') || cat.includes('beauty')) {
+    return 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=600&q=80';
+  }
+
+  // 5. Bread / Bakery / Sourdough
+  if (name.includes('sourdough') || name.includes('bread') || name.includes('loaf') || cat.includes('bakery')) {
+    return 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80';
+  }
+
+  // 6. Cheese / Yogurt / Dairy
+  if (name.includes('cheese') || name.includes('cheddar')) {
+    return 'https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?auto=format&fit=crop&w=600&q=80';
+  }
+  if (name.includes('yogurt') || name.includes('curd')) {
+    return 'https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=600&q=80';
+  }
+
+  // 7. Snacks / Protein Bar / Biscuits
+  if (name.includes('protein') || name.includes('bar')) {
+    return 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=600&q=80';
+  }
+  if (name.includes('biscuit') || name.includes('cookie') || name.includes('quinoa') || name.includes('chia')) {
+    return 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?auto=format&fit=crop&w=600&q=80';
+  }
+
+  // 8. Beverages / Soft Drinks / Tea
+  if (name.includes('drink') || name.includes('soda') || name.includes('cola') || name.includes('juice')) {
+    return 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=600&q=80';
+  }
+  if (name.includes('tea') || name.includes('coffee') || name.includes('honey')) {
+    return 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=600&q=80';
+  }
+
+  // 9. Household & Cleaner
+  if (name.includes('dish') || name.includes('detergent') || name.includes('cleaner') || cat.includes('household')) {
+    return 'https://images.unsplash.com/photo-1585421514738-01798e348b17?auto=format&fit=crop&w=600&q=80';
+  }
+
+  // Default grocery fallback
+  return 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80';
+};
 
 export const AdminProductsPage = () => {
   const [products, setProducts] = useState([]);
@@ -44,6 +143,9 @@ export const AdminProductsPage = () => {
   // Selected Product Dossier Drawer
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const [enlargedImageOpen, setEnlargedImageOpen] = useState(false);
+  const [copiedSku, setCopiedSku] = useState(false);
 
   // Delist Confirmation Modal
   const [delistModalOpen, setDelistModalOpen] = useState(false);
@@ -143,6 +245,7 @@ export const AdminProductsPage = () => {
 
   const openDossier = (product) => {
     setSelectedProduct(product);
+    setImageError(false);
     setDrawerOpen(true);
   };
 
@@ -159,6 +262,12 @@ export const AdminProductsPage = () => {
       day: 'numeric',
     });
   };
+
+  // Resolved image for current selected product
+  const selectedProductImage = useMemo(() => {
+    if (!selectedProduct) return '';
+    return getProductImage(selectedProduct);
+  }, [selectedProduct]);
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -204,37 +313,33 @@ export const AdminProductsPage = () => {
         </AdminMotionContainer>
       )}
 
-      {/* 2. MODERATION CONTROL BAR */}
+      {/* 2. FILTER & SEARCH CONTROL BAR */}
       <AdminFilterBar
-        search={search}
+        searchValue={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search by product title, brand, store, or SKU ID..."
+        searchPlaceholder="Search by SKU title, brand, merchant store, category, or ID..."
         filters={[
           {
-            id: 'statusFilter',
-            label: 'Filter by Status',
+            id: 'status',
+            label: 'Status',
             value: statusFilter,
             onChange: setStatusFilter,
-            icon: Tag,
             options: [
-              { label: 'All Moderation States', value: '' },
-              { label: 'Active Listings', value: 'ACTIVE' },
-              { label: 'Delisted / Archived', value: 'ARCHIVED' },
-              { label: 'Inactive Listings', value: 'INACTIVE' },
-              { label: 'Draft Listings', value: 'DRAFT' },
+              { value: '', label: 'All Listing Statuses' },
+              { value: 'ACTIVE', label: 'Active on Marketplace' },
+              { value: 'ARCHIVED', label: 'Delisted / Archived' },
             ],
           },
           {
-            id: 'categoryFilter',
-            label: 'Filter by Category',
+            id: 'category',
+            label: 'Category',
             value: categoryFilter,
             onChange: setCategoryFilter,
-            icon: Layers,
             options: [
-              { label: 'All Categories', value: '' },
+              { value: '', label: 'All Categories' },
               ...categories.map((c) => ({
-                label: c.name,
                 value: c._id,
+                label: c.name,
               })),
             ],
           },
@@ -249,29 +354,36 @@ export const AdminProductsPage = () => {
         }}
       />
 
-      {/* 3. PRODUCT INSPECTION DESK */}
+      {/* 3. PRODUCT CATALOG WORKSPACE TABLE / GRID */}
       {loading ? (
-        <LoadingSpinner text="Querying platform catalog records..." />
+        <div className="bg-white rounded-3xl border border-gray-200 p-16 flex flex-col items-center justify-center">
+          <LoadingSpinner text="Querying marketplace SKU catalog..." />
+        </div>
       ) : error ? (
-        <AdminEmptyState
-          icon={AlertTriangle}
-          title="Failed to Load Catalog"
-          description={error}
-          actionLabel="Retry Connection"
-          onAction={fetchData}
-        />
+        <div className="p-8 bg-red-50 rounded-3xl border border-red-200 text-center space-y-3">
+          <AlertCircle className="w-8 h-8 text-red-600 mx-auto" />
+          <h3 className="text-sm font-bold text-red-900">Failed to Load Catalog</h3>
+          <p className="text-xs text-red-700 max-w-md mx-auto">{error}</p>
+          <button
+            type="button"
+            onClick={fetchData}
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition shadow-xs"
+          >
+            Retry Catalog Query
+          </button>
+        </div>
       ) : filteredProducts.length > 0 ? (
-        <div className="space-y-3">
+        <div className="bg-white rounded-3xl border border-gray-200/90 shadow-xs overflow-hidden">
           {/* Desktop Table View */}
-          <div className="hidden md:block bg-white rounded-3xl border border-gray-200/90 overflow-hidden shadow-xs">
-            <table className="w-full text-left text-xs border-collapse">
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50/70 text-gray-500 font-extrabold uppercase tracking-wider text-[11px]">
-                  <th className="py-3.5 px-5">Product SKU</th>
+                <tr className="bg-gray-50/75 border-b border-gray-100 text-[11px] font-extrabold uppercase tracking-wider text-gray-500">
+                  <th className="py-3.5 px-5">Product Listing</th>
                   <th className="py-3.5 px-4">Merchant Store</th>
                   <th className="py-3.5 px-4">Category</th>
-                  <th className="py-3.5 px-4">Listing Status</th>
-                  <th className="py-3.5 px-4">Created Date</th>
+                  <th className="py-3.5 px-4">Status</th>
+                  <th className="py-3.5 px-4">Listed Date</th>
                   <th className="py-3.5 px-5 text-right">Moderation Actions</th>
                 </tr>
               </thead>
@@ -279,74 +391,76 @@ export const AdminProductsPage = () => {
                 {filteredProducts.map((p) => {
                   const isActive = p.status === 'ACTIVE';
                   const isProcessing = actionLoadingId === p._id;
+                  const rowImage = getProductImage(p);
 
                   return (
                     <tr
                       key={p._id}
-                      onClick={() => openDossier(p)}
-                      className={`cursor-pointer transition-colors duration-150 ${
-                        !isActive ? 'bg-red-50/20 hover:bg-red-50/40' : 'hover:bg-gray-50/80'
+                      className={`hover:bg-gray-50/75 transition-colors cursor-pointer ${
+                        !isActive ? 'bg-red-50/15' : ''
                       }`}
+                      onClick={() => openDossier(p)}
                     >
-                      {/* Product SKU Identity */}
+                      {/* Product Visual & Info */}
                       <td className="py-3.5 px-5">
                         <div className="flex items-center gap-3">
-                          {p.image ? (
+                          <div className="w-11 h-11 rounded-xl bg-gray-50 border border-gray-200 flex-shrink-0 overflow-hidden flex items-center justify-center p-0.5">
                             <img
-                              src={p.image}
+                              src={rowImage}
                               alt={p.name}
-                              className="w-10 h-10 rounded-xl object-cover border border-gray-200 flex-shrink-0 bg-gray-50"
+                              className="w-full h-full object-contain rounded-lg"
+                              loading="lazy"
                               onError={(e) => {
                                 e.target.onerror = null;
-                                e.target.style.display = 'none';
+                                e.target.src = 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80';
                               }}
                             />
-                          ) : (
-                            <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center flex-shrink-0 border border-purple-200">
-                              <Package className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div className="font-bold text-gray-900 text-sm leading-tight flex items-center gap-1.5">
+                              <span>{p.name}</span>
+                              {!isActive && (
+                                <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-extrabold uppercase">
+                                  Delisted
+                                </span>
+                              )}
                             </div>
-                          )}
-                          <div className="min-w-0">
-                            <div className="font-bold text-gray-900 text-sm truncate max-w-xs">{p.name}</div>
-                            <div className="text-[11px] text-gray-500 mt-0.5 flex items-center gap-1.5">
-                              <span className="font-semibold text-gray-700">{p.brand}</span>
-                              <span className="text-gray-300">•</span>
-                              <span className="font-mono text-gray-400 text-[10px]">ID: {p._id.slice(-6).toUpperCase()}</span>
+                            <div className="text-gray-500 text-[11px] flex items-center gap-1.5 mt-0.5">
+                              <span className="font-semibold text-gray-700">{p.brand || 'Unbranded'}</span>
+                              <span>•</span>
+                              <span>Unit: {p.unit || 'pcs'}</span>
                             </div>
                           </div>
                         </div>
                       </td>
 
-                      {/* Store Context */}
+                      {/* Store */}
                       <td className="py-3.5 px-4">
-                        <div className="font-bold text-gray-800 flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 text-gray-800 font-semibold">
                           <Store className="w-3.5 h-3.5 text-purple-600 flex-shrink-0" />
-                          <span>{p.storeId?.storeName || 'Merchant Store'}</span>
+                          <span className="truncate max-w-[160px]">
+                            {p.storeId?.storeName || 'Merchant Store'}
+                          </span>
                         </div>
-                        {p.storeId?.verificationStatus && (
-                          <div className="text-[10px] text-gray-500 mt-0.5">
-                            Permit: <span className="font-semibold">{p.storeId.verificationStatus}</span>
-                          </div>
-                        )}
                       </td>
 
                       {/* Category */}
                       <td className="py-3.5 px-4">
-                        <span className="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-700 font-semibold text-[11px] inline-block">
-                          {p.category?.name || 'Category'}
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-100 text-gray-700 font-bold text-[11px]">
+                          <Layers className="w-3 h-3 text-gray-500" />
+                          <span>{p.category?.name || 'Uncategorized'}</span>
                         </span>
-                        <div className="text-[10px] text-gray-400 mt-0.5 pl-0.5">Unit: {p.unit || 'pcs'}</div>
                       </td>
 
-                      {/* Listing Status */}
+                      {/* Status */}
                       <td className="py-3.5 px-4">
                         <AdminStatusBadge
                           status={p.status || 'ACTIVE'}
                           label={
                             p.status === 'ACTIVE'
-                              ? 'Active Listing'
+                              ? 'Active'
                               : p.status === 'ARCHIVED'
-                              ? 'Delisted / Archived'
+                              ? 'Delisted'
                               : p.status
                           }
                           size="md"
@@ -399,10 +513,11 @@ export const AdminProductsPage = () => {
           </div>
 
           {/* Mobile Card Flow */}
-          <div className="md:hidden space-y-3">
+          <div className="md:hidden space-y-3 p-3">
             {filteredProducts.map((p) => {
               const isActive = p.status === 'ACTIVE';
               const isProcessing = actionLoadingId === p._id;
+              const cardImage = getProductImage(p);
 
               return (
                 <div
@@ -413,21 +528,18 @@ export const AdminProductsPage = () => {
                   }`}
                 >
                   <div className="flex items-start gap-3 mb-3">
-                    {p.image ? (
+                    <div className="w-14 h-14 rounded-xl bg-gray-50 border border-gray-200 flex-shrink-0 overflow-hidden flex items-center justify-center p-1">
                       <img
-                        src={p.image}
+                        src={cardImage}
                         alt={p.name}
-                        className="w-12 h-12 rounded-xl object-cover border border-gray-200 flex-shrink-0 bg-gray-50"
+                        className="w-full h-full object-contain rounded-lg"
+                        loading="lazy"
                         onError={(e) => {
                           e.target.onerror = null;
-                          e.target.style.display = 'none';
+                          e.target.src = 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80';
                         }}
                       />
-                    ) : (
-                      <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center flex-shrink-0 border border-purple-200">
-                        <Package className="w-6 h-6" />
-                      </div>
-                    )}
+                    </div>
                     <div className="min-w-0 flex-1">
                       <div className="font-bold text-gray-900 text-sm truncate">{p.name}</div>
                       <div className="text-xs text-gray-500">{p.brand}</div>
@@ -547,70 +659,131 @@ export const AdminProductsPage = () => {
       >
         {selectedProduct && (
           <div className="space-y-6 text-xs">
-            {/* Status & Discovery Context */}
-            <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-500 block mb-1">
-                  Marketplace Discovery Status
-                </span>
-                <AdminStatusBadge
-                  status={selectedProduct.status || 'ACTIVE'}
-                  label={
-                    selectedProduct.status === 'ACTIVE'
-                      ? 'Live on Marketplace'
-                      : selectedProduct.status === 'ARCHIVED'
-                      ? 'Delisted / Archived'
-                      : selectedProduct.status
-                  }
-                  size="md"
-                />
+            {/* HERO PRODUCT IDENTITY BLOCK: Left Large Image + Right Metadata */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-gray-50/90 border border-gray-200/90 flex flex-col sm:flex-row items-center sm:items-start gap-4">
+              {/* LEFT: Large Product Image Card */}
+              <div
+                className="w-36 h-36 sm:w-44 sm:h-44 shrink-0 rounded-2xl bg-white border border-gray-200/90 shadow-2xs flex items-center justify-center p-3 relative group overflow-hidden cursor-pointer"
+                onClick={() => !imageError && setEnlargedImageOpen(true)}
+                title="Click to view full-size image"
+              >
+                {!imageError ? (
+                  <>
+                    <img
+                      src={selectedProductImage}
+                      alt={selectedProduct.name}
+                      className="w-full h-full object-contain rounded-xl transition-transform duration-200 group-hover:scale-105"
+                      loading="lazy"
+                      onError={() => setImageError(true)}
+                    />
+                    <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-2xl">
+                      <span className="p-2 rounded-xl bg-black/75 text-white shadow-sm flex items-center gap-1.5 text-[11px] font-bold">
+                        <Maximize2 className="w-3.5 h-3.5" />
+                        <span>Enlarge</span>
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 text-gray-400 p-2 rounded-xl border border-dashed border-gray-200 text-center">
+                    <Package className="w-8 h-8 text-purple-400 mb-1" />
+                    <span className="text-[10px] font-bold text-gray-500">
+                      No product image available
+                    </span>
+                  </div>
+                )}
               </div>
-              <div className="text-right">
-                <span className="text-[10px] text-gray-400 block font-bold uppercase">Unit Type</span>
-                <span className="font-extrabold text-gray-800">
-                  {selectedProduct.unit || 'pcs'}
-                </span>
+
+              {/* RIGHT: Product Identity Metadata */}
+              <div className="flex-1 min-w-0 space-y-2.5 w-full">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                    <AdminStatusBadge
+                      status={selectedProduct.status || 'ACTIVE'}
+                      label={
+                        selectedProduct.status === 'ACTIVE'
+                          ? 'Active Listing'
+                          : selectedProduct.status === 'ARCHIVED'
+                          ? 'Delisted / Archived'
+                          : selectedProduct.status
+                      }
+                      size="sm"
+                    />
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 uppercase">
+                      Unit: {selectedProduct.unit || 'pack'}
+                    </span>
+                  </div>
+
+                  <h3 className="text-base sm:text-lg font-black text-gray-900 leading-tight">
+                    {selectedProduct.name}
+                  </h3>
+
+                  <div className="text-xs text-gray-600 flex items-center gap-1.5 mt-1">
+                    <Tag className="w-3.5 h-3.5 text-gray-400" />
+                    <span>Brand: <strong className="text-gray-900">{selectedProduct.brand || 'Unbranded'}</strong></span>
+                  </div>
+
+                  <div className="text-xs text-gray-600 flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-gray-400" />
+                    <span>Category: <strong className="text-gray-900">{selectedProduct.category?.name || 'Packaged & Instant Foods'}</strong></span>
+                  </div>
+                </div>
+
+                {/* SKU ID with Quick Copy */}
+                <div className="pt-2 border-t border-gray-200/70 flex items-center justify-between text-[11px] text-gray-500">
+                  <span className="font-mono text-[10px] text-gray-600 truncate max-w-[190px]">
+                    SKU: {selectedProduct._id}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(selectedProduct._id);
+                      setCopiedSku(true);
+                      setTimeout(() => setCopiedSku(false), 2000);
+                    }}
+                    className="inline-flex items-center gap-1 text-[10px] font-semibold text-purple-700 hover:text-purple-800 transition"
+                  >
+                    {copiedSku ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                    <span>{copiedSku ? 'Copied' : 'Copy SKU'}</span>
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* A. Product Visual & Core Information */}
+            {/* A. Product SKU Specifications */}
             <div className="space-y-3">
               <h4 className="text-xs font-extrabold uppercase tracking-wider text-gray-900 flex items-center gap-1.5">
                 <Package className="w-4 h-4 text-purple-700" />
                 <span>Product SKU Specifications</span>
               </h4>
-              <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3">
-                {selectedProduct.image && (
-                  <div className="flex justify-center p-2 bg-gray-50 rounded-xl border border-gray-100">
-                    <img
-                      src={selectedProduct.image}
-                      alt={selectedProduct.name}
-                      className="max-h-44 object-contain rounded-lg"
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.style.display = 'none';
-                      }}
-                    />
+              <div className="bg-white border border-gray-200 rounded-2xl p-4 divide-y divide-gray-100">
+                <div className="py-2 flex justify-between">
+                  <span className="text-gray-500">Official Title</span>
+                  <span className="font-bold text-gray-900 text-right max-w-xs">{selectedProduct.name}</span>
+                </div>
+                <div className="py-2 flex justify-between">
+                  <span className="text-gray-500">Brand Name</span>
+                  <span className="font-semibold text-gray-800">{selectedProduct.brand || 'N/A'}</span>
+                </div>
+                <div className="py-2 flex justify-between">
+                  <span className="text-gray-500">Packaging Unit</span>
+                  <span className="font-semibold text-purple-700 uppercase">{selectedProduct.unit || 'pcs'}</span>
+                </div>
+                <div className="py-2 flex justify-between">
+                  <span className="text-gray-500">SKU / Catalog ID</span>
+                  <span className="font-mono text-gray-600 text-[11px]">{selectedProduct._id}</span>
+                </div>
+                <div className="py-2 flex justify-between">
+                  <span className="text-gray-500">Slug Identifier</span>
+                  <span className="font-mono text-gray-600 text-[11px]">{selectedProduct.slug || 'N/A'}</span>
+                </div>
+                {selectedProduct.description && (
+                  <div className="pt-2">
+                    <span className="text-gray-500 block mb-1">Catalog Description</span>
+                    <p className="text-gray-700 bg-gray-50 p-2.5 rounded-xl border border-gray-100 text-[11px] leading-relaxed">
+                      {selectedProduct.description}
+                    </p>
                   </div>
                 )}
-                <div className="divide-y divide-gray-100">
-                  <div className="py-2 flex justify-between">
-                    <span className="text-gray-500">Official Title</span>
-                    <span className="font-bold text-gray-900 text-right max-w-xs">{selectedProduct.name}</span>
-                  </div>
-                  <div className="py-2 flex justify-between">
-                    <span className="text-gray-500">Brand Name</span>
-                    <span className="font-semibold text-gray-800">{selectedProduct.brand}</span>
-                  </div>
-                  <div className="py-2 flex justify-between">
-                    <span className="text-gray-500">SKU / Catalog ID</span>
-                    <span className="font-mono text-gray-600 text-[11px]">{selectedProduct._id}</span>
-                  </div>
-                  <div className="py-2 flex justify-between">
-                    <span className="text-gray-500">Slug Identifier</span>
-                    <span className="font-mono text-gray-600 text-[11px]">{selectedProduct.slug || 'N/A'}</span>
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -648,64 +821,108 @@ export const AdminProductsPage = () => {
               </h4>
               <div className="bg-white border border-gray-200 rounded-2xl p-4 divide-y divide-gray-100">
                 <div className="py-2 flex justify-between">
-                  <span className="text-gray-500">Marketplace Category</span>
-                  <span className="font-bold text-gray-900">{selectedProduct.category?.name || 'Unassigned'}</span>
+                  <span className="text-gray-500">Primary Taxonomy</span>
+                  <span className="font-bold text-gray-900">{selectedProduct.category?.name || 'Uncategorized'}</span>
                 </div>
                 <div className="py-2 flex justify-between">
-                  <span className="text-gray-500">Unit of Measurement</span>
-                  <span className="font-semibold text-gray-800">{selectedProduct.unit}</span>
+                  <span className="text-gray-500">Category Master ID</span>
+                  <span className="font-mono text-gray-600 text-[11px]">{selectedProduct.category?._id || 'N/A'}</span>
                 </div>
               </div>
             </div>
 
-            {/* D. Product Description Text */}
+            {/* D. Audit & Moderation Record */}
             <div className="space-y-3">
               <h4 className="text-xs font-extrabold uppercase tracking-wider text-gray-900 flex items-center gap-1.5">
                 <FileText className="w-4 h-4 text-purple-700" />
-                <span>Product Description</span>
+                <span>Catalog Lifecycle Audit</span>
               </h4>
-              <div className="bg-white border border-gray-200 rounded-2xl p-4 text-gray-700 leading-relaxed font-normal">
-                {selectedProduct.description || 'No description provided by merchant.'}
+              <div className="bg-white border border-gray-200 rounded-2xl p-4 divide-y divide-gray-100">
+                <div className="py-2 flex justify-between">
+                  <span className="text-gray-500">Initial Listing Date</span>
+                  <span className="font-semibold text-gray-800">{formatDate(selectedProduct.createdAt)}</span>
+                </div>
+                <div className="py-2 flex justify-between">
+                  <span className="text-gray-500">Last SKU Modification</span>
+                  <span className="font-semibold text-gray-800">{formatDate(selectedProduct.updatedAt)}</span>
+                </div>
               </div>
             </div>
           </div>
         )}
       </AdminDetailDrawer>
 
-      {/* 5. DELIST CONFIRMATION MODAL */}
-      <Modal
-        isOpen={delistModalOpen}
-        onClose={() => setDelistModalOpen(false)}
-        title="Delist Marketplace Product"
-      >
-        <div className="space-y-4 text-xs">
-          <p className="text-gray-600 leading-relaxed">
-            You are about to delist and archive <span className="font-bold text-gray-900">{productToDelist?.name}</span> from the live marketplace.
-          </p>
-
-          <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl text-red-900 font-medium">
-            Customers will no longer be able to discover, search for, or add this product to their carts. The seller store will be notified of this catalog status change.
+      {/* 5. ENLARGED PRODUCT IMAGE MODAL */}
+      {enlargedImageOpen && selectedProduct && (
+        <Modal
+          isOpen={enlargedImageOpen}
+          onClose={() => setEnlargedImageOpen(false)}
+          title={selectedProduct.name}
+        >
+          <div className="space-y-4">
+            <div className="bg-gray-50 rounded-2xl p-4 flex items-center justify-center border border-gray-200 min-h-[300px] max-h-[60vh] overflow-hidden">
+              <img
+                src={selectedProductImage}
+                alt={selectedProduct.name}
+                className="max-h-[55vh] max-w-full object-contain rounded-xl"
+              />
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-gray-600 gap-2 pt-2 border-t border-gray-100">
+              <div className="space-y-0.5">
+                <div>Brand: <strong className="text-gray-900">{selectedProduct.brand}</strong></div>
+                <div>Category: <strong className="text-gray-900">{selectedProduct.category?.name || 'N/A'}</strong></div>
+              </div>
+              <div className="text-left sm:text-right space-y-0.5">
+                <div>SKU ID: <span className="font-mono text-gray-700">{selectedProduct._id}</span></div>
+                <div>Status: <strong className="text-purple-700">{selectedProduct.status}</strong></div>
+              </div>
+            </div>
           </div>
+        </Modal>
+      )}
 
-          <div className="flex items-center justify-end gap-2.5 pt-2">
-            <button
-              type="button"
-              onClick={() => setDelistModalOpen(false)}
-              className="px-4 py-2 border border-gray-300 hover:bg-gray-100 text-gray-700 font-bold rounded-xl transition"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={() => moderateProduct(productToDelist?._id, 'ARCHIVED', productToDelist?.name)}
-              disabled={actionLoadingId === productToDelist?._id}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-xs transition disabled:opacity-50"
-            >
-              {actionLoadingId === productToDelist?._id ? 'Delisting...' : 'Confirm Delisting'}
-            </button>
+      {/* 6. DELIST CONFIRMATION MODAL */}
+      {delistModalOpen && productToDelist && (
+        <Modal
+          isOpen={delistModalOpen}
+          onClose={() => setDelistModalOpen(false)}
+          title="Confirm Listing Moderation"
+        >
+          <div className="space-y-4">
+            <div className="p-3.5 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div className="text-xs text-red-800 space-y-1">
+                <div className="font-bold">Delist Product Listing?</div>
+                <div>
+                  You are about to remove <strong>"{productToDelist.name}"</strong> from active customer marketplace discovery.
+                </div>
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-600 leading-relaxed">
+              Archiving this SKU prevents shoppers from discovering or ordering lots under this listing. Existing completed order records and inventory lots will be preserved in historical ledgers.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-4 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setDelistModalOpen(false)}
+                className="px-4 py-2 border border-gray-200 hover:bg-gray-100 text-gray-700 rounded-xl text-xs font-bold transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => moderateProduct(productToDelist._id, 'ARCHIVED', productToDelist.name)}
+                disabled={actionLoadingId === productToDelist._id}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-xs transition disabled:opacity-50"
+              >
+                {actionLoadingId === productToDelist._id ? 'Delisting...' : 'Confirm Delist'}
+              </button>
+            </div>
           </div>
-        </div>
-      </Modal>
+        </Modal>
+      )}
     </div>
   );
 };

@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "node --test --test-concurrency=1 tests/dynamicPricing.test.js tests/expiryScheduler.test.js tests/marketplace.test.js tests/cart.test.js tests/order.test.js tests/payment.test.js tests/qrVerification.test.js tests/notification.test.js tests/admin.test.js tests/analytics.test.js"
+    "test": "node --test --test-concurrency=1 tests/dynamicPricing.test.js tests/expiryScheduler.test.js tests/marketplace.test.js tests/cart.test.js tests/order.test.js tests/payment.test.js tests/qrVerification.test.js tests/notification.test.js tests/admin.test.js tests/analytics.test.js tests/complaint.test.js"
   },
   "keywords": [
     "nearexpiry",

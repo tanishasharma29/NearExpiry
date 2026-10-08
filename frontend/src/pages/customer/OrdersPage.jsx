@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Package, Clock, ChevronRight, CheckCircle2, QrCode } from 'lucide-react';
+import { Package, Clock, ChevronRight, CheckCircle2, QrCode, AlertCircle, LifeBuoy } from 'lucide-react';
 import { orderService } from '../../services/orderService';
 import { EmptyState } from '../../components/common/EmptyState';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
+import { CreateComplaintModal } from './CreateComplaintModal';
 
 export const OrdersPage = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [complaintModalOpen, setComplaintModalOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -42,9 +45,18 @@ export const OrdersPage = () => {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      <div>
-        <h1 className="text-3xl font-black text-gray-900">Your Orders</h1>
-        <p className="text-sm text-gray-500">Track fulfillment status and FEFO allocations</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-black text-gray-900">Your Orders</h1>
+          <p className="text-sm text-gray-500">Track fulfillment status and FEFO allocations</p>
+        </div>
+        <Link
+          to="/customer/complaints"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition shadow-xs self-start sm:self-auto"
+        >
+          <LifeBuoy className="w-4 h-4 text-amber-600" />
+          Support & Complaints
+        </Link>
       </div>
 
       <div className="space-y-4">
@@ -83,12 +95,37 @@ export const OrdersPage = () => {
                     ₹{Number(order.pricingSummary?.finalTotal || 0).toFixed(2)}
                   </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSelectedOrder(order);
+                    setComplaintModalOpen(true);
+                  }}
+                  className="hidden sm:inline-flex items-center gap-1 text-[11px] font-bold text-gray-600 hover:text-amber-800 bg-gray-50 hover:bg-amber-50 px-2.5 py-1 rounded-xl border border-gray-200 transition"
+                  title="Report problem with this order"
+                >
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
+                  Report Issue
+                </button>
                 <ChevronRight className="w-5 h-5 text-gray-400" />
               </div>
             </div>
           </Link>
         ))}
       </div>
+
+      {selectedOrder && (
+        <CreateComplaintModal
+          isOpen={complaintModalOpen}
+          onClose={() => {
+            setComplaintModalOpen(false);
+            setSelectedOrder(null);
+          }}
+          order={selectedOrder}
+        />
+      )}
     </div>
   );
 };

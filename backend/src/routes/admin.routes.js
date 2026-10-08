@@ -11,6 +11,15 @@ import {
   idParamSchema,
 } from '../validators/admin.validator.js';
 import {
+  complaintIdParamSchema,
+  adminStatusUpdateSchema,
+  adminPriorityUpdateSchema,
+  adminAssignSchema,
+  adminMessageSchema,
+  adminInternalNoteSchema,
+  adminResolveComplaintSchema,
+} from '../validators/complaint.validator.js';
+import {
   getDashboardMetrics,
   listSellers,
   reviewSellerApproval,
@@ -33,6 +42,16 @@ import {
   getReports,
   getAuditLogs,
 } from '../controllers/admin.controller.js';
+import {
+  listAdminComplaints,
+  getAdminComplaintDossier,
+  updateAdminComplaintStatus,
+  updateAdminComplaintPriority,
+  assignAdminComplaint,
+  sendAdminMessage,
+  addAdminInternalNote,
+  resolveAdminComplaint,
+} from '../controllers/complaint.controller.js';
 
 const router = Router();
 
@@ -83,5 +102,15 @@ router.get('/reports', getReports);
 
 // 12. Audit Logs
 router.get('/audit-logs', getAuditLogs);
+
+// 13. Support & Dispute Resolution Console
+router.get('/complaints', listAdminComplaints);
+router.get('/complaints/:complaintId', validateRequest(complaintIdParamSchema), getAdminComplaintDossier);
+router.patch('/complaints/:complaintId/status', validateRequest(adminStatusUpdateSchema), updateAdminComplaintStatus);
+router.patch('/complaints/:complaintId/priority', validateRequest(adminPriorityUpdateSchema), updateAdminComplaintPriority);
+router.patch('/complaints/:complaintId/assign', validateRequest(adminAssignSchema), assignAdminComplaint);
+router.post('/complaints/:complaintId/messages', validateRequest(adminMessageSchema), sendAdminMessage);
+router.post('/complaints/:complaintId/notes', validateRequest(adminInternalNoteSchema), addAdminInternalNote);
+router.post('/complaints/:complaintId/resolve', validateRequest(adminResolveComplaintSchema), resolveAdminComplaint);
 
 export default router;
