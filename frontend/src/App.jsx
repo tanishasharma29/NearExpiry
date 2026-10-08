@@ -46,6 +46,9 @@ import { AdminCategoriesPage } from './pages/admin/AdminCategoriesPage';
 import { AdminPricingPage } from './pages/admin/AdminPricingPage';
 import { AdminInventoryPage } from './pages/admin/AdminInventoryPage';
 import { AdminAnalyticsPage } from './pages/admin/AdminAnalyticsPage';
+import { AdminOrdersPage } from './pages/admin/AdminOrdersPage';
+import { AdminSupportPage } from './pages/admin/AdminSupportPage';
+import { AdminAuditLogsPage } from './pages/admin/AdminAuditLogsPage';
 
 export default function App() {
   return (
@@ -147,6 +150,9 @@ export default function App() {
                 <Route path="categories" element={<AdminCategoriesPage />} />
                 <Route path="pricing" element={<AdminPricingPage />} />
                 <Route path="inventory" element={<AdminInventoryPage />} />
+                <Route path="orders" element={<AdminOrdersPage />} />
+                <Route path="support" element={<AdminSupportPage />} />
+                <Route path="audit-logs" element={<AdminAuditLogsPage />} />
                 <Route path="analytics" element={<AdminAnalyticsPage />} />
               </Route>
 
