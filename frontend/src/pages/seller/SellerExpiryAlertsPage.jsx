@@ -76,7 +76,7 @@ export const SellerExpiryAlertsPage = () => {
       }
       setError(null);
 
-      // Pass limit: 100 to retrieve full store alert registry
+      // Pass limit: 100 to retrieve full store Alert Registry
       const data = await inventoryService.getExpiryAlerts({ limit: 100 });
       setAlerts(data?.alerts || []);
 
