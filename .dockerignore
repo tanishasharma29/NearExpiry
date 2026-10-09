@@ -1,0 +1,23 @@
+# Dependencies
+**/node_modules/
+npm-debug.log*
+
+# Git and IDE
+.git/
+.github/
+.vscode/
+.idea/
+
+# Environment files
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.docker.example
+
+# Temporary files & logs
+**/logs/
+**/*.log
+**/tmp/
+**/dist/
+**/coverage/
+

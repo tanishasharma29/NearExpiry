@@ -3,8 +3,15 @@ import mongoose from 'mongoose';
 import { Product, PRODUCT_STATUS } from '../models/product.model.js';
 import { Category, CATEGORY_STATUS } from '../models/category.model.js';
 import { Store } from '../models/store.model.js';
+import { Order, ORDER_STATUS } from '../models/order.model.js';
 import { USER_ROLES } from '../models/user.model.js';
 import { ApiError } from '../utils/ApiError.js';
+import {
+  remember,
+  buildCacheKey,
+  invalidateProductCache,
+  CACHE_TTL,
+} from '../utils/cache.util.js';
 
 /**
  * Enforces that a SELLER can only manage products belonging to their own store/account.
@@ -53,6 +60,26 @@ export const createProductService = async (sellerUser, payload) => {
     );
   }
 
+  // Enforce store approval status
+  if (sellerUser.role === USER_ROLES.SELLER) {
+    if (store.verificationStatus === 'REJECTED' || sellerUser.verificationStatus === 'REJECTED') {
+      throw new ApiError(
+        403,
+        'Your store application was rejected. Cannot create products.',
+        'STORE_REJECTED'
+      );
+    }
+    const isApproved =
+      store.verificationStatus === 'APPROVED' || sellerUser.verificationStatus === 'APPROVED';
+    if (!isApproved) {
+      throw new ApiError(
+        403,
+        'Your store application is pending admin approval. Cannot create products.',
+        'SELLER_NOT_APPROVED'
+      );
+    }
+  }
+
   // 2. Verify target Category exists and is ACTIVE
   const categoryDoc = await Category.findById(payload.category);
   if (!categoryDoc) {
@@ -78,10 +105,15 @@ export const createProductService = async (sellerUser, payload) => {
     status: payload.status || PRODUCT_STATUS.ACTIVE,
   });
 
-  return product.populate([
+  await product.populate([
     { path: 'category', select: 'name slug status' },
     { path: 'storeId', select: 'storeName slug address verificationStatus' },
   ]);
+
+  // Invalidate public product listings & marketplace deals
+  await invalidateProductCache(product._id, product.category);
+
+  return product;
 };
 
 /**
@@ -130,25 +162,66 @@ export const listProductsService = async (query = {}, requesterUser = null) => {
   const sortBy = allowedSortFields.includes(query.sortBy) ? query.sortBy : 'createdAt';
   const sortOrder = query.sortOrder === 'asc' ? 1 : -1;
 
-  const [products, total] = await Promise.all([
-    Product.find(filter)
-      .populate('category', 'name slug status')
-      .populate('storeId', 'storeName slug address latitude longitude status verificationStatus')
-      .sort({ [sortBy]: sortOrder })
-      .skip(skip)
-      .limit(limit),
-    Product.countDocuments(filter),
-  ]);
+  // Privileged admin requests bypass shared public cache
+  if (isAdmin) {
+    const [products, total] = await Promise.all([
+      Product.find(filter)
+        .populate('category', 'name slug status')
+        .populate('storeId', 'storeName slug address latitude longitude status verificationStatus')
+        .sort({ [sortBy]: sortOrder })
+        .skip(skip)
+        .limit(limit),
+      Product.countDocuments(filter),
+    ]);
 
-  return {
-    products,
-    pagination: {
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit) || 1,
-    },
-  };
+    return {
+      products,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit) || 1,
+      },
+    };
+  }
+
+  // Public/Customer requests: Cache-Aside with 5-minute TTL
+  const cacheKey = buildCacheKey('products', 'list', {
+    page,
+    limit,
+    sortBy,
+    sortOrder,
+    category: query.category || '',
+    storeId: query.storeId || '',
+    brand: query.brand ? query.brand.trim() : '',
+    unit: query.unit || '',
+    search: query.search ? query.search.trim() : '',
+  });
+
+  const { data } = await remember(cacheKey, CACHE_TTL.PRODUCTS_LIST, async () => {
+    const [products, total] = await Promise.all([
+      Product.find(filter)
+        .populate('category', 'name slug status')
+        .populate('storeId', 'storeName slug address latitude longitude status verificationStatus')
+        .sort({ [sortBy]: sortOrder })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Product.countDocuments(filter),
+    ]);
+
+    return {
+      products,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit) || 1,
+      },
+    };
+  });
+
+  return data;
 };
 
 /**
@@ -216,19 +289,25 @@ export const getProductByIdService = async (productId, requesterUser = null) => 
     throw new ApiError(400, 'Invalid product ID format.', 'INVALID_PRODUCT_ID');
   }
 
-  const product = await Product.findById(productId)
-    .populate('category', 'name slug description status')
-    .populate('storeId', 'storeName slug address latitude longitude verificationStatus');
-
-  if (!product) {
-    throw new ApiError(404, 'Product not found.', 'PRODUCT_NOT_FOUND');
-  }
-
+  // Privileged admin requests bypass cache
   if (requesterUser && requesterUser.role === USER_ROLES.ADMIN) {
+    const product = await Product.findById(productId)
+      .populate('category', 'name slug description status')
+      .populate('storeId', 'storeName slug address latitude longitude verificationStatus');
+    if (!product) {
+      throw new ApiError(404, 'Product not found.', 'PRODUCT_NOT_FOUND');
+    }
     return product;
   }
 
+  // Seller requests bypass cache to guarantee fresh own-product management state
   if (requesterUser && requesterUser.role === USER_ROLES.SELLER) {
+    const product = await Product.findById(productId)
+      .populate('category', 'name slug description status')
+      .populate('storeId', 'storeName slug address latitude longitude verificationStatus');
+    if (!product) {
+      throw new ApiError(404, 'Product not found.', 'PRODUCT_NOT_FOUND');
+    }
     if (product.sellerId.toString() === requesterUser._id.toString()) {
       return product;
     }
@@ -242,12 +321,101 @@ export const getProductByIdService = async (productId, requesterUser = null) => 
     return product;
   }
 
-  // Customer / Guest check
-  if (product.status !== PRODUCT_STATUS.ACTIVE) {
-    throw new ApiError(404, 'Product is currently inactive or unavailable.', 'PRODUCT_INACTIVE');
-  }
+  // Customer / Guest check: Cache-Aside with 15-minute TTL
+  const cacheKey = buildCacheKey('products', `detail:${productId}`);
+  const { data } = await remember(cacheKey, CACHE_TTL.PRODUCT_DETAIL, async () => {
+    const product = await Product.findById(productId)
+      .populate('category', 'name slug description status')
+      .populate('storeId', 'storeName slug address latitude longitude verificationStatus')
+      .lean();
 
-  return product;
+    if (!product) {
+      throw new ApiError(404, 'Product not found.', 'PRODUCT_NOT_FOUND');
+    }
+
+    if (product.status !== PRODUCT_STATUS.ACTIVE) {
+      throw new ApiError(404, 'Product is currently inactive or unavailable.', 'PRODUCT_INACTIVE');
+    }
+
+    return product;
+  });
+
+  return data;
+};
+
+/**
+ * Public: Get Top-Selling / Popular Products with Cache-Aside.
+ */
+export const getPopularProductsService = async (limit = 10) => {
+  const boundedLimit = Math.min(Math.max(parseInt(limit || '10', 10), 1), 50);
+  const cacheKey = buildCacheKey('products', `popular:${boundedLimit}`);
+
+  const { data } = await remember(cacheKey, CACHE_TTL.POPULAR_PRODUCTS, async () => {
+    // 1. Aggregate non-cancelled orders to identify most-purchased product IDs
+    const topSales = await Order.aggregate([
+      {
+        $match: {
+          status: { $ne: ORDER_STATUS.CANCELLED },
+          createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }, // Last 30 days
+        },
+      },
+      { $unwind: '$items' },
+      {
+        $group: {
+          _id: '$items.productId',
+          unitsSold: { $sum: '$items.requestedQuantity' },
+          orderCount: { $sum: 1 },
+        },
+      },
+      { $sort: { unitsSold: -1 } },
+      { $limit: boundedLimit },
+    ]);
+
+    const topProductIds = topSales.map((item) => item._id);
+    const unitsSoldMap = new Map(topSales.map((item) => [item._id.toString(), item.unitsSold]));
+
+    let products = [];
+    if (topProductIds.length > 0) {
+      products = await Product.find({
+        _id: { $in: topProductIds },
+        status: PRODUCT_STATUS.ACTIVE,
+      })
+        .populate('category', 'name slug status')
+        .populate('storeId', 'storeName slug address latitude longitude status verificationStatus')
+        .lean();
+    }
+
+    // Attach unitsSold and sort by popularity
+    products = products
+      .map((p) => ({
+        ...p,
+        unitsSold: unitsSoldMap.get(p._id.toString()) || 0,
+      }))
+      .sort((a, b) => b.unitsSold - a.unitsSold);
+
+    // If fewer than limit, supplement with newest active products
+    if (products.length < boundedLimit) {
+      const existingIds = products.map((p) => p._id);
+      const remainingLimit = boundedLimit - products.length;
+      const supplemental = await Product.find({
+        _id: { $nin: existingIds },
+        status: PRODUCT_STATUS.ACTIVE,
+      })
+        .populate('category', 'name slug status')
+        .populate('storeId', 'storeName slug address latitude longitude status verificationStatus')
+        .sort({ createdAt: -1 })
+        .limit(remainingLimit)
+        .lean();
+
+      products = products.concat(
+        supplemental.map((p) => ({ ...p, unitsSold: 0 }))
+      );
+    }
+
+    return products;
+  });
+
+  return data;
 };
 
 /**
@@ -282,6 +450,9 @@ export const updateProductService = async (productId, requesterUser, payload) =>
 
   await product.save();
 
+  // Invalidate affected product, category, and popular caches
+  await invalidateProductCache(product._id, product.category);
+
   return product.populate([
     { path: 'category', select: 'name slug status' },
     { path: 'storeId', select: 'storeName slug verificationStatus' },
@@ -303,6 +474,11 @@ export const deleteProductService = async (productId, requesterUser) => {
 
   assertProductOwnershipOrAdmin(product, requesterUser);
 
+  const categoryId = product.category;
   await product.deleteOne();
+
+  // Invalidate affected product, category, and popular caches
+  await invalidateProductCache(productId, categoryId);
+
   return { deletedProductId: productId };
 };

@@ -1,0 +1,60 @@
+# =========================================================================
+# NearExpiry — Docker Compose Production Hardening Override
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# =========================================================================
+
+services:
+  # -------------------------------------------------------------------------
+  # MongoDB Production (Internal only — never exposed on public host interface)
+  # -------------------------------------------------------------------------
+  mongodb:
+    restart: always
+    ports: []
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  # -------------------------------------------------------------------------
+  # Redis Production (Internal only — never exposed on public host interface)
+  # -------------------------------------------------------------------------
+  redis:
+    restart: always
+    ports: []
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+  # -------------------------------------------------------------------------
+  # Backend Production (Internal only — all traffic routed through Nginx)
+  # -------------------------------------------------------------------------
+  backend:
+    restart: always
+    # In production, direct backend port 5000 is unmapped from host;
+    # Nginx reverse proxy on port 80 handles all /api/v1 and /socket.io requests.
+    ports: []
+    environment:
+      NODE_ENV: production
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  # -------------------------------------------------------------------------
+  # Frontend Production (Single public gateway via Nginx on port 80)
+  # -------------------------------------------------------------------------
+  frontend:
+    restart: always
+    ports:
+      - "${PORT_FRONTEND:-80}:80"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+

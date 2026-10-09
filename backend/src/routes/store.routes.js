@@ -11,7 +11,7 @@ import {
   verifyStoreByAdmin,
 } from '../controllers/store.controller.js';
 import { authenticate, optionalAuthenticate } from '../middleware/auth.middleware.js';
-import { authorizeRoles } from '../middleware/role.middleware.js';
+import { authorizeRoles, requireApprovedSeller } from '../middleware/role.middleware.js';
 import { validateRequest } from '../middleware/validate.middleware.js';
 import { USER_ROLES } from '../models/user.model.js';
 import {
@@ -99,6 +99,7 @@ router.patch(
   '/:id/status',
   authenticate,
   authorizeRoles(USER_ROLES.SELLER, USER_ROLES.ADMIN),
+  requireApprovedSeller,
   validateRequest(updateStoreStatusSchema),
   updateStoreStatus
 );

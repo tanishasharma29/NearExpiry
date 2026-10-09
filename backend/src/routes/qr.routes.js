@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.middleware.js';
-import { authorizeRoles } from '../middleware/role.middleware.js';
+import { authorizeRoles, requireApprovedSeller } from '../middleware/role.middleware.js';
 import { validateRequest } from '../middleware/validate.middleware.js';
 import {
   verifyQrSchema,
@@ -40,6 +40,7 @@ router.get(
 router.post(
   '/batch/:batchId',
   authorizeRoles('SELLER', 'ADMIN'),
+  requireApprovedSeller,
   validateRequest(batchIdParamSchema),
   generateBatchQr
 );
@@ -47,6 +48,7 @@ router.post(
 router.post(
   '/batch/:batchId/revoke',
   authorizeRoles('SELLER', 'ADMIN'),
+  requireApprovedSeller,
   validateRequest(revokeQrSchema),
   revokeBatchQr
 );
@@ -75,6 +77,7 @@ router.post(
 router.post(
   '/pickup/verify',
   authorizeRoles('SELLER', 'ADMIN'),
+  requireApprovedSeller,
   validateRequest(verifyPickupQrSchema),
   verifyPickupQr
 );
@@ -82,6 +85,7 @@ router.post(
 router.post(
   '/verify-pickup',
   authorizeRoles('SELLER', 'ADMIN'),
+  requireApprovedSeller,
   validateRequest(verifyPickupQrSchema),
   verifyPickupQr
 );

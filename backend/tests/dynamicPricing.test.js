@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import http from 'http';
 import app from '../src/app.js';
 import { connectDB, disconnectDB } from '../src/config/db.js';
+import { Store } from '../src/models/store.model.js';
 import { evaluateDynamicPricingAlgorithm } from '../src/services/pricing.service.js';
 import { INITIAL_SEED_PRICE_RULES } from '../src/services/priceRule.service.js';
 
@@ -179,7 +180,7 @@ describe('NearExpiry Dynamic Pricing Engine — Unit & API Test Suite', () => {
       });
       sellerToken = (await sRes.json()).data.token;
 
-      await fetch(`${baseUrl}/stores`, {
+      const stRes = await fetch(`${baseUrl}/stores`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sellerToken}` },
         body: JSON.stringify({
@@ -190,6 +191,8 @@ describe('NearExpiry Dynamic Pricing Engine — Unit & API Test Suite', () => {
           longitude: 77.5946,
         }),
       });
+      const stData = await stRes.json();
+      await Store.findByIdAndUpdate(stData.data.store._id, { verificationStatus: 'APPROVED', isActive: true });
 
       const prodRes = await fetch(`${baseUrl}/products`, {
         method: 'POST',

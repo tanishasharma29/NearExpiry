@@ -11,6 +11,9 @@ import { USER_ROLES } from '../models/user.model.js';
 import { Wishlist } from '../models/wishlist.model.js';
 import { notifyCustomerWishlistAvailability } from './notification.service.js';
 import { ApiError } from '../utils/ApiError.js';
+import { invalidateProductCache } from '../utils/cache.util.js';
+import { emitToStore } from '../config/socket.js';
+import { SOCKET_EVENTS } from '../constants/socketEvents.js';
 import {
   calculateRemainingDays,
   computeBatchStatus,
@@ -77,6 +80,26 @@ export const createBatchService = async (sellerUser, payload) => {
       'You must create a Store before adding product batches.',
       'STORE_REQUIRED'
     );
+  }
+
+  // Enforce store approval status
+  if (sellerUser.role === USER_ROLES.SELLER) {
+    if (store.verificationStatus === 'REJECTED' || sellerUser.verificationStatus === 'REJECTED') {
+      throw new ApiError(
+        403,
+        'Your store application was rejected. Cannot create batches.',
+        'STORE_REJECTED'
+      );
+    }
+    const isApproved =
+      store.verificationStatus === 'APPROVED' || sellerUser.verificationStatus === 'APPROVED';
+    if (!isApproved) {
+      throw new ApiError(
+        403,
+        'Your store application is pending admin approval. Cannot create batches.',
+        'SELLER_NOT_APPROVED'
+      );
+    }
   }
 
   // Verify Product exists and belongs to this Seller's Store
@@ -180,6 +203,25 @@ export const createBatchService = async (sellerUser, payload) => {
         }
       })
       .catch((err) => console.error('[Notification] Wishlist availability query error:', err));
+  }
+
+  // Invalidate affected product & marketplace deals caches
+  await invalidateProductCache(product._id);
+
+  // Real-Time Socket.IO Notification to Store
+  try {
+    emitToStore(store._id, SOCKET_EVENTS.INVENTORY_CHANGED, {
+      batchId: batch._id,
+      productId: product._id,
+      storeId: store._id,
+      batchNumber: batch.batchNumber,
+      quantity: batch.quantity,
+      status: batch.status,
+      changeType: 'BATCH_CREATED',
+      timestamp: new Date().toISOString(),
+    });
+  } catch (sockErr) {
+    console.error('[Socket.IO] Error emitting batch created event:', sockErr);
   }
 
   return batch.populate([
@@ -348,6 +390,9 @@ export const updateBatchService = async (batchId, requesterUser, payload) => {
   syncBatchDynamicState(batch);
   await batch.save();
 
+  // Invalidate affected product & marketplace deals caches
+  await invalidateProductCache(batch.productId);
+
   return batch;
 };
 
@@ -410,6 +455,26 @@ export const adjustBatchStockService = async (batchId, requesterUser, payload) =
     performedBy: requesterUser._id,
     performedByRole: requesterUser.role,
   });
+
+  // Invalidate affected product & marketplace deals caches
+  await invalidateProductCache(batch.productId);
+
+  // Real-Time Socket.IO Notification to Store
+  try {
+    emitToStore(batch.storeId, SOCKET_EVENTS.INVENTORY_CHANGED, {
+      batchId: batch._id,
+      productId: batch.productId,
+      storeId: batch.storeId,
+      batchNumber: batch.batchNumber,
+      quantity: batch.quantity,
+      status: batch.status,
+      changeType: 'STOCK_ADJUSTMENT',
+      quantityDelta,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (sockErr) {
+    console.error('[Socket.IO] Error emitting stock adjustment event:', sockErr);
+  }
 
   return {
     batch,

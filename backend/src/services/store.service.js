@@ -2,6 +2,10 @@ import mongoose from 'mongoose';
 import { Store } from '../models/store.model.js';
 import { User, USER_ROLES, VERIFICATION_STATUS } from '../models/user.model.js';
 import { ApiError } from '../utils/ApiError.js';
+import {
+  notifySellerStoreApproved,
+  notifySellerStoreRejected,
+} from './notification.service.js';
 
 /**
  * Helper to verify that a SELLER owns the target store, or requester is ADMIN.
@@ -326,6 +330,25 @@ export const verifyStoreByAdminService = async (storeId, adminUser, { verificati
       'sellerProfile.rejectionReason': store.verificationAudit.rejectionReason,
     },
   });
+
+  // Dispatch seller notification
+  const storeName = store.storeName || 'Your Store';
+  if (verificationStatus === VERIFICATION_STATUS.APPROVED) {
+    await notifySellerStoreApproved({
+      sellerId: store.ownerId,
+      storeName,
+    }).catch((err) => {
+      console.error('[StoreService] Store approval notification failed:', err.message);
+    });
+  } else if (verificationStatus === VERIFICATION_STATUS.REJECTED) {
+    await notifySellerStoreRejected({
+      sellerId: store.ownerId,
+      storeName,
+      rejectionReason,
+    }).catch((err) => {
+      console.error('[StoreService] Store rejection notification failed:', err.message);
+    });
+  }
 
   return store;
 };

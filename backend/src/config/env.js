@@ -20,6 +20,11 @@ export const env = {
   JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || 'nearexpiry_refresh_token_secret_key_2026',
   JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || '30d',
   BCRYPT_SALT_ROUNDS: parseInt(process.env.BCRYPT_SALT_ROUNDS || '12', 10),
+  REDIS_ENABLED: process.env.REDIS_ENABLED === 'true',
+  REDIS_URL: process.env.REDIS_URL || 'redis://127.0.0.1:6379',
+  REDIS_HOST: process.env.REDIS_HOST || '127.0.0.1',
+  REDIS_PORT: parseInt(process.env.REDIS_PORT || '6379', 10),
+  REDIS_PASSWORD: process.env.REDIS_PASSWORD || undefined,
   isDevelopment: (process.env.NODE_ENV || 'development') === 'development',
   isProduction: process.env.NODE_ENV === 'production',
 };

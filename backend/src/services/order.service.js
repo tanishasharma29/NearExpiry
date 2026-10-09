@@ -17,6 +17,8 @@ import {
   notifySellerLowStock,
 } from './notification.service.js';
 import { generateBillReceiptService } from './billing.service.js';
+import { emitToUser, emitToStore } from '../config/socket.js';
+import { SOCKET_EVENTS } from '../constants/socketEvents.js';
 
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 
@@ -267,6 +269,26 @@ export const createOrderService = async (customerId, payload, userActor) => {
             }).catch((err) => console.error('[Notification] Low stock notify error:', err));
           }
         }
+
+        // Real-Time Socket.IO Notifications
+        emitToStore(store._id, SOCKET_EVENTS.SELLER_ORDER_NEW, {
+          orderId: createdOrder._id,
+          orderNumber: createdOrder.orderNumber,
+          storeId: store._id,
+          finalTotal: createdOrder.pricingSummary?.finalTotal || 0,
+          itemCount: createdOrder.items?.length || 0,
+          fulfillmentType: createdOrder.fulfillmentType,
+          createdAt: createdOrder.createdAt,
+        });
+
+        emitToUser(customerId, SOCKET_EVENTS.CUSTOMER_ORDER_STATUS, {
+          orderId: createdOrder._id,
+          orderNumber: createdOrder.orderNumber,
+          status: createdOrder.status,
+          storeId: store._id,
+          note: 'Order placed successfully',
+          updatedAt: createdOrder.createdAt,
+        });
       }
     } catch (notifErr) {
       console.error('[Notification] Error dispatching order notifications:', notifErr);
@@ -519,6 +541,16 @@ export const updateOrderStatusService = async (orderId, newStatus, userActor, no
         verifiedBy: userActor.name || userActor.email,
       }).catch((billErr) => console.error('[Billing] Order delivery bill generation error:', billErr));
     }
+
+    // Real-Time Socket.IO Notification to Customer
+    emitToUser(order.customerId, SOCKET_EVENTS.CUSTOMER_ORDER_STATUS, {
+      orderId: order._id,
+      orderNumber: order.orderNumber,
+      status: newStatus,
+      storeId: store?._id || order.storeId,
+      note: note || `Order status updated to ${newStatus}`,
+      updatedAt: new Date().toISOString(),
+    });
   } catch (notifErr) {
     console.error('[Notification] Error dispatching status update notification:', notifErr);
   }
@@ -680,5 +712,45 @@ export const cancelOrderService = async (orderId, userActor, reason) => {
   });
 
   await order.save();
+
+  // Real-Time Socket.IO Notifications
+  try {
+    emitToUser(order.customerId, SOCKET_EVENTS.CUSTOMER_ORDER_STATUS, {
+      orderId: order._id,
+      orderNumber: order.orderNumber,
+      status: ORDER_STATUS.CANCELLED,
+      storeId: order.storeId?._id || order.storeId,
+      note: `Order cancelled. Reason: ${reason}`,
+      updatedAt: new Date().toISOString(),
+    });
+
+    emitToStore(order.storeId?._id || order.storeId, SOCKET_EVENTS.CUSTOMER_ORDER_STATUS, {
+      orderId: order._id,
+      orderNumber: order.orderNumber,
+      status: ORDER_STATUS.CANCELLED,
+      storeId: order.storeId?._id || order.storeId,
+      note: `Order cancelled. Reason: ${reason}`,
+      updatedAt: new Date().toISOString(),
+    });
+
+    if (restockedBatches && restockedBatches.length > 0) {
+      for (const b of restockedBatches) {
+        emitToStore(order.storeId?._id || order.storeId, SOCKET_EVENTS.INVENTORY_CHANGED, {
+          batchId: b.batchId,
+          productId: b.productId,
+          storeId: order.storeId?._id || order.storeId,
+          batchNumber: b.batchNumber,
+          quantity: b.newQuantity,
+          restockedQuantity: b.restockedQuantity,
+          status: b.isExpired ? 'EXPIRED' : 'RESTOCKED',
+          changeType: 'ORDER_CANCELLATION_RESTOCK',
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }
+  } catch (sockErr) {
+    console.error('[Socket.IO] Error emitting order cancellation events:', sockErr);
+  }
+
   return order;
 };

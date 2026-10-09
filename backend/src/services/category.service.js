@@ -3,6 +3,12 @@ import { Category, CATEGORY_STATUS } from '../models/category.model.js';
 import { Product } from '../models/product.model.js';
 import { USER_ROLES } from '../models/user.model.js';
 import { ApiError } from '../utils/ApiError.js';
+import {
+  remember,
+  buildCacheKey,
+  invalidateCategoryCache,
+  CACHE_TTL,
+} from '../utils/cache.util.js';
 
 /**
  * Admin creates a new product Category.
@@ -27,6 +33,9 @@ export const createCategoryService = async (adminUserId, payload) => {
     status: payload.status || CATEGORY_STATUS.ACTIVE,
     createdBy: adminUserId,
   });
+
+  // Invalidate public category lists & affected product lists
+  await invalidateCategoryCache(category._id);
 
   return category;
 };
@@ -71,38 +80,77 @@ export const listCategoriesService = async (query = {}, requesterUser = null) =>
 
   const isAdmin = requesterUser && requesterUser.role === USER_ROLES.ADMIN;
 
-  const filter = {};
-  if (isAdmin && query.status) {
-    filter.status = query.status;
-  } else if (!isAdmin) {
-    filter.status = CATEGORY_STATUS.ACTIVE;
+  // Privileged admin requests bypass shared public cache
+  if (isAdmin) {
+    const filter = {};
+    if (query.status) {
+      filter.status = query.status;
+    }
+    if (query.search) {
+      filter.name = { $regex: query.search.trim(), $options: 'i' };
+    }
+    const allowedSortFields = ['name', 'createdAt', 'status'];
+    const sortBy = allowedSortFields.includes(query.sortBy) ? query.sortBy : 'name';
+    const sortOrder = query.sortOrder === 'desc' ? -1 : 1;
+
+    const [categories, total] = await Promise.all([
+      Category.find(filter)
+        .sort({ [sortBy]: sortOrder })
+        .skip(skip)
+        .limit(limit),
+      Category.countDocuments(filter),
+    ]);
+
+    return {
+      categories,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit) || 1,
+      },
+    };
   }
 
-  if (query.search) {
-    filter.name = { $regex: query.search.trim(), $options: 'i' };
-  }
+  // Public/Customer requests: Cache-Aside with 1-hour TTL
+  const cacheKey = buildCacheKey('categories', 'list', {
+    page,
+    limit,
+    sortBy: query.sortBy || 'name',
+    sortOrder: query.sortOrder || 'asc',
+    search: query.search ? query.search.trim() : '',
+  });
 
-  const allowedSortFields = ['name', 'createdAt', 'status'];
-  const sortBy = allowedSortFields.includes(query.sortBy) ? query.sortBy : 'name';
-  const sortOrder = query.sortOrder === 'desc' ? -1 : 1;
+  const { data } = await remember(cacheKey, CACHE_TTL.CATEGORIES_LIST, async () => {
+    const filter = { status: CATEGORY_STATUS.ACTIVE };
+    if (query.search) {
+      filter.name = { $regex: query.search.trim(), $options: 'i' };
+    }
+    const allowedSortFields = ['name', 'createdAt', 'status'];
+    const sortBy = allowedSortFields.includes(query.sortBy) ? query.sortBy : 'name';
+    const sortOrder = query.sortOrder === 'desc' ? -1 : 1;
 
-  const [categories, total] = await Promise.all([
-    Category.find(filter)
-      .sort({ [sortBy]: sortOrder })
-      .skip(skip)
-      .limit(limit),
-    Category.countDocuments(filter),
-  ]);
+    const [categories, total] = await Promise.all([
+      Category.find(filter)
+        .sort({ [sortBy]: sortOrder })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Category.countDocuments(filter),
+    ]);
 
-  return {
-    categories,
-    pagination: {
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit) || 1,
-    },
-  };
+    return {
+      categories,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit) || 1,
+      },
+    };
+  });
+
+  return data;
 };
 
 /**
@@ -113,17 +161,30 @@ export const getCategoryByIdService = async (categoryId, requesterUser = null) =
     throw new ApiError(400, 'Invalid category ID.', 'INVALID_CATEGORY_ID');
   }
 
-  const category = await Category.findById(categoryId);
-  if (!category) {
-    throw new ApiError(404, 'Category not found.', 'CATEGORY_NOT_FOUND');
-  }
-
   const isAdmin = requesterUser && requesterUser.role === USER_ROLES.ADMIN;
-  if (!isAdmin && category.status !== CATEGORY_STATUS.ACTIVE) {
-    throw new ApiError(404, 'Category is inactive or unavailable.', 'CATEGORY_INACTIVE');
+
+  if (isAdmin) {
+    const category = await Category.findById(categoryId);
+    if (!category) {
+      throw new ApiError(404, 'Category not found.', 'CATEGORY_NOT_FOUND');
+    }
+    return category;
   }
 
-  return category;
+  // Public/Customer request: Cache-Aside
+  const cacheKey = buildCacheKey('categories', `detail:${categoryId}`);
+  const { data } = await remember(cacheKey, CACHE_TTL.CATEGORY_DETAIL, async () => {
+    const category = await Category.findById(categoryId).lean();
+    if (!category) {
+      throw new ApiError(404, 'Category not found.', 'CATEGORY_NOT_FOUND');
+    }
+    if (category.status !== CATEGORY_STATUS.ACTIVE) {
+      throw new ApiError(404, 'Category is inactive or unavailable.', 'CATEGORY_INACTIVE');
+    }
+    return category;
+  });
+
+  return data;
 };
 
 /**
@@ -154,6 +215,10 @@ export const updateCategoryService = async (categoryId, payload) => {
   if (payload.status !== undefined) category.status = payload.status;
 
   await category.save();
+
+  // Invalidate affected category and product caches
+  await invalidateCategoryCache(categoryId);
+
   return category;
 };
 
@@ -171,21 +236,28 @@ export const deleteCategoryService = async (categoryId) => {
   }
 
   const linkedProductsCount = await Product.countDocuments({ category: category._id });
+  let result;
+
   if (linkedProductsCount > 0) {
     category.status = CATEGORY_STATUS.INACTIVE;
     await category.save();
-    return {
+    result = {
       category,
       deleted: false,
       deactivated: true,
       message: `Category is linked to ${linkedProductsCount} product(s) and was marked INACTIVE instead of hard-deleted.`,
     };
+  } else {
+    await category.deleteOne();
+    result = {
+      deleted: true,
+      deactivated: false,
+      message: 'Category permanently deleted.',
+    };
   }
 
-  await category.deleteOne();
-  return {
-    deleted: true,
-    deactivated: false,
-    message: 'Category permanently deleted.',
-  };
+  // Invalidate affected category and product caches
+  await invalidateCategoryCache(categoryId);
+
+  return result;
 };

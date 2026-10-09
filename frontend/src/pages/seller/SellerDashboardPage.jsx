@@ -18,13 +18,16 @@ import {
   BarChart3,
   Sparkles,
   ShieldCheck,
+  ShieldAlert,
   Calendar,
   Store,
   RefreshCw,
+  Lock,
 } from 'lucide-react';
 import { analyticsService } from '../../services/analyticsService';
 import { orderService } from '../../services/orderService';
 import { batchService } from '../../services/batchService';
+import { sellerService } from '../../services/sellerService';
 import { useAuth } from '../../context/AuthContext';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import {
@@ -41,6 +44,7 @@ export const SellerDashboardPage = () => {
   const [analytics, setAnalytics] = useState(null);
   const [recentOrders, setRecentOrders] = useState([]);
   const [batches, setBatches] = useState([]);
+  const [verificationData, setVerificationData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -49,7 +53,7 @@ export const SellerDashboardPage = () => {
       if (isManualRefresh) setRefreshing(true);
       else setLoading(true);
 
-      const [anData, ordData, batchData] = await Promise.all([
+      const [anData, ordData, batchData, verData] = await Promise.all([
         analyticsService.getSellerAnalytics('30d').catch((err) => {
           console.warn('Analytics unavailable or empty', err);
           return null;
@@ -62,11 +66,18 @@ export const SellerDashboardPage = () => {
           console.warn('Batches unavailable or empty', err);
           return { batches: [] };
         }),
+        sellerService.getVerificationStatus().catch((err) => {
+          console.warn('Verification status unavailable', err);
+          return null;
+        }),
       ]);
 
       setAnalytics(anData);
       setRecentOrders(ordData?.orders || []);
       setBatches(batchData?.batches || []);
+      if (verData) {
+        setVerificationData(verData?.data || verData);
+      }
     } catch (err) {
       console.error('Failed to load merchant dashboard', err);
     } finally {
@@ -169,6 +180,27 @@ export const SellerDashboardPage = () => {
     { label: 'Store Analytics', path: '/seller/analytics', icon: BarChart3, count: 'Recharts reports' },
   ];
 
+  const effectiveStatus =
+    verificationData?.verificationStatus ||
+    user?.verificationStatus ||
+    user?.store?.verificationStatus ||
+    'PENDING';
+
+  const isApproved =
+    verificationData?.isApproved ??
+    (effectiveStatus === 'APPROVED' || user?.isApproved === true);
+
+  const isRejected =
+    verificationData?.isRejected ??
+    (effectiveStatus === 'REJECTED');
+
+  const isPending = !isApproved && !isRejected;
+
+  const rejectionReason =
+    verificationData?.rejectionReason ||
+    user?.sellerProfile?.rejectionReason ||
+    null;
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* 1. Dashboard Command Center Header */}
@@ -189,32 +221,127 @@ export const SellerDashboardPage = () => {
               <span className="hidden sm:inline">Sync</span>
             </button>
 
-            <Link
-              to="/seller/products"
-              className="px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
-            >
-              <PlusCircle className="w-4 h-4 text-emerald-400" />
-              <span>+ Add Product</span>
-            </Link>
+            {isApproved ? (
+              <>
+                <Link
+                  to="/seller/products"
+                  className="px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+                >
+                  <PlusCircle className="w-4 h-4 text-emerald-400" />
+                  <span>+ Add Product</span>
+                </Link>
 
-            <Link
-              to="/seller/batches"
-              className="px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
-            >
-              <Layers className="w-4 h-4" />
-              <span>Register Batch</span>
-            </Link>
+                <Link
+                  to="/seller/batches"
+                  className="px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+                >
+                  <Layers className="w-4 h-4" />
+                  <span>Register Batch</span>
+                </Link>
 
-            <Link
-              to="/seller/orders"
-              className="px-3.5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
-            >
-              <QrCode className="w-4 h-4" />
-              <span>Scan Pickup QR</span>
-            </Link>
+                <Link
+                  to="/seller/orders"
+                  className="px-3.5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+                >
+                  <QrCode className="w-4 h-4" />
+                  <span>Scan Pickup QR</span>
+                </Link>
+              </>
+            ) : (
+              <button
+                disabled
+                className="px-3.5 py-2.5 bg-slate-200 text-slate-500 rounded-xl text-xs font-semibold cursor-not-allowed flex items-center gap-1.5"
+                title="Store operations locked until compliance approval"
+              >
+                <Lock className="w-4 h-4 text-slate-400" />
+                <span>Operations Locked</span>
+              </button>
+            )}
           </div>
         }
       />
+
+      {/* Verification Status Experience Banner */}
+      {isPending && (
+        <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-start gap-3.5">
+            <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-700 flex-shrink-0 mt-0.5">
+              <Clock className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="font-bold text-sm sm:text-base text-amber-950">
+                  Your store application is under review.
+                </h3>
+                <span className="px-2.5 py-0.5 text-[10px] font-extrabold uppercase rounded-full bg-amber-200/80 text-amber-900 border border-amber-300">
+                  Pending Review
+                </span>
+              </div>
+              <p className="text-xs text-amber-800 leading-relaxed max-w-2xl">
+                Our compliance team is verifying your retail documents and KYC permits. Operational features (product creation, batch listing, inventory changes, and order processing) will be automatically unlocked upon approval.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-center">
+            <button
+              onClick={() => fetchDashboardData(true)}
+              className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+              <span>Check Status</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {isRejected && (
+        <div className="p-5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-start gap-3.5">
+            <div className="p-2.5 rounded-xl bg-rose-500/20 text-rose-700 flex-shrink-0 mt-0.5">
+              <ShieldAlert className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="font-bold text-sm sm:text-base text-rose-950">
+                  Your store application was rejected.
+                </h3>
+                <span className="px-2.5 py-0.5 text-[10px] font-extrabold uppercase rounded-full bg-rose-200/80 text-rose-900 border border-rose-300">
+                  Application Rejected
+                </span>
+              </div>
+              <p className="text-xs text-rose-800 leading-relaxed max-w-2xl">
+                {rejectionReason
+                  ? `Reason: ${rejectionReason}. Please review your application status and contact support if you need clarification.`
+                  : 'Your store application has been rejected. Please review your application status and contact support if you need clarification.'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-center">
+            <Link
+              to="/profile"
+              className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-2xs"
+            >
+              Review Profile
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {isApproved && (
+        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-950 flex items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-700 flex-shrink-0">
+              <ShieldCheck className="w-4 h-4" />
+            </div>
+            <div className="text-xs font-semibold text-emerald-900">
+              Your store has been approved. Store management is available.
+            </div>
+          </div>
+          <span className="hidden sm:inline-flex px-2 py-0.5 text-[10px] font-extrabold uppercase rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+            Verified & Active
+          </span>
+        </div>
+      )}
 
       {/* 2. Operational Inventory KPI Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">

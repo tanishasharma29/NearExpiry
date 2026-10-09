@@ -5,6 +5,7 @@ import {
   listProductsService,
   listSellerOwnProductsService,
   getProductByIdService,
+  getPopularProductsService,
   updateProductService,
   deleteProductService,
 } from '../services/product.service.js';
@@ -44,6 +45,19 @@ export const listSellerOwnProducts = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(new ApiResponse(200, 'Seller products fetched successfully', result));
+});
+
+/**
+ * @desc    Get Top-Selling / Popular Products with Caching (Public)
+ * @route   GET /api/v1/products/popular
+ * @access  Public
+ */
+export const getPopularProducts = asyncHandler(async (req, res) => {
+  const limit = req.query.limit || 10;
+  const products = await getPopularProductsService(limit);
+  return res
+    .status(200)
+    .json(new ApiResponse(200, 'Popular products fetched successfully', { products }));
 });
 
 /**

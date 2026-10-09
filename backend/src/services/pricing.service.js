@@ -8,6 +8,7 @@ import {
   computeBatchStatus,
   isBatchPurchasable,
 } from '../utils/shelfLife.js';
+import { invalidateProductCache } from '../utils/cache.util.js';
 
 /**
  * Pure Dynamic Pricing Algorithm.
@@ -219,6 +220,9 @@ export const applyDynamicPricingToBatchService = async (
       triggerSource,
       triggeredBy,
     });
+
+    // Invalidate affected product and marketplace listings
+    await invalidateProductCache(batch.productId);
   }
 
   return {
@@ -268,6 +272,10 @@ export const recalculateAllBatchesPricingService = async ({
       batchNumber: batch.batchNumber,
       ...pricingResult,
     });
+  }
+
+  if (updatedCount > 0) {
+    await invalidateProductCache();
   }
 
   return {

@@ -819,4 +819,131 @@ describe('NearExpiry Complaint & Dispute Resolution Suite (Phase 3)', () => {
     const resolvedEvent = freshComplaint.timeline.find((t) => t.action === 'COMPLAINT_RESOLVED');
     assert.equal(resolvedEvent.performerRole, 'ADMIN');
   });
+
+  // TEST 23: SEC-22-F01: Rejects javascript: evidence URLs on complaint creation
+  it('23. SEC-22-F01: Customer creates complaint with javascript: evidence URL -> FAIL (400 VALIDATION_ERROR)', async () => {
+    const res = await fetch(`${baseUrl}/complaints`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${customer1Token}`,
+      },
+      body: JSON.stringify({
+        orderId: order1Doc._id.toString(),
+        category: COMPLAINT_CATEGORY.DAMAGED_PRODUCT,
+        subject: 'Attempting javascript URI in evidence',
+        description: 'Should be rejected by Zod schema before processing.',
+        evidenceUrls: ['javascript:alert(1)'],
+      }),
+    });
+
+    const body = await res.json();
+    assert.equal(res.status, 400);
+    assert.equal(body.errorCode, 'VALIDATION_ERROR');
+    assert.ok(
+      body.errors?.some((e) => e.field.includes('evidenceUrls')),
+      'Validation errors must include evidenceUrls issue'
+    );
+  });
+
+  // TEST 24: SEC-22-F01: Rejects data: and file: evidence URLs on complaint creation
+  it('24. SEC-22-F01: Customer creates complaint with data: or file: evidence URL -> FAIL (400 VALIDATION_ERROR)', async () => {
+    const res = await fetch(`${baseUrl}/complaints`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${customer1Token}`,
+      },
+      body: JSON.stringify({
+        orderId: order1Doc._id.toString(),
+        category: COMPLAINT_CATEGORY.DAMAGED_PRODUCT,
+        subject: 'Attempting file URI in evidence',
+        description: 'Should be rejected by Zod schema before processing.',
+        evidenceUrls: ['file:///etc/passwd'],
+      }),
+    });
+
+    const body = await res.json();
+    assert.equal(res.status, 400);
+    assert.equal(body.errorCode, 'VALIDATION_ERROR');
+  });
+
+  // TEST 25: SEC-22-F01: Rejects mixed array with valid and invalid evidence URLs
+  it('25. SEC-22-F01: Mixed array with valid HTTPS and invalid scheme -> FAIL (400 VALIDATION_ERROR)', async () => {
+    const res = await fetch(`${baseUrl}/complaints`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${customer1Token}`,
+      },
+      body: JSON.stringify({
+        orderId: order1Doc._id.toString(),
+        category: COMPLAINT_CATEGORY.DAMAGED_PRODUCT,
+        subject: 'Attempting mixed valid and invalid URLs',
+        description: 'Array element 1 is valid, element 2 is malicious.',
+        evidenceUrls: ['https://example.com/valid.jpg', 'data:text/html;base64,PHNjcmlwdD4='],
+      }),
+    });
+
+    const body = await res.json();
+    assert.equal(res.status, 400);
+    assert.equal(body.errorCode, 'VALIDATION_ERROR');
+  });
+
+  // TEST 26: SEC-22-F01: Customer reply rejects javascript: attachment URL
+  it('26. SEC-22-F01: Customer reply rejects javascript: attachment URL -> FAIL (400 VALIDATION_ERROR)', async () => {
+    const res = await fetch(`${baseUrl}/complaints/${complaint1Doc._id}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${customer1Token}`,
+      },
+      body: JSON.stringify({
+        message: 'Customer reply with malicious attachment',
+        attachments: ['javascript:void(0)'],
+      }),
+    });
+
+    const body = await res.json();
+    assert.equal(res.status, 400);
+    assert.equal(body.errorCode, 'VALIDATION_ERROR');
+  });
+
+  // TEST 27: SEC-22-F01: Admin message rejects non-HTTP/HTTPS attachment URL
+  it('27. SEC-22-F01: Admin message rejects non-HTTP/HTTPS attachment URL -> FAIL (400 VALIDATION_ERROR)', async () => {
+    const res = await fetch(`${baseUrl}/admin/complaints/${complaint1Doc._id}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify({
+        message: 'Admin response with invalid attachment scheme',
+        attachments: ['file:///root/secret.txt'],
+      }),
+    });
+
+    const body = await res.json();
+    assert.equal(res.status, 400);
+    assert.equal(body.errorCode, 'VALIDATION_ERROR');
+  });
+
+  // TEST 28: SEC-22-F01: Customer reply accepts valid HTTPS attachment URL
+  it('28. SEC-22-F01: Customer reply accepts valid HTTPS attachment URL -> SUCCESS (200)', async () => {
+    const res = await fetch(`${baseUrl}/complaints/${complaint1Doc._id}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${customer1Token}`,
+      },
+      body: JSON.stringify({
+        message: 'Customer adds clear photo proof',
+        attachments: ['https://cdn.example.com/clear_damaged_bottle.jpg'],
+      }),
+    });
+
+    const body = await res.json();
+    assert.equal(res.status, 200);
+    assert.equal(body.success, true);
+  });
 });

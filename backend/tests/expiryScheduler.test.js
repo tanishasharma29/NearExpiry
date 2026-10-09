@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import http from 'http';
 import app from '../src/app.js';
 import { connectDB, disconnectDB } from '../src/config/db.js';
+import { Store } from '../src/models/store.model.js';
 import { resetDefaultPriceRulesService } from '../src/services/priceRule.service.js';
 
 describe('NearExpiry node-cron Expiry-Processing Scheduler & Alert Engine', () => {
@@ -54,7 +55,7 @@ describe('NearExpiry node-cron Expiry-Processing Scheduler & Alert Engine', () =
     });
     sellerToken = (await sRes.json()).data.token;
 
-    await fetch(`${baseUrl}/stores`, {
+    const stRes = await fetch(`${baseUrl}/stores`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sellerToken}` },
       body: JSON.stringify({
@@ -65,6 +66,8 @@ describe('NearExpiry node-cron Expiry-Processing Scheduler & Alert Engine', () =
         longitude: 77.6245,
       }),
     });
+    const stData = await stRes.json();
+    await Store.findByIdAndUpdate(stData.data.store._id, { verificationStatus: 'APPROVED', isActive: true });
 
     const prodRes = await fetch(`${baseUrl}/products`, {
       method: 'POST',

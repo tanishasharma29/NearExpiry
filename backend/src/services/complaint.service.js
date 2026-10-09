@@ -17,6 +17,8 @@ import { refundPaymentService } from './payment.service.js';
 import { cancelOrderService } from './order.service.js';
 import { defaultDispatcher } from './notification/notification.dispatcher.js';
 import { NOTIFICATION_TYPES } from '../models/notification.model.js';
+import { emitToAdmin } from '../config/socket.js';
+import { SOCKET_EVENTS } from '../constants/socketEvents.js';
 
 /**
  * Valid state transitions for Complaint status machine
@@ -179,6 +181,20 @@ export const createCustomerComplaintService = async (userActor, data) => {
     complaint,
     dedupSuffix: 'CREATED',
   });
+
+  // Real-Time Socket.IO Alert to Admins
+  try {
+    emitToAdmin(SOCKET_EVENTS.ADMIN_ALERT, {
+      alertType: 'NEW_COMPLAINT_FILED',
+      title: `New Dispute: ${complaint.complaintNumber}`,
+      message: `Complaint filed by customer for order #${order.orderNumber} under category ${category}.`,
+      severity: 'WARNING',
+      entityId: complaint._id,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (sockErr) {
+    console.error('[Socket.IO] Error emitting complaint filed admin alert:', sockErr);
+  }
 
   return complaint;
 };

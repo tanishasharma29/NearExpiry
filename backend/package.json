@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "node --test --test-concurrency=1 tests/dynamicPricing.test.js tests/expiryScheduler.test.js tests/marketplace.test.js tests/cart.test.js tests/order.test.js tests/payment.test.js tests/qrVerification.test.js tests/notification.test.js tests/admin.test.js tests/analytics.test.js tests/complaint.test.js"
+    "test": "node --test --test-concurrency=1 tests/dynamicPricing.test.js tests/expiryScheduler.test.js tests/marketplace.test.js tests/cart.test.js tests/order.test.js tests/payment.test.js tests/qrVerification.test.js tests/notification.test.js tests/admin.test.js tests/analytics.test.js tests/complaint.test.js tests/redisCache.test.js tests/socket.test.js"
   },
   "keywords": [
     "nearexpiry",
@@ -27,17 +27,20 @@
     "express": "^4.21.1",
     "express-rate-limit": "^7.4.1",
     "helmet": "^8.0.0",
+    "ioredis": "^6.0.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^8.8.1",
     "morgan": "^1.10.0",
     "node-cron": "^4.6.0",
     "nodemailer": "^10.0.13",
     "qrcode": "^1.5.4",
+    "socket.io": "^4.8.4",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "jest": "^29.7.0",
     "nodemon": "^3.1.7",
+    "socket.io-client": "^4.8.4",
     "supertest": "^7.3.0"
   }
 }

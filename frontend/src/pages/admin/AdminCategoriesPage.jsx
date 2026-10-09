@@ -9,27 +9,22 @@ import {
   Edit3,
   Trash2,
   CheckCircle2,
-  XCircle,
   AlertTriangle,
   Tag,
   FolderTree,
   ArrowUpDown,
-  ChevronRight,
-  Hash,
-  FileText,
   Calendar,
-  ShieldCheck,
-  ShieldAlert,
-  Sparkles,
   AlertCircle,
   Copy,
   Check,
-  LayoutGrid,
-  List,
   RefreshCw,
   Info,
   Archive,
   Power,
+  ChevronLeft,
+  ChevronRight,
+  SlidersHorizontal,
+  X,
 } from 'lucide-react';
 import { adminService } from '../../services/adminService';
 import { categoryService } from '../../services/categoryService';
@@ -38,7 +33,6 @@ import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import {
   AdminPageHeader,
   AdminStatusBadge,
-  AdminFilterBar,
   AdminDetailDrawer,
   AdminEmptyState,
   AdminMotionContainer,
@@ -55,7 +49,10 @@ export const AdminCategoriesPage = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [sortBy, setSortBy] = useState('name-asc');
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'table'
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   // Selected Category Inspection Dossier (Drawer)
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -101,7 +98,6 @@ export const AdminCategoriesPage = () => {
       setError(null);
 
       const res = await adminService.getCategories();
-      // Handle array or payload wrapper { categories: [...] }
       const list = Array.isArray(res) ? res : res?.categories || res?.data || [];
       setCategories(list);
 
@@ -186,6 +182,29 @@ export const AdminCategoriesPage = () => {
         }
       });
   }, [categories, search, statusFilter, sortBy]);
+
+  // Reset to page 1 when search, filter, sort, or pageSize changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, sortBy, pageSize]);
+
+  // Pagination Calculations
+  const totalFiltered = filteredCategories.length;
+  const isAllPages = pageSize === 'all';
+  const effectivePageSize = isAllPages ? Math.max(1, totalFiltered) : Number(pageSize);
+  const totalPages = isAllPages ? 1 : Math.max(1, Math.ceil(totalFiltered / effectivePageSize));
+
+  // Current slice of categories for data table
+  const paginatedCategories = useMemo(() => {
+    if (isAllPages) return filteredCategories;
+    const start = (currentPage - 1) * effectivePageSize;
+    return filteredCategories.slice(start, start + effectivePageSize);
+  }, [filteredCategories, currentPage, effectivePageSize, isAllPages]);
+
+  const startIndex = totalFiltered === 0 ? 0 : (currentPage - 1) * effectivePageSize + 1;
+  const endIndex = isAllPages
+    ? totalFiltered
+    : Math.min(currentPage * effectivePageSize, totalFiltered);
 
   // Open Create Modal
   const handleOpenCreateModal = () => {
@@ -379,12 +398,12 @@ export const AdminCategoriesPage = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-5">
       {/* 1. Taxonomy Command Header */}
       <AdminPageHeader
-        eyebrow="MARKETPLACE TAXONOMY"
+        eyebrow="MARKETPLACE GOVERNANCE"
         title="Taxonomy & Category Master"
-        subtitle="Standardized grocery classification, catalog indexing, and SKU distribution governance across all seller stores."
+        subtitle="Manage product classification, catalog discoverability, and category availability across the marketplace."
         breadcrumbs={[
           { label: 'Platform Command', href: '/admin' },
           { label: 'Category Master' },
@@ -402,16 +421,18 @@ export const AdminCategoriesPage = () => {
               type="button"
               onClick={() => fetchCategories(true)}
               disabled={loading || refreshing}
-              className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 text-xs font-semibold rounded-xl transition shadow-sm disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 text-xs font-semibold rounded-xl transition shadow-2xs disabled:opacity-50"
               title="Refresh categories"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-purple-600' : 'text-gray-500'}`} />
+              <RefreshCw
+                className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-purple-600' : 'text-gray-500'}`}
+              />
               <span className="hidden sm:inline">Refresh</span>
             </button>
             <button
               type="button"
               onClick={handleOpenCreateModal}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold rounded-xl shadow-sm hover:shadow transition"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold rounded-xl shadow-xs transition"
             >
               <Plus className="w-4 h-4" />
               <span>Add Category</span>
@@ -433,9 +454,9 @@ export const AdminCategoriesPage = () => {
             }`}
           >
             <div className="flex items-center gap-2 min-w-0">
-              {feedback.type === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />}
-              {feedback.type === 'error' && <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />}
-              {feedback.type === 'info' && <Info className="w-4 h-4 text-blue-600 flex-shrink-0" />}
+              {feedback.type === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />}
+              {feedback.type === 'error' && <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />}
+              {feedback.type === 'info' && <Info className="w-4 h-4 text-blue-600 shrink-0" />}
               <span className="truncate">{feedback.message}</span>
             </div>
             <button
@@ -449,153 +470,192 @@ export const AdminCategoriesPage = () => {
         </AdminMotionContainer>
       )}
 
-      {/* 2. Taxonomy Health Matrix / Executive Metric Strip */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 sm:gap-4">
+      {/* 2. Top Summary Area (Slim, Information-Dense Metric Strip) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3.5">
         {/* Total Categories */}
-        <AdminMotionContainer
-          hoverEffect
-          className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200/90 shadow-sm flex items-center gap-3.5"
-        >
-          <div className="w-11 h-11 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-700 flex-shrink-0">
-            <FolderTree className="w-5 h-5" />
+        <div className="bg-white p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border border-gray-200/90 shadow-2xs flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-purple-50 text-purple-700 border border-purple-100 flex items-center justify-center shrink-0">
+            <FolderTree className="w-4 h-4" />
           </div>
           <div className="min-w-0">
-            <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Total Taxonomies</div>
-            <div className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight mt-0.5">
+            <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Total Categories</div>
+            <div className="text-lg sm:text-xl font-black text-gray-900 tracking-tight mt-0.5">
               {metrics.total}
             </div>
-            <div className="text-[10px] text-gray-400 mt-0.5">Defined platform roots</div>
           </div>
-        </AdminMotionContainer>
+        </div>
 
-        {/* Active Taxonomies */}
-        <AdminMotionContainer
-          hoverEffect
-          className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200/90 shadow-sm flex items-center gap-3.5"
-        >
-          <div className="w-11 h-11 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 flex-shrink-0">
-            <CheckCircle2 className="w-5 h-5" />
+        {/* Active Categories */}
+        <div className="bg-white p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border border-gray-200/90 shadow-2xs flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center justify-center shrink-0">
+            <CheckCircle2 className="w-4 h-4" />
           </div>
           <div className="min-w-0">
-            <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Active Status</div>
-            <div className="text-xl sm:text-2xl font-black text-emerald-700 tracking-tight mt-0.5">
+            <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Active Categories</div>
+            <div className="text-lg sm:text-xl font-black text-emerald-700 tracking-tight mt-0.5">
               {metrics.active}
             </div>
-            <div className="text-[10px] text-gray-400 mt-0.5">Available for cataloging</div>
           </div>
-        </AdminMotionContainer>
+        </div>
 
-        {/* Inactive / Staged Taxonomies */}
-        <AdminMotionContainer
-          hoverEffect
-          className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200/90 shadow-sm flex items-center gap-3.5"
-        >
-          <div className="w-11 h-11 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-600 flex-shrink-0">
-            <Archive className="w-5 h-5" />
+        {/* Inactive / Retired */}
+        <div className="bg-white p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border border-gray-200/90 shadow-2xs flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-gray-100 text-gray-600 border border-gray-200 flex items-center justify-center shrink-0">
+            <Archive className="w-4 h-4" />
           </div>
           <div className="min-w-0">
             <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Inactive / Retired</div>
-            <div className="text-xl sm:text-2xl font-black text-gray-700 tracking-tight mt-0.5">
+            <div className="text-lg sm:text-xl font-black text-gray-700 tracking-tight mt-0.5">
               {metrics.inactive}
             </div>
-            <div className="text-[10px] text-gray-400 mt-0.5">Hidden from store filters</div>
           </div>
-        </AdminMotionContainer>
+        </div>
 
         {/* Linked Catalog SKUs */}
-        <AdminMotionContainer
-          hoverEffect
-          className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200/90 shadow-sm flex items-center gap-3.5"
-        >
-          <div className="w-11 h-11 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-700 flex-shrink-0">
-            <Layers className="w-5 h-5" />
+        <div className="bg-white p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border border-gray-200/90 shadow-2xs flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-700 border border-blue-100 flex items-center justify-center shrink-0">
+            <Layers className="w-4 h-4" />
           </div>
           <div className="min-w-0">
             <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Linked Catalog SKUs</div>
-            <div className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight mt-0.5">
+            <div className="text-lg sm:text-xl font-black text-gray-900 tracking-tight mt-0.5">
               {metrics.totalProducts}
             </div>
-            <div className="text-[10px] text-gray-400 mt-0.5">Total products indexed</div>
           </div>
-        </AdminMotionContainer>
+        </div>
       </div>
 
-      {/* 3. Taxonomy Control Bar & Filter Interface */}
-      <AdminFilterBar
-        search={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="Search categories by name, slug, or description keywords..."
-        filters={[
-          {
-            id: 'status',
-            label: 'Filter by Status',
-            value: statusFilter,
-            onChange: setStatusFilter,
-            icon: Filter,
-            options: [
-              { value: '', label: 'All Statuses' },
-              { value: 'ACTIVE', label: 'Active Only' },
-              { value: 'INACTIVE', label: 'Inactive Only' },
-            ],
-          },
-          {
-            id: 'sort',
-            label: 'Sort Ordering',
-            value: sortBy,
-            onChange: setSortBy,
-            icon: ArrowUpDown,
-            options: [
-              { value: 'name-asc', label: 'Name (A to Z)' },
-              { value: 'name-desc', label: 'Name (Z to A)' },
-              { value: 'skus-desc', label: 'Highest SKU Density' },
-              { value: 'skus-asc', label: 'Lowest SKU Density' },
-              { value: 'recent', label: 'Recently Created' },
-            ],
-          },
-        ]}
-        totalResults={categories.length}
-        filteredCount={filteredCategories.length}
-        hasActiveFilters={hasActiveFilters}
-        onClear={handleClearFilters}
-        extraActions={
-          <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl border border-gray-200/80">
-            <button
-              type="button"
-              onClick={() => setViewMode('grid')}
-              className={`p-1.5 rounded-lg text-xs font-semibold transition ${
-                viewMode === 'grid'
-                  ? 'bg-white text-purple-700 shadow-xs'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-              title="Taxonomy Matrix Grid"
-              aria-label="Grid view"
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('table')}
-              className={`p-1.5 rounded-lg text-xs font-semibold transition ${
-                viewMode === 'table'
-                  ? 'bg-white text-purple-700 shadow-xs'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-              title="Compact Index Table"
-              aria-label="Table view"
-            >
-              <List className="w-3.5 h-3.5" />
-            </button>
+      {/* 3. Search, Filters & Sorting Toolbar */}
+      <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-gray-200/90 shadow-2xs space-y-3">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          {/* Search Input */}
+          <div className="relative flex-1 min-w-[240px]">
+            <Search
+              className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+              aria-hidden="true"
+            />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search category by name, slug, or description keywords..."
+              aria-label="Search categories"
+              className="w-full pl-9 pr-9 py-2 bg-gray-50/80 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-purple-600 rounded-xl text-xs font-medium text-gray-900 placeholder-gray-400 outline-none transition focus:ring-2 focus:ring-purple-100"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-500"
+                aria-label="Clear search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
-        }
-      />
 
-      {/* 4. Taxonomy Structure / Explorer Views */}
+          {/* Filter Controls Row */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Status Filter */}
+            <div className="relative flex-1 sm:flex-initial min-w-[130px]">
+              <div className="relative flex items-center">
+                <select
+                  id="category-status-filter"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  aria-label="Filter by Status"
+                  className="w-full sm:w-auto appearance-none bg-gray-50/80 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-purple-600 text-xs font-semibold text-gray-700 pl-8 pr-7 py-2 rounded-xl outline-none transition cursor-pointer focus:ring-2 focus:ring-purple-100"
+                >
+                  <option value="">All Statuses</option>
+                  <option value="ACTIVE">Active Only</option>
+                  <option value="INACTIVE">Inactive Only</option>
+                </select>
+                <Filter
+                  className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 pointer-events-none"
+                  aria-hidden="true"
+                />
+                <div className="absolute right-2.5 pointer-events-none text-gray-400 text-[10px]">
+                  ▼
+                </div>
+              </div>
+            </div>
+
+            {/* Sort Order */}
+            <div className="relative flex-1 sm:flex-initial min-w-[150px]">
+              <div className="relative flex items-center">
+                <select
+                  id="category-sort-order"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  aria-label="Sort Ordering"
+                  className="w-full sm:w-auto appearance-none bg-gray-50/80 hover:bg-gray-50 focus:bg-white border border-gray-200 focus:border-purple-600 text-xs font-semibold text-gray-700 pl-8 pr-7 py-2 rounded-xl outline-none transition cursor-pointer focus:ring-2 focus:ring-purple-100"
+                >
+                  <option value="name-asc">Name (A to Z)</option>
+                  <option value="name-desc">Name (Z to A)</option>
+                  <option value="skus-desc">Highest Catalog SKUs</option>
+                  <option value="skus-asc">Lowest Catalog SKUs</option>
+                  <option value="recent">Recently Created</option>
+                </select>
+                <ArrowUpDown
+                  className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 pointer-events-none"
+                  aria-hidden="true"
+                />
+                <div className="absolute right-2.5 pointer-events-none text-gray-400 text-[10px]">
+                  ▼
+                </div>
+              </div>
+            </div>
+
+            {/* Reset / Clear Filters */}
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-gray-600 hover:text-red-700 hover:bg-red-50 border border-gray-200 hover:border-red-200 rounded-xl transition focus:outline-none focus:ring-2 focus:ring-red-100"
+                title="Reset all active filters"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-gray-400" />
+                <span>Reset</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Counter and Page Size Info */}
+        <div className="flex items-center justify-between pt-2 border-t border-gray-100 text-[11px] text-gray-500 font-medium">
+          <div>
+            Showing <strong className="text-gray-900">{totalFiltered}</strong> of{' '}
+            <strong className="text-gray-900">{categories.length}</strong> categories
+            {hasActiveFilters && (
+              <span className="ml-2 text-purple-700 font-semibold">• Filters Active</span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-gray-400 hidden sm:inline">Rows per page:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => setPageSize(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+              className="bg-gray-50 border border-gray-200 text-gray-700 text-[11px] font-semibold rounded-lg px-2 py-0.5 outline-none cursor-pointer focus:border-purple-500"
+              aria-label="Select rows per page"
+            >
+              <option value={15}>15</option>
+              <option value={20}>20</option>
+              <option value={35}>35</option>
+              <option value={50}>50</option>
+              <option value="all">All ({categories.length})</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* 4. Taxonomy Data Table Workspace */}
       {loading ? (
-        <div className="bg-white p-16 rounded-3xl border border-gray-200/90 shadow-sm flex flex-col items-center justify-center">
+        <div className="bg-white p-16 rounded-2xl border border-gray-200/90 shadow-2xs flex flex-col items-center justify-center">
           <LoadingSpinner text="Retrieving platform taxonomies and catalog distribution..." />
         </div>
       ) : error ? (
-        <div className="bg-white p-12 rounded-3xl border border-red-200 shadow-sm text-center max-w-lg mx-auto space-y-4">
+        <div className="bg-white p-12 rounded-2xl border border-red-200 shadow-2xs text-center max-w-lg mx-auto space-y-4">
           <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mx-auto border border-red-100">
             <AlertTriangle className="w-6 h-6" />
           </div>
@@ -606,7 +666,7 @@ export const AdminCategoriesPage = () => {
           <button
             type="button"
             onClick={() => fetchCategories(false)}
-            className="px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs rounded-xl transition shadow"
+            className="px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs rounded-xl transition shadow-xs"
           >
             Retry Connection
           </button>
@@ -618,235 +678,147 @@ export const AdminCategoriesPage = () => {
           description={
             hasActiveFilters
               ? 'No platform categories match your current search criteria or status filter.'
-              : 'The marketplace taxonomy is currently empty. Initialize standard grocery categories to start indexing store products.'
+              : 'The marketplace taxonomy is currently empty. Add standard grocery categories to start indexing store products.'
           }
           actionLabel={hasActiveFilters ? 'Reset Filters' : 'Create First Category'}
           actionIcon={hasActiveFilters ? RotateCcw : Plus}
           onAction={hasActiveFilters ? handleClearFilters : handleOpenCreateModal}
         />
-      ) : viewMode === 'grid' ? (
-        /* View Mode A: Taxonomy Node Matrix (Cards) */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredCategories.map((category) => {
-            const skuPercentage = metrics.maxProducts > 0
-              ? Math.min(100, Math.round(((category.productCount || 0) / metrics.maxProducts) * 100))
-              : 0;
-
-            const isUpdating = actionLoadingId === category._id;
-
-            return (
-              <AdminMotionContainer
-                key={category._id}
-                hoverEffect
-                className={`bg-white rounded-2xl border p-5 shadow-sm transition flex flex-col justify-between ${
-                  category.status === 'ACTIVE'
-                    ? 'border-gray-200/90 hover:border-purple-300'
-                    : 'border-gray-200 bg-gray-50/50 opacity-90'
-                }`}
-              >
-                {/* Card Top: Header & Status */}
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 border ${
-                          category.status === 'ACTIVE'
-                            ? 'bg-purple-50 text-purple-700 border-purple-100'
-                            : 'bg-gray-100 text-gray-500 border-gray-200'
-                        }`}
-                      >
-                        <Tag className="w-5 h-5" />
-                      </div>
-                      <div className="min-w-0">
-                        <h3 className="font-bold text-gray-900 text-sm truncate tracking-tight">
-                          {category.name}
-                        </h3>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className="text-[10px] font-mono text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200/60 truncate max-w-[140px]">
-                            /{category.slug || 'slug'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <AdminStatusBadge status={category.status} size="sm" />
-                  </div>
-
-                  {/* Description Snippet */}
-                  <p className="text-xs text-gray-500 line-clamp-2 min-h-[2rem] leading-relaxed">
-                    {category.description || (
-                      <span className="italic text-gray-400">No operational description provided.</span>
-                    )}
-                  </p>
-
-                  {/* Catalog SKU Distribution Gauge */}
-                  <div className="bg-gray-50 rounded-xl p-2.5 border border-gray-100 space-y-1.5">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="text-gray-500 font-semibold flex items-center gap-1">
-                        <Layers className="w-3.5 h-3.5 text-gray-400" /> Catalog SKUs
-                      </span>
-                      <span className="font-extrabold text-gray-900">
-                        {category.productCount || 0}{' '}
-                        <span className="font-normal text-gray-400 text-[10px]">products</span>
-                      </span>
-                    </div>
-
-                    {/* Visual Density Meter Bar */}
-                    <div className="w-full bg-gray-200/80 rounded-full h-1.5 overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-300 ${
-                          category.productCount > 0 ? 'bg-purple-600' : 'bg-gray-300'
-                        }`}
-                        style={{ width: `${Math.max(4, skuPercentage)}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Card Bottom: Metadata & Action Controls */}
-                <div className="mt-4 pt-3.5 border-t border-gray-100 flex items-center justify-between gap-2">
-                  <div className="text-[10px] text-gray-400 flex items-center gap-1">
-                    <Calendar className="w-3 h-3 text-gray-400" />
-                    <span>{formatDate(category.createdAt)}</span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    {/* Status Toggle Button */}
-                    <button
-                      type="button"
-                      disabled={isUpdating}
-                      onClick={() => handleToggleStatus(category)}
-                      className={`p-1.5 rounded-lg text-xs font-semibold border transition ${
-                        category.status === 'ACTIVE'
-                          ? 'text-gray-500 hover:text-amber-700 hover:bg-amber-50 border-gray-200'
-                          : 'text-gray-500 hover:text-emerald-700 hover:bg-emerald-50 border-gray-200'
-                      }`}
-                      title={category.status === 'ACTIVE' ? 'Deactivate category' : 'Activate category'}
-                      aria-label="Toggle status"
-                    >
-                      <Power className={`w-3.5 h-3.5 ${isUpdating ? 'animate-spin' : ''}`} />
-                    </button>
-
-                    {/* Edit Button */}
-                    <button
-                      type="button"
-                      onClick={() => handleOpenEditModal(category)}
-                      className="p-1.5 rounded-lg text-xs font-semibold text-gray-600 hover:text-purple-700 hover:bg-purple-50 border border-gray-200 transition"
-                      title="Edit taxonomy details"
-                      aria-label="Edit category"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                    </button>
-
-                    {/* Inspect Dossier Button */}
-                    <button
-                      type="button"
-                      onClick={() => handleInspectCategory(category)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200/80 transition"
-                      title="Inspect complete dossier"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>Inspect</span>
-                    </button>
-                  </div>
-                </div>
-              </AdminMotionContainer>
-            );
-          })}
-        </div>
       ) : (
-        /* View Mode B: Compact Master Index Table */
-        <div className="bg-white rounded-2xl border border-gray-200/90 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
+        <div className="bg-white rounded-2xl border border-gray-200/90 shadow-2xs overflow-hidden">
+          {/* Desktop & Tablet High-Quality Data Table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-gray-50/80 border-b border-gray-200 text-gray-500 text-[11px] font-bold uppercase tracking-wider">
-                  <th scope="col" className="py-3 px-4">Taxonomy Name & Slug</th>
-                  <th scope="col" className="py-3 px-4">Status</th>
+                <tr className="bg-gray-50/90 border-b border-gray-200 text-gray-500 text-[11px] font-bold uppercase tracking-wider">
+                  <th scope="col" className="py-3 px-4">Category</th>
+                  <th scope="col" className="py-3 px-4">Slug</th>
                   <th scope="col" className="py-3 px-4 text-center">Catalog SKUs</th>
-                  <th scope="col" className="py-3 px-4">Description Scope</th>
-                  <th scope="col" className="py-3 px-4">Created Date</th>
+                  <th scope="col" className="py-3 px-4">Status</th>
+                  <th scope="col" className="py-3 px-4">Created</th>
                   <th scope="col" className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 font-medium">
-                {filteredCategories.map((category) => {
+                {paginatedCategories.map((category) => {
                   const isUpdating = actionLoadingId === category._id;
 
                   return (
                     <tr
                       key={category._id}
-                      className="hover:bg-purple-50/30 transition-colors duration-150 group"
+                      onClick={() => handleInspectCategory(category)}
+                      className="hover:bg-purple-50/25 transition-colors duration-150 group cursor-pointer"
                     >
-                      {/* Name & Slug */}
-                      <td className="py-3.5 px-4 min-w-[180px]">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-lg bg-purple-50 border border-purple-100 text-purple-700 flex items-center justify-center flex-shrink-0">
+                      {/* Column 1: Category Name & Icon + Snippet */}
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border transition ${
+                              category.status === 'ACTIVE'
+                                ? 'bg-purple-50 text-purple-700 border-purple-100 group-hover:border-purple-200'
+                                : 'bg-gray-100 text-gray-500 border-gray-200'
+                            }`}
+                          >
                             <Tag className="w-4 h-4" />
                           </div>
-                          <div className="min-w-0">
-                            <div className="font-bold text-gray-900 group-hover:text-purple-700 transition">
+                          <div className="min-w-0 max-w-xs sm:max-w-sm">
+                            <div className="font-bold text-gray-900 text-sm group-hover:text-purple-700 transition truncate">
                               {category.name}
                             </div>
-                            <div className="text-[10px] font-mono text-gray-400 mt-0.5">
-                              /{category.slug}
-                            </div>
+                            {category.description && (
+                              <p className="text-[11px] text-gray-400 truncate mt-0.5">
+                                {category.description}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </td>
 
-                      {/* Status */}
-                      <td className="py-3.5 px-4">
-                        <AdminStatusBadge status={category.status} size="sm" />
-                      </td>
-
-                      {/* Catalog SKUs */}
-                      <td className="py-3.5 px-4 text-center">
-                        <span className="inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-800 text-[11px]">
-                          <Layers className="w-3 h-3 text-gray-400" />
-                          {category.productCount || 0}
+                      {/* Column 2: Slug */}
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        <span className="font-mono text-[11px] text-gray-500 bg-gray-50 px-2 py-0.5 rounded border border-gray-200/70">
+                          /{category.slug}
                         </span>
                       </td>
 
-                      {/* Description */}
-                      <td className="py-3.5 px-4 max-w-xs">
-                        <p className="text-gray-500 truncate text-[11px]">
-                          {category.description || <span className="italic text-gray-300">None</span>}
-                        </p>
+                      {/* Column 3: Catalog SKUs (Real count) */}
+                      <td className="py-3 px-4 text-center whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center gap-1 font-bold px-2.5 py-0.5 rounded-full text-[11px] ${
+                            category.productCount > 0
+                              ? 'bg-purple-50 text-purple-800 border border-purple-100'
+                              : 'bg-gray-100 text-gray-500 border border-gray-200/60'
+                          }`}
+                        >
+                          <Layers className="w-3 h-3 text-purple-600" />
+                          <span>{category.productCount || 0}</span>
+                          <span className="font-normal text-[10px] text-gray-400">SKUs</span>
+                        </span>
                       </td>
 
-                      {/* Created */}
-                      <td className="py-3.5 px-4 text-gray-400 text-[11px] whitespace-nowrap">
+                      {/* Column 4: Status Badge */}
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        <AdminStatusBadge status={category.status} size="sm" />
+                      </td>
+
+                      {/* Column 5: Created Date */}
+                      <td className="py-3 px-4 text-gray-500 text-[11px] whitespace-nowrap">
                         {formatDate(category.createdAt)}
                       </td>
 
-                      {/* Actions */}
-                      <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                      {/* Column 6: Actions (Inspect, Edit, Status Toggle, Retire) */}
+                      <td
+                        className="py-3 px-4 text-right whitespace-nowrap"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex items-center justify-end gap-1">
+                          {/* Inspect */}
                           <button
                             type="button"
-                            disabled={isUpdating}
-                            onClick={() => handleToggleStatus(category)}
-                            className="p-1.5 rounded-lg text-gray-500 hover:text-amber-700 hover:bg-amber-50 border border-gray-200 transition"
-                            title={category.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+                            onClick={() => handleInspectCategory(category)}
+                            className="p-1.5 rounded-lg text-purple-700 hover:text-purple-900 hover:bg-purple-100/70 bg-purple-50 border border-purple-200/70 transition"
+                            title="Inspect category dossier"
+                            aria-label={`Inspect ${category.name}`}
                           >
-                            <Power className={`w-3.5 h-3.5 ${isUpdating ? 'animate-spin' : ''}`} />
+                            <Eye className="w-3.5 h-3.5" />
                           </button>
+
+                          {/* Edit */}
                           <button
                             type="button"
                             onClick={() => handleOpenEditModal(category)}
                             className="p-1.5 rounded-lg text-gray-600 hover:text-purple-700 hover:bg-purple-50 border border-gray-200 transition"
-                            title="Edit"
+                            title="Edit category details"
+                            aria-label={`Edit ${category.name}`}
                           >
                             <Edit3 className="w-3.5 h-3.5" />
                           </button>
+
+                          {/* Toggle Active / Inactive */}
                           <button
                             type="button"
-                            onClick={() => handleInspectCategory(category)}
-                            className="p-1.5 rounded-lg text-purple-700 hover:bg-purple-100 bg-purple-50 border border-purple-200/80 transition"
-                            title="Inspect Dossier"
+                            disabled={isUpdating}
+                            onClick={() => handleToggleStatus(category)}
+                            className={`p-1.5 rounded-lg border transition ${
+                              category.status === 'ACTIVE'
+                                ? 'text-gray-500 hover:text-amber-700 hover:bg-amber-50 border-gray-200'
+                                : 'text-gray-500 hover:text-emerald-700 hover:bg-emerald-50 border-gray-200'
+                            }`}
+                            title={category.status === 'ACTIVE' ? 'Deactivate category' : 'Activate category'}
+                            aria-label={`Toggle status for ${category.name}`}
                           >
-                            <Eye className="w-3.5 h-3.5" />
+                            <Power className={`w-3.5 h-3.5 ${isUpdating ? 'animate-spin' : ''}`} />
+                          </button>
+
+                          {/* Retire / Delete */}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenDeleteModal(category)}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 border border-gray-200 transition"
+                            title="Retire category from taxonomy"
+                            aria-label={`Retire ${category.name}`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </td>
@@ -856,10 +828,166 @@ export const AdminCategoriesPage = () => {
               </tbody>
             </table>
           </div>
+
+          {/* Mobile Card Layout for Viewports < 768px */}
+          <div className="md:hidden divide-y divide-gray-100">
+            {paginatedCategories.map((category) => {
+              const isUpdating = actionLoadingId === category._id;
+
+              return (
+                <div
+                  key={category._id}
+                  onClick={() => handleInspectCategory(category)}
+                  className="p-3.5 space-y-2.5 hover:bg-purple-50/20 transition cursor-pointer"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${
+                          category.status === 'ACTIVE'
+                            ? 'bg-purple-50 text-purple-700 border-purple-100'
+                            : 'bg-gray-100 text-gray-500 border-gray-200'
+                        }`}
+                      >
+                        <Tag className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="font-bold text-gray-900 text-sm truncate">{category.name}</h4>
+                        <div className="font-mono text-[10px] text-gray-400 truncate">/{category.slug}</div>
+                      </div>
+                    </div>
+                    <AdminStatusBadge status={category.status} size="sm" />
+                  </div>
+
+                  {category.description && (
+                    <p className="text-[11px] text-gray-500 line-clamp-2 leading-relaxed">
+                      {category.description}
+                    </p>
+                  )}
+
+                  <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1">
+                    <span className="inline-flex items-center gap-1 font-bold text-gray-800">
+                      <Layers className="w-3.5 h-3.5 text-purple-600" />
+                      <span>{category.productCount || 0} linked SKUs</span>
+                    </span>
+
+                    <span className="text-gray-400 text-[10px]">
+                      Created {formatDate(category.createdAt)}
+                    </span>
+                  </div>
+
+                  {/* Mobile Actions */}
+                  <div
+                    className="flex items-center justify-end gap-1.5 pt-2 border-t border-gray-100"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleInspectCategory(category)}
+                      className="px-2.5 py-1 rounded-lg text-xs font-bold text-purple-700 bg-purple-50 border border-purple-200 transition"
+                    >
+                      Inspect
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditModal(category)}
+                      className="p-1 rounded-lg text-gray-600 hover:bg-gray-100 border border-gray-200 transition"
+                      title="Edit"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isUpdating}
+                      onClick={() => handleToggleStatus(category)}
+                      className="p-1 rounded-lg text-gray-600 hover:bg-gray-100 border border-gray-200 transition"
+                      title="Toggle Status"
+                    >
+                      <Power className={`w-3.5 h-3.5 ${isUpdating ? 'animate-spin' : ''}`} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenDeleteModal(category)}
+                      className="p-1 rounded-lg text-red-600 hover:bg-red-50 border border-gray-200 transition"
+                      title="Retire"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 5. Client-Side Pagination Control Bar */}
+          {!isAllPages && totalPages > 1 && (
+            <div className="p-3.5 sm:p-4 bg-gray-50/60 border-t border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs">
+              <div className="text-gray-500 font-medium">
+                Showing <strong className="text-gray-900">{startIndex}</strong> to{' '}
+                <strong className="text-gray-900">{endIndex}</strong> of{' '}
+                <strong className="text-gray-900">{totalFiltered}</strong> categories
+              </div>
+
+              <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage <= 1}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-gray-700 font-bold hover:bg-gray-50 transition shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span>Previous</span>
+                </button>
+
+                <div className="flex items-center gap-1 px-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter((p) => {
+                      if (totalPages <= 7) return true;
+                      if (p === 1 || p === totalPages) return true;
+                      if (Math.abs(p - currentPage) <= 1) return true;
+                      return false;
+                    })
+                    .map((pageNumber, idx, arr) => {
+                      const prev = arr[idx - 1];
+                      const showEllipsis = prev && pageNumber - prev > 1;
+
+                      return (
+                        <React.Fragment key={pageNumber}>
+                          {showEllipsis && (
+                            <span className="text-gray-400 px-1 text-xs">...</span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setCurrentPage(pageNumber)}
+                            className={`w-7 h-7 rounded-lg text-xs font-bold transition ${
+                              currentPage === pageNumber
+                                ? 'bg-purple-700 text-white shadow-2xs'
+                                : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            {pageNumber}
+                          </button>
+                        </React.Fragment>
+                      );
+                    })}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage >= totalPages}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-gray-700 font-bold hover:bg-gray-50 transition shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <span>Next</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* 5. Category Inspection Dossier (Drawer) */}
+      {/* 6. Category Inspection Dossier (Drawer) */}
       <AdminDetailDrawer
         isOpen={drawerOpen}
         onClose={() => setDrawerOpen(false)}
@@ -900,7 +1028,7 @@ export const AdminCategoriesPage = () => {
                   onClick={() => {
                     handleOpenEditModal(selectedCategory);
                   }}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs rounded-xl shadow-sm transition"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs rounded-xl shadow-xs transition"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
                   <span>Edit Category</span>
@@ -911,7 +1039,7 @@ export const AdminCategoriesPage = () => {
         }
       >
         {selectedCategory && (
-          <div className="space-y-6 text-xs">
+          <div className="space-y-5 text-xs">
             {/* Identity & Status Card */}
             <div className="bg-gray-50/80 p-4 rounded-2xl border border-gray-200/90 space-y-3.5">
               <div className="flex items-center justify-between">
@@ -950,7 +1078,7 @@ export const AdminCategoriesPage = () => {
             </div>
 
             {/* Catalog Density & SKU Distribution */}
-            <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs space-y-3">
+            <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
                   Catalog Distribution
@@ -990,7 +1118,7 @@ export const AdminCategoriesPage = () => {
             </div>
 
             {/* Description & Scope */}
-            <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs space-y-2">
+            <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs space-y-2">
               <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
                 Operational Description
               </span>
@@ -1024,7 +1152,7 @@ export const AdminCategoriesPage = () => {
             {/* Safety Notice regarding Category Deactivation */}
             <div className="p-3.5 rounded-xl bg-amber-50/80 border border-amber-200/90 text-amber-900 space-y-1 text-[11px]">
               <div className="flex items-center gap-1.5 font-bold">
-                <AlertCircle className="w-3.5 h-3.5 text-amber-700 flex-shrink-0" />
+                <AlertCircle className="w-3.5 h-3.5 text-amber-700 shrink-0" />
                 <span>Taxonomy Integrity Protection</span>
               </div>
               <p className="text-amber-800 leading-relaxed">
@@ -1035,7 +1163,7 @@ export const AdminCategoriesPage = () => {
         )}
       </AdminDetailDrawer>
 
-      {/* 6. Create Category Modal */}
+      {/* 7. Create Category Modal */}
       <Modal
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
@@ -1045,7 +1173,7 @@ export const AdminCategoriesPage = () => {
         <form onSubmit={handleCreateSubmit} className="space-y-4 text-xs">
           {formError && (
             <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-800 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{formError}</span>
             </div>
           )}
@@ -1115,7 +1243,7 @@ export const AdminCategoriesPage = () => {
             <button
               type="submit"
               disabled={submitting}
-              className="px-5 py-2 bg-purple-700 hover:bg-purple-800 text-white font-bold rounded-xl transition shadow disabled:opacity-50"
+              className="px-5 py-2 bg-purple-700 hover:bg-purple-800 text-white font-bold rounded-xl transition shadow-xs disabled:opacity-50"
             >
               {submitting ? 'Registering...' : 'Register Taxonomy'}
             </button>
@@ -1123,7 +1251,7 @@ export const AdminCategoriesPage = () => {
         </form>
       </Modal>
 
-      {/* 7. Edit Category Modal */}
+      {/* 8. Edit Category Modal */}
       <Modal
         isOpen={editModalOpen}
         onClose={() => setEditModalOpen(false)}
@@ -1133,7 +1261,7 @@ export const AdminCategoriesPage = () => {
         <form onSubmit={handleEditSubmit} className="space-y-4 text-xs">
           {formError && (
             <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-800 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{formError}</span>
             </div>
           )}
@@ -1201,7 +1329,7 @@ export const AdminCategoriesPage = () => {
             <button
               type="submit"
               disabled={submitting}
-              className="px-5 py-2 bg-purple-700 hover:bg-purple-800 text-white font-bold rounded-xl transition shadow disabled:opacity-50"
+              className="px-5 py-2 bg-purple-700 hover:bg-purple-800 text-white font-bold rounded-xl transition shadow-xs disabled:opacity-50"
             >
               {submitting ? 'Saving...' : 'Save Changes'}
             </button>
@@ -1209,7 +1337,7 @@ export const AdminCategoriesPage = () => {
         </form>
       </Modal>
 
-      {/* 8. Retire / Delete Category Confirmation Modal */}
+      {/* 9. Retire / Delete Category Confirmation Modal */}
       <Modal
         isOpen={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
@@ -1219,7 +1347,7 @@ export const AdminCategoriesPage = () => {
         <div className="space-y-4 text-xs">
           <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 space-y-1.5">
             <div className="flex items-center gap-1.5 font-bold">
-              <AlertTriangle className="w-4 h-4 text-amber-700 flex-shrink-0" />
+              <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
               <span>Safe Deletion Guarantee</span>
             </div>
             <p className="text-[11px] text-amber-800 leading-relaxed">
@@ -1244,7 +1372,7 @@ export const AdminCategoriesPage = () => {
               type="button"
               disabled={submitting}
               onClick={handleDeleteConfirm}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition shadow disabled:opacity-50"
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition shadow-xs disabled:opacity-50"
             >
               {submitting ? 'Processing...' : 'Confirm Retire'}
             </button>

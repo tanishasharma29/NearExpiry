@@ -13,6 +13,13 @@ import { ApiError } from '../utils/ApiError.js';
 import { toCalendarDayEpochUTC } from '../utils/shelfLife.js';
 import { resetDefaultPriceRulesService } from './priceRule.service.js';
 import { runExpiryProcessingJob } from './expiryScheduler.service.js';
+import {
+  notifySellerStoreApproved,
+  notifySellerStoreRejected,
+} from './notification.service.js';
+import { invalidateProductCache } from '../utils/cache.util.js';
+import { emitToAdmin } from '../config/socket.js';
+import { SOCKET_EVENTS } from '../constants/socketEvents.js';
 
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 
@@ -220,7 +227,45 @@ export const reviewSellerApprovalService = async (sellerId, payload, adminUser) 
   if (store) {
     store.verificationStatus = status;
     store.isActive = status === VERIFICATION_STATUS.APPROVED;
+    store.verificationAudit = {
+      reviewedBy: adminUser._id,
+      reviewedAt: now,
+      rejectionReason: status === VERIFICATION_STATUS.REJECTED ? rejectionReason || null : null,
+    };
     await store.save();
+  }
+
+  // Generate real in-app notification for the seller after successful persistence
+  const storeName = store?.storeName || seller.sellerProfile?.storeName || 'Your Store';
+  if (status === VERIFICATION_STATUS.APPROVED) {
+    await notifySellerStoreApproved({
+      sellerId: seller._id,
+      storeName,
+    }).catch((err) => {
+      console.error('[AdminService] Store approval notification failed:', err.message);
+    });
+  } else if (status === VERIFICATION_STATUS.REJECTED) {
+    await notifySellerStoreRejected({
+      sellerId: seller._id,
+      storeName,
+      rejectionReason,
+    }).catch((err) => {
+      console.error('[AdminService] Store rejection notification failed:', err.message);
+    });
+  }
+
+  // Real-Time Socket.IO Alert to Admins
+  try {
+    emitToAdmin(SOCKET_EVENTS.ADMIN_ALERT, {
+      alertType: 'SELLER_VERIFICATION_REVIEWED',
+      title: `Seller ${status}`,
+      message: `Seller [${seller.name}] store application reviewed: ${status}.`,
+      severity: status === VERIFICATION_STATUS.APPROVED ? 'SUCCESS' : 'WARNING',
+      entityId: seller._id,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (sockErr) {
+    console.error('[Socket.IO] Error emitting seller review admin alert:', sockErr);
   }
 
   return {
@@ -498,6 +543,9 @@ export const moderateProductAdminService = async (productId, payload) => {
 
   product.status = payload.status;
   await product.save();
+
+  // Invalidate affected product, marketplace deals, and category listings
+  await invalidateProductCache(product._id, product.category);
 
   return product;
 };

@@ -8,6 +8,25 @@ import {
 } from '../models/complaint.model.js';
 
 const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+const httpUrlRegex = /^https?:\/\//i;
+
+const httpEvidenceUrlSchema = z
+  .string()
+  .trim()
+  .url('Each evidence URL must be a valid URL')
+  .refine(
+    (url) => httpUrlRegex.test(url),
+    'Each evidence URL must use http or https protocol'
+  );
+
+const httpAttachmentUrlSchema = z
+  .string()
+  .trim()
+  .url('Each attachment must be a valid URL')
+  .refine(
+    (url) => httpUrlRegex.test(url),
+    'Each attachment must use http or https protocol'
+  );
 
 export const createComplaintSchema = z.object({
   body: z.object({
@@ -33,7 +52,7 @@ export const createComplaintSchema = z.object({
       .optional()
       .nullable(),
     evidenceUrls: z
-      .array(z.string().trim().url('Each evidence URL must be a valid URL'))
+      .array(httpEvidenceUrlSchema)
       .max(10, 'Maximum 10 evidence items allowed')
       .optional()
       .default([]),
@@ -61,7 +80,7 @@ export const customerReplySchema = z.object({
       .min(1, 'Message cannot be empty')
       .max(2000, 'Message cannot exceed 2000 characters'),
     attachments: z
-      .array(z.string().trim().url('Each attachment must be a valid URL'))
+      .array(httpAttachmentUrlSchema)
       .max(5, 'Maximum 5 attachments allowed')
       .optional()
       .default([]),
@@ -132,7 +151,7 @@ export const adminMessageSchema = z.object({
       .min(1, 'Message cannot be empty')
       .max(3000, 'Message cannot exceed 3000 characters'),
     attachments: z
-      .array(z.string().trim().url('Each attachment must be a valid URL'))
+      .array(httpAttachmentUrlSchema)
       .max(5, 'Maximum 5 attachments allowed')
       .optional()
       .default([]),

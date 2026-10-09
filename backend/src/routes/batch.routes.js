@@ -12,7 +12,7 @@ import {
   listInventoryAuditLogs,
 } from '../controllers/batchInventory.controller.js';
 import { authenticate, optionalAuthenticate } from '../middleware/auth.middleware.js';
-import { authorizeRoles } from '../middleware/role.middleware.js';
+import { authorizeRoles, requireApprovedSeller } from '../middleware/role.middleware.js';
 import { validateRequest } from '../middleware/validate.middleware.js';
 import { USER_ROLES } from '../models/user.model.js';
 import {
@@ -49,6 +49,7 @@ router.post(
   '/',
   authenticate,
   authorizeRoles(USER_ROLES.SELLER),
+  requireApprovedSeller,
   validateRequest(createBatchSchema),
   createBatch
 );
@@ -67,6 +68,7 @@ router.put(
   '/:id',
   authenticate,
   authorizeRoles(USER_ROLES.SELLER, USER_ROLES.ADMIN),
+  requireApprovedSeller,
   validateRequest(updateBatchSchema),
   updateBatch
 );
@@ -74,6 +76,7 @@ router.patch(
   '/:id',
   authenticate,
   authorizeRoles(USER_ROLES.SELLER, USER_ROLES.ADMIN),
+  requireApprovedSeller,
   validateRequest(updateBatchSchema),
   updateBatch
 );
@@ -83,6 +86,7 @@ router.patch(
   '/:id/adjust-stock',
   authenticate,
   authorizeRoles(USER_ROLES.SELLER, USER_ROLES.ADMIN),
+  requireApprovedSeller,
   validateRequest(stockAdjustmentSchema),
   adjustBatchStock
 );

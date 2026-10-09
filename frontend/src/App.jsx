@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { SocketProvider } from './context/SocketContext';
 import { CartProvider } from './context/CartContext';
 import { WishlistProvider } from './context/WishlistContext';
 
@@ -55,9 +56,10 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <CartProvider>
-          <WishlistProvider>
-            <Routes>
+        <SocketProvider>
+          <CartProvider>
+            <WishlistProvider>
+              <Routes>
               {/* 1. Public & Guest Routes */}
               <Route element={<PublicLayout />}>
                 <Route path="/" element={<LandingPage />} />
@@ -178,7 +180,8 @@ export default function App() {
             </Routes>
           </WishlistProvider>
         </CartProvider>
-      </AuthProvider>
-    </BrowserRouter>
+      </SocketProvider>
+    </AuthProvider>
+  </BrowserRouter>
   );
 }

@@ -52,7 +52,7 @@ export class NotificationDispatcher {
     message,
     data = {},
     dedupKey = null,
-    channels = [NOTIFICATION_CHANNELS.IN_APP, NOTIFICATION_CHANNELS.EMAIL],
+    channels = [NOTIFICATION_CHANNELS.IN_APP, NOTIFICATION_CHANNELS.EMAIL, NOTIFICATION_CHANNELS.REALTIME],
     emailMetadata = {},
     actionText = null,
     actionUrl = null,

@@ -6,6 +6,11 @@ import { VERIFICATION_STATUS } from '../models/user.model.js';
 import { EXPIRY_WINDOW_PRESETS } from '../validators/marketplace.validator.js';
 import { ApiError } from '../utils/ApiError.js';
 import { toCalendarDayEpochUTC } from '../utils/shelfLife.js';
+import {
+  remember,
+  buildCacheKey,
+  CACHE_TTL,
+} from '../utils/cache.util.js';
 
 /**
  * Computes exact spherical Haversine distance (in km) between two [lng, lat] points.
@@ -36,7 +41,10 @@ export const browseMarketplaceProductsService = async (query = {}) => {
   const limit = Math.min(Math.max(parseInt(query.limit || '12', 10), 1), 100);
   const skip = (page - 1) * limit;
 
-  const todayUtcDate = new Date(toCalendarDayEpochUTC(new Date()));
+  const cacheKey = buildCacheKey('marketplace', 'products', query);
+
+  const { data } = await remember(cacheKey, CACHE_TTL.MARKETPLACE_LIST, async () => {
+    const todayUtcDate = new Date(toCalendarDayEpochUTC(new Date()));
 
   // -------------------------------------------------------------------------
   // STAGE 1: Strict Non-Expired, Positive-Stock Batch Match Predicate
@@ -379,7 +387,7 @@ export const browseMarketplaceProductsService = async (query = {}) => {
   const total = enrichedItems.length;
   const paginatedProducts = enrichedItems.slice(skip, skip + limit);
 
-  return {
+  const result = {
     products: paginatedProducts,
     pagination: {
       total,
@@ -388,6 +396,10 @@ export const browseMarketplaceProductsService = async (query = {}) => {
       totalPages: Math.ceil(total / limit) || 1,
     },
   };
+  return result;
+  });
+
+  return data;
 };
 
 /**

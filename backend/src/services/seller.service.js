@@ -103,11 +103,29 @@ export const getSellerVerificationStatusService = async (sellerUserId) => {
 
   const store = await Store.findOne({ ownerId: seller._id });
 
+  const isRejected =
+    seller.verificationStatus === 'REJECTED' || store?.verificationStatus === 'REJECTED';
+  const isSuspended =
+    seller.verificationStatus === 'SUSPENDED' || store?.verificationStatus === 'SUSPENDED';
+  const isApproved =
+    !isRejected &&
+    !isSuspended &&
+    (seller.verificationStatus === 'APPROVED' || store?.verificationStatus === 'APPROVED');
+  const effectiveStatus = isRejected
+    ? 'REJECTED'
+    : isSuspended
+    ? 'SUSPENDED'
+    : isApproved
+    ? 'APPROVED'
+    : seller.verificationStatus || store?.verificationStatus || 'PENDING';
+
   return {
     sellerId: seller._id,
     email: seller.email,
-    verificationStatus: seller.verificationStatus,
-    isApproved: seller.verificationStatus === 'APPROVED',
+    verificationStatus: effectiveStatus,
+    isApproved,
+    isRejected,
+    isPending: !isApproved && !isRejected && !isSuspended,
     submittedAt: seller.sellerProfile?.submittedAt || seller.createdAt,
     reviewedAt: seller.sellerProfile?.reviewedAt || store?.verificationAudit?.reviewedAt || null,
     rejectionReason:

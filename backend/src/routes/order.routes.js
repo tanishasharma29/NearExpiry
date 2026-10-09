@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.middleware.js';
-import { authorizeRoles } from '../middleware/role.middleware.js';
+import { authorizeRoles, requireApprovedSeller } from '../middleware/role.middleware.js';
 import { validateRequest } from '../middleware/validate.middleware.js';
 import {
   createOrderSchema,
@@ -63,6 +63,7 @@ router.get(
 router.patch(
   '/:orderId/status',
   authorizeRoles('SELLER', 'ADMIN'),
+  requireApprovedSeller,
   validateRequest(updateOrderStatusSchema),
   updateOrderStatus
 );

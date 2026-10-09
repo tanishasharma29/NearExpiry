@@ -19,6 +19,7 @@ import {
   Activity,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useSocket } from '../context/SocketContext';
 
 /**
  * Admin Navigation Groups
@@ -71,6 +72,7 @@ const NAV_GROUPS = [
 
 export const AdminLayout = () => {
   const { user, logout } = useAuth();
+  const { isConnected, liveNotifications, dismissAlert } = useSocket();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -305,6 +307,26 @@ export const AdminLayout = () => {
             </div>
           </div>
         </header>
+
+        {/* Real-Time Platform Alerts Banner */}
+        {liveNotifications.filter((n) => n.type === 'admin:alert').length > 0 && (
+          <div className="bg-purple-900/95 text-white px-4 py-2.5 flex items-center justify-between text-xs font-semibold shadow-inner border-b border-purple-800">
+            <div className="flex items-center gap-2 truncate">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping flex-shrink-0" />
+              <span className="font-extrabold text-purple-200 uppercase tracking-wider text-[10px]">LIVE ALERT:</span>
+              <span className="truncate text-purple-100">
+                {liveNotifications.find((n) => n.type === 'admin:alert')?.title} —{' '}
+                {liveNotifications.find((n) => n.type === 'admin:alert')?.message}
+              </span>
+            </div>
+            <button
+              onClick={() => dismissAlert(liveNotifications.find((n) => n.type === 'admin:alert')?.id)}
+              className="text-purple-300 hover:text-white ml-4 flex-shrink-0 text-xs px-2 py-0.5 rounded bg-purple-950/60 transition"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {/* Admin Page Content Surface */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8">

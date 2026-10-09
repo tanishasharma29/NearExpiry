@@ -5,6 +5,7 @@ import { Store } from '../models/store.model.js';
 import { USER_ROLES } from '../models/user.model.js';
 import { ApiError } from '../utils/ApiError.js';
 import { getPaymentProvider } from './payment/providers/index.js';
+import { invalidatePopularProductsCache } from '../utils/cache.util.js';
 
 const checkReplicaSetSupport = () => {
   const topology = mongoose.connection.client?.topology?.description;
@@ -129,6 +130,10 @@ export const processPaymentService = async (customerId, payload, userActor) => {
       await session.commitTransaction();
     } else {
       await Order.findByIdAndUpdate(order._id, orderUpdate);
+    }
+
+    if (providerResult.status === PAYMENT_STATUS.SUCCESS) {
+      invalidatePopularProductsCache().catch(() => {});
     }
 
     return {

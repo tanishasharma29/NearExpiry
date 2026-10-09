@@ -169,6 +169,61 @@ export const notifySellerNewOrder = async ({ sellerId, order, store }) => {
   });
 };
 
+export const notifySellerStoreApproved = async ({ sellerId, storeName }) => {
+  const seller = await User.findById(sellerId).lean();
+  if (!seller) return null;
+
+  const dedupKey = `STORE_APPROVED:${seller._id}`;
+
+  return defaultDispatcher.dispatch({
+    recipient: seller._id,
+    recipientEmail: seller.email,
+    recipientRole: USER_ROLES.SELLER,
+    type: NOTIFICATION_TYPES.STORE_APPROVED,
+    title: 'Your Store Has Been Approved',
+    message:
+      'Congratulations! Your store has been approved. You can now access the store-management features available to your account.',
+    data: {
+      sellerId: seller._id,
+      storeName: storeName || 'Your Store',
+      status: 'APPROVED',
+    },
+    dedupKey,
+    actionText: 'Access Store Dashboard',
+    actionUrl: 'https://nearexpiry.app/seller/dashboard',
+  });
+};
+
+export const notifySellerStoreRejected = async ({ sellerId, storeName, rejectionReason }) => {
+  const seller = await User.findById(sellerId).lean();
+  if (!seller) return null;
+
+  const safeReason = rejectionReason ? rejectionReason.trim() : null;
+  const dedupKey = `STORE_REJECTED:${seller._id}:${safeReason || 'default'}`;
+
+  const message = safeReason
+    ? `Your store application has been rejected: ${safeReason}. Please review your application status and contact support if you need clarification.`
+    : 'Your store application has been rejected. Please review your application status and contact support if you need clarification.';
+
+  return defaultDispatcher.dispatch({
+    recipient: seller._id,
+    recipientEmail: seller.email,
+    recipientRole: USER_ROLES.SELLER,
+    type: NOTIFICATION_TYPES.STORE_REJECTED,
+    title: 'Store Application Update',
+    message,
+    data: {
+      sellerId: seller._id,
+      storeName: storeName || 'Your Store',
+      status: 'REJECTED',
+      rejectionReason: safeReason,
+    },
+    dedupKey,
+    actionText: 'Review Application',
+    actionUrl: 'https://nearexpiry.app/seller/dashboard',
+  });
+};
+
 // ==========================================
 // 2. CUSTOMER NOTIFICATIONS
 // ==========================================

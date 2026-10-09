@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+
+# Environment and local configs
+.env
+.env.*
+!.env.example
+
+# Version control & IDE
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# Tests & Coverage
+tests/
+coverage/
+*.test.js
+*.spec.js
+
+# Build and temporary artifacts
+dist/
+logs/
+*.log
+tmp/
+uploads/
+
+# Documentation
+docs/
+*.md
+

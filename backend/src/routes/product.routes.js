@@ -3,12 +3,13 @@ import {
   createProduct,
   listProducts,
   listSellerOwnProducts,
+  getPopularProducts,
   getProductById,
   updateProduct,
   deleteProduct,
 } from '../controllers/product.controller.js';
 import { authenticate, optionalAuthenticate } from '../middleware/auth.middleware.js';
-import { authorizeRoles } from '../middleware/role.middleware.js';
+import { authorizeRoles, requireApprovedSeller } from '../middleware/role.middleware.js';
 import { validateRequest } from '../middleware/validate.middleware.js';
 import { USER_ROLES } from '../models/user.model.js';
 import {
@@ -38,6 +39,7 @@ router.post(
   '/',
   authenticate,
   authorizeRoles(USER_ROLES.SELLER),
+  requireApprovedSeller,
   validateRequest(createProductSchema),
   createProduct
 );
@@ -45,7 +47,10 @@ router.post(
 // 3. Public / Customer Discovery (Pagination, Sorting, Filtering — shows ACTIVE products)
 router.get('/', optionalAuthenticate, listProducts);
 
-// 4. View Single Product by ID
+// 4. Public / Popular / Top-Selling Products (Cached)
+router.get('/popular', optionalAuthenticate, getPopularProducts);
+
+// 5. View Single Product by ID
 router.get('/:id', optionalAuthenticate, getProductById);
 
 // 5. Seller Manages Own Product (or Admin manages any Product)
@@ -53,6 +58,7 @@ router.put(
   '/:id',
   authenticate,
   authorizeRoles(USER_ROLES.SELLER, USER_ROLES.ADMIN),
+  requireApprovedSeller,
   validateRequest(updateProductSchema),
   updateProduct
 );
@@ -61,6 +67,7 @@ router.patch(
   '/:id',
   authenticate,
   authorizeRoles(USER_ROLES.SELLER, USER_ROLES.ADMIN),
+  requireApprovedSeller,
   validateRequest(updateProductSchema),
   updateProduct
 );
@@ -69,6 +76,7 @@ router.delete(
   '/:id',
   authenticate,
   authorizeRoles(USER_ROLES.SELLER, USER_ROLES.ADMIN),
+  requireApprovedSeller,
   deleteProduct
 );
 

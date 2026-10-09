@@ -2,6 +2,8 @@ import { Store, STORE_OPERATIONAL_STATUS } from '../models/store.model.js';
 import { User, USER_ROLES, VERIFICATION_STATUS } from '../models/user.model.js';
 import { ApiError } from '../utils/ApiError.js';
 import { generateAccessToken } from '../utils/jwt.js';
+import { emitToAdmin } from '../config/socket.js';
+import { SOCKET_EVENTS } from '../constants/socketEvents.js';
 
 const ensureEmailNotTaken = async (email) => {
   const existingUser = await User.findOne({ email: email.toLowerCase().trim() });
@@ -132,6 +134,20 @@ export const registerSellerService = async (payload) => {
 
   const token = generateAccessToken(user);
 
+  // Real-Time Socket.IO Alert to Admin
+  try {
+    emitToAdmin(SOCKET_EVENTS.ADMIN_ALERT, {
+      alertType: 'NEW_SELLER_REGISTRATION',
+      title: 'New Seller Registration',
+      message: `Seller [${name}] registered store [${storeName || 'New Store'}]. Verification pending.`,
+      severity: 'INFO',
+      entityId: user._id,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (sockErr) {
+    console.error('[Socket.IO] Error emitting new seller registration alert:', sockErr);
+  }
+
   return {
     user: user.toSafeObject(),
     token,
@@ -197,7 +213,36 @@ export const getCurrentUserService = async (userId) => {
   if (!user) {
     throw new ApiError(404, 'User not found.', 'USER_NOT_FOUND');
   }
-  return user.toSafeObject();
+  const safeUser = user.toSafeObject();
+  if (user.role === USER_ROLES.SELLER) {
+    const store = await Store.findOne({ ownerId: user._id }).lean();
+    if (store) {
+      safeUser.store = {
+        _id: store._id,
+        storeName: store.storeName,
+        verificationStatus: store.verificationStatus,
+        status: store.status,
+        isActive: store.isActive,
+      };
+      safeUser.storeName = store.storeName;
+      if (
+        store.verificationStatus === VERIFICATION_STATUS.APPROVED &&
+        safeUser.verificationStatus !== VERIFICATION_STATUS.REJECTED
+      ) {
+        safeUser.isApproved = true;
+        safeUser.verificationStatus = VERIFICATION_STATUS.APPROVED;
+      } else if (
+        store.verificationStatus === VERIFICATION_STATUS.REJECTED ||
+        safeUser.verificationStatus === VERIFICATION_STATUS.REJECTED
+      ) {
+        safeUser.isApproved = false;
+        safeUser.verificationStatus = VERIFICATION_STATUS.REJECTED;
+      } else {
+        safeUser.isApproved = safeUser.verificationStatus === VERIFICATION_STATUS.APPROVED;
+      }
+    }
+  }
+  return safeUser;
 };
 
 export const logoutUserService = async (userId) => {

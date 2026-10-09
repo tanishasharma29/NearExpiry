@@ -9,7 +9,7 @@ import {
   refreshAllBatchStatuses,
 } from '../controllers/batchInventory.controller.js';
 import { authenticate } from '../middleware/auth.middleware.js';
-import { authorizeRoles } from '../middleware/role.middleware.js';
+import { authorizeRoles, requireApprovedSeller } from '../middleware/role.middleware.js';
 import { validateRequest } from '../middleware/validate.middleware.js';
 import { USER_ROLES } from '../models/user.model.js';
 import {
@@ -33,6 +33,7 @@ router.get('/logs', authorizeRoles(USER_ROLES.SELLER, USER_ROLES.ADMIN), listInv
 router.post(
   '/adjust',
   authorizeRoles(USER_ROLES.SELLER, USER_ROLES.ADMIN),
+  requireApprovedSeller,
   validateRequest(stockAdjustmentSchema),
   adjustBatchStock
 );
@@ -45,6 +46,7 @@ router.post('/release', validateRequest(stockReservationSchema), releaseBatchSto
 router.post(
   '/refresh-statuses',
   authorizeRoles(USER_ROLES.SELLER, USER_ROLES.ADMIN),
+  requireApprovedSeller,
   refreshAllBatchStatuses
 );
 
