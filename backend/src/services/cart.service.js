@@ -60,19 +60,62 @@ export const getCartSummaryService = async (userId) => {
     };
   }
 
-  // Pre-load distinct products, stores, and sellers to minimize query overhead
+  // Pre-load distinct products, stores, sellers, and batches in bulk to eliminate N+1 query overhead
   const productIds = cart.items.map((i) => i.productId);
   const storeIds = cart.items.map((i) => i.storeId);
+  const pinnedBatchIds = cart.items.map((i) => i.batchId).filter(Boolean);
 
-  const [products, stores] = await Promise.all([
+  const [products, stores, fefoBatches, pinnedBatches, expiredBatches] = await Promise.all([
     Product.find({ _id: { $in: productIds } })
       .populate('category', 'name slug status')
       .lean(),
     Store.find({ _id: { $in: storeIds } }).lean(),
+    Batch.find({
+      productId: { $in: productIds },
+      storeId: { $in: storeIds },
+      isPurchasable: true,
+      quantity: { $gt: 0 },
+      remainingDays: { $gte: 0 },
+      expiryDate: { $gte: todayUtc },
+      status: {
+        $in: [BATCH_STATUS.NORMAL, BATCH_STATUS.APPROACHING_EXPIRY, BATCH_STATUS.CRITICAL],
+      },
+    })
+      .sort({ expiryDate: 1, createdAt: 1 })
+      .lean(),
+    pinnedBatchIds.length > 0
+      ? Batch.find({ _id: { $in: pinnedBatchIds } }).lean()
+      : Promise.resolve([]),
+    Batch.find({
+      productId: { $in: productIds },
+      storeId: { $in: storeIds },
+      $or: [{ expiryDate: { $lt: todayUtc } }, { status: BATCH_STATUS.EXPIRED }],
+    })
+      .select('_id productId storeId')
+      .lean(),
   ]);
 
   const productMap = new Map(products.map((p) => [p._id.toString(), p]));
   const storeMap = new Map(stores.map((s) => [s._id.toString(), s]));
+
+  const getBatchKey = (pId, sId) => `${pId.toString()}:${sId.toString()}`;
+
+  const fefoBatchMap = new Map();
+  for (const b of fefoBatches) {
+    const key = getBatchKey(b.productId, b.storeId);
+    if (!fefoBatchMap.has(key)) {
+      fefoBatchMap.set(key, []);
+    }
+    fefoBatchMap.get(key).push(b);
+  }
+
+  const pinnedBatchMap = new Map(pinnedBatches.map((b) => [b._id.toString(), b]));
+
+  const expiredCountMap = new Map();
+  for (const b of expiredBatches) {
+    const key = getBatchKey(b.productId, b.storeId);
+    expiredCountMap.set(key, (expiredCountMap.get(key) || 0) + 1);
+  }
 
   const sellerIds = stores.map((s) => s.ownerId || s.sellerId).filter(Boolean);
   const sellers = await User.find({ _id: { $in: sellerIds } }).lean();
@@ -208,16 +251,17 @@ export const getCartSummaryService = async (userId) => {
 
     // 3. Validate Stock & Expiry via Batches (FEFO Resolution)
     let candidateBatches = [];
+    const itemKey = getBatchKey(item.productId, item.storeId);
 
     if (item.batchId) {
       // Pinned specific batch
-      const specificBatch = await Batch.findOne({
-        _id: item.batchId,
-        productId: item.productId,
-        storeId: item.storeId,
-      }).lean();
+      const specificBatch = pinnedBatchMap.get(item.batchId.toString());
 
-      if (!specificBatch) {
+      if (
+        !specificBatch ||
+        specificBatch.productId.toString() !== item.productId.toString() ||
+        specificBatch.storeId.toString() !== item.storeId.toString()
+      ) {
         itemResult.itemStatus = 'BATCH_NOT_FOUND';
         itemResult.reason = 'Specified batch lot could not be found.';
       } else if (
@@ -234,20 +278,8 @@ export const getCartSummaryService = async (userId) => {
         candidateBatches = [specificBatch];
       }
     } else {
-      // Dynamic FEFO: query all active non-expired purchasable batches in FEFO order
-      candidateBatches = await Batch.find({
-        productId: item.productId,
-        storeId: item.storeId,
-        isPurchasable: true,
-        quantity: { $gt: 0 },
-        remainingDays: { $gte: 0 },
-        expiryDate: { $gte: todayUtc },
-        status: {
-          $in: [BATCH_STATUS.NORMAL, BATCH_STATUS.APPROACHING_EXPIRY, BATCH_STATUS.CRITICAL],
-        },
-      })
-        .sort({ expiryDate: 1, createdAt: 1 })
-        .lean();
+      // Dynamic FEFO: pre-fetched active non-expired purchasable batches in strict FEFO order
+      candidateBatches = fefoBatchMap.get(itemKey) || [];
     }
 
     const totalAvailableQty = candidateBatches.reduce((acc, b) => acc + b.quantity, 0);
@@ -255,11 +287,7 @@ export const getCartSummaryService = async (userId) => {
 
     if (candidateBatches.length === 0) {
       if (!itemResult.itemStatus || itemResult.itemStatus === 'AVAILABLE') {
-        const expiredCount = await Batch.countDocuments({
-          productId: item.productId,
-          storeId: item.storeId,
-          $or: [{ expiryDate: { $lt: todayUtc } }, { status: BATCH_STATUS.EXPIRED }],
-        });
+        const expiredCount = expiredCountMap.get(itemKey) || 0;
 
         if (expiredCount > 0) {
           itemResult.itemStatus = 'EXPIRED';

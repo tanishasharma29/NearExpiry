@@ -38,7 +38,6 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "jest": "^29.7.0",
     "nodemon": "^3.1.7",
     "socket.io-client": "^4.8.4",
     "supertest": "^7.3.0"

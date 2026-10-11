@@ -18,11 +18,11 @@ export const EXPIRY_WINDOW_PRESETS = Object.freeze({
 
 export const browseMarketplaceSchema = z.object({
   query: z.object({
-    search: z.string().trim().optional(),
+    search: z.string().trim().max(100).optional(),
     category: objectIdString.optional(),
     categoryId: objectIdString.optional(),
     storeId: objectIdString.optional(),
-    brand: z.string().trim().optional(),
+    brand: z.string().trim().max(100).optional(),
     minPrice: z.coerce.number().min(0).optional(),
     maxPrice: z.coerce.number().min(0).optional(),
     minDiscount: z.coerce.number().min(0).max(100).optional(),

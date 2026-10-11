@@ -19,6 +19,7 @@ import {
   notifySellerExpiredInventory,
   notifyCustomerWishlistDiscount,
 } from './notification.service.js';
+import { invalidatePattern } from '../utils/cache.util.js';
 
 // In-process concurrency lock to guarantee idempotent, non-overlapping runs
 let isJobCurrentlyRunning = false;
@@ -387,6 +388,17 @@ export const runExpiryProcessingJob = async ({
     // Execute batched database writes in bulk
     if (bulkBatchOps.length > 0) {
       await Batch.bulkWrite(bulkBatchOps, { ordered: false });
+
+      // Cache invalidation: Non-blocking invalidation of affected marketplace and product listings
+      try {
+        await Promise.allSettled([
+          invalidatePattern('nearexpiry:products:list:*'),
+          invalidatePattern('nearexpiry:marketplace:products:*'),
+          invalidatePattern('nearexpiry:products:popular:*'),
+        ]);
+      } catch (cacheErr) {
+        console.error('[ExpiryScheduler] Cache invalidation error:', cacheErr);
+      }
     }
     if (priceAuditDocs.length > 0) {
       await PriceAuditLog.insertMany(priceAuditDocs, { ordered: false });

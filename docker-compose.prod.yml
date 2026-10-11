@@ -39,6 +39,9 @@ services:
     ports: []
     environment:
       NODE_ENV: production
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET environment variable is required in production}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET environment variable is required in production}
+      QR_SIGNING_SECRET: ${QR_SIGNING_SECRET:?QR_SIGNING_SECRET environment variable is required in production}
     logging:
       driver: "json-file"
       options:

@@ -1,0 +1,26 @@
+# Dependencies
+**/node_modules/
+
+# Environment files
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.docker.example
+
+# Logs and runtime
+**/logs/
+**/*.log
+npm-debug.log*
+
+# OS and IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Build and test outputs
+**/dist/
+**/coverage/
+**/tmp/
+**/uploads/
+

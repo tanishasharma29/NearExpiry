@@ -29,6 +29,9 @@ services:
       target: development
     environment:
       NODE_ENV: development
+      JWT_SECRET: ${JWT_SECRET:-dev_local_jwt_secret_min_32_characters_for_local_testing}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev_local_refresh_secret_min_32_characters_for_local_testing}
+      QR_SIGNING_SECRET: ${QR_SIGNING_SECRET:-dev_local_qr_secret_min_32_characters_for_local_testing}
     volumes:
       # Bind mount source code for live hot-reloading
       - ./backend/src:/app/src
@@ -48,10 +51,10 @@ services:
       target: development
     command: npx vite --host 0.0.0.0 --port 5173
     ports:
-      - "5173:5173"
+      - "${PORT_DEV_FRONTEND:-5174}:5173"
     environment:
-      VITE_API_URL: http://localhost:5000/api/v1
-      VITE_SOCKET_URL: http://localhost:5000
+      VITE_API_URL: http://localhost:${PORT_BACKEND:-5000}/api/v1
+      VITE_SOCKET_URL: http://localhost:${PORT_BACKEND:-5000}
     volumes:
       # Bind mount frontend source files for live HMR updates
       - ./frontend/src:/app/src

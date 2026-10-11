@@ -146,6 +146,11 @@ batchSchema.index(
   { name: 'idx_store_status_expiry' }
 );
 
+batchSchema.index(
+  { productId: 1, storeId: 1, isPurchasable: 1, expiryDate: 1 },
+  { name: 'idx_product_store_purchasable_expiry' }
+);
+
 batchSchema.pre('validate', function (next) {
   if (this.manufacturingDate && this.expiryDate) {
     if (new Date(this.manufacturingDate) >= new Date(this.expiryDate)) {

@@ -11,6 +11,7 @@ import {
   buildCacheKey,
   CACHE_TTL,
 } from '../utils/cache.util.js';
+import { escapeRegex } from '../utils/sanitize.js';
 
 /**
  * Computes exact spherical Haversine distance (in km) between two [lng, lat] points.
@@ -179,12 +180,13 @@ export const browseMarketplaceProductsService = async (query = {}) => {
         'product.category': new mongoose.Types.ObjectId(categoryFilterId),
       }),
     ...(query.brand && {
-      'product.brand': { $regex: query.brand.trim(), $options: 'i' },
+      'product.brand': { $regex: escapeRegex(query.brand.trim()), $options: 'i' },
     }),
   };
 
-  if (query.search) {
-    const searchRegex = new RegExp(query.search.trim(), 'i');
+  if (query.search && query.search.trim()) {
+    const safePattern = escapeRegex(query.search.trim());
+    const searchRegex = new RegExp(safePattern, 'i');
     productMatchStage.$or = [
       { 'product.name': searchRegex },
       { 'product.brand': searchRegex },

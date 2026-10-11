@@ -19,6 +19,7 @@ export const env = {
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
   JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || 'nearexpiry_refresh_token_secret_key_2026',
   JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || '30d',
+  QR_SIGNING_SECRET: process.env.QR_SIGNING_SECRET || 'nearexpiry_qr_hmac_signing_secret_2026',
   BCRYPT_SALT_ROUNDS: parseInt(process.env.BCRYPT_SALT_ROUNDS || '12', 10),
   REDIS_ENABLED: process.env.REDIS_ENABLED === 'true',
   REDIS_URL: process.env.REDIS_URL || 'redis://127.0.0.1:6379',
@@ -28,3 +29,22 @@ export const env = {
   isDevelopment: (process.env.NODE_ENV || 'development') === 'development',
   isProduction: process.env.NODE_ENV === 'production',
 };
+
+// Fail fast in production if required cryptographic secrets are missing, short, or default
+if (env.isProduction) {
+  const missingSecrets = [];
+  if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32 || process.env.JWT_SECRET.includes('nearexpiry_super_secret')) {
+    missingSecrets.push('JWT_SECRET (must be unique random string min 32 chars)');
+  }
+  if (!process.env.JWT_REFRESH_SECRET || process.env.JWT_REFRESH_SECRET.length < 32 || process.env.JWT_REFRESH_SECRET.includes('nearexpiry_refresh_token')) {
+    missingSecrets.push('JWT_REFRESH_SECRET (must be unique random string min 32 chars)');
+  }
+  if (!process.env.QR_SIGNING_SECRET || process.env.QR_SIGNING_SECRET.length < 32 || process.env.QR_SIGNING_SECRET.includes('nearexpiry_qr_hmac')) {
+    missingSecrets.push('QR_SIGNING_SECRET (must be unique random string min 32 chars)');
+  }
+  if (missingSecrets.length > 0) {
+    console.error('FATAL: Insecure or missing secrets in production environment:');
+    missingSecrets.forEach((item) => console.error(`  - ${item}`));
+    throw new Error('PRODUCTION_SECURITY_ERROR: Missing or default cryptographic secrets in production');
+  }
+}

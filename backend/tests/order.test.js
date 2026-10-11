@@ -136,9 +136,9 @@ describe('NearExpiry Order Management & Concurrency Suite', () => {
     });
     productFefoId = (await p1Res.json()).data.product._id;
 
-    const mfgDate = '2026-09-01T00:00:00.000Z';
-    const expiryBatchA = '2026-10-10T00:00:00.000Z';
-    const expiryBatchB = '2026-11-20T00:00:00.000Z';
+    const mfgDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const expiryBatchA = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString();
+    const expiryBatchB = new Date(Date.now() + 40 * 24 * 60 * 60 * 1000).toISOString();
 
     const bARes = await fetch(`${baseUrl}/batches`, {
       method: 'POST',
@@ -190,7 +190,7 @@ describe('NearExpiry Order Management & Concurrency Suite', () => {
         productId: productConcurrentId,
         batchNumber: `CONC-${ts}`,
         manufacturingDate: mfgDate,
-        expiryDate: '2026-12-31T00:00:00.000Z',
+        expiryDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
         quantity: 5,
         originalPrice: 200,
       }),
@@ -452,5 +452,65 @@ describe('NearExpiry Order Management & Concurrency Suite', () => {
     } else {
       assert.equal(finalBatch.quantity, 1); // 5 - 4 = 1
     }
+  });
+
+  it('6. Exhaustive checkout that reduces batch quantity to 0 atomically transitions status to OUT_OF_STOCK and isPurchasable: false', async () => {
+    const mfg = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
+    const exp = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
+
+    const prodRes = await fetch(`${baseUrl}/products`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sellerToken}` },
+      body: JSON.stringify({
+        name: `Zero Stock Product ${ts}`,
+        description: 'Test product for zero stock transition',
+        brand: 'ZeroBrand',
+        category: categoryId,
+        image: 'https://images.example.com/zero.jpg',
+        unit: 'pcs',
+      }),
+    });
+    const pData = (await prodRes.json()).data.product;
+
+    const bRes = await fetch(`${baseUrl}/batches`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sellerToken}` },
+      body: JSON.stringify({
+        productId: pData._id,
+        batchNumber: `BATCH-ZERO-${ts}`,
+        quantity: 2,
+        originalPrice: 100,
+        currentPrice: 100,
+        manufacturingDate: mfg.toISOString(),
+        expiryDate: exp.toISOString(),
+      }),
+    });
+    const bData = (await bRes.json()).data.batch;
+
+    // Customer 1 adds all 2 units to cart and checks out
+    await fetch(`${baseUrl}/cart/items`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${customer1Token}` },
+      body: JSON.stringify({ productId: pData._id, quantity: 2 }),
+    });
+
+    const orderRes = await fetch(`${baseUrl}/orders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${customer1Token}` },
+      body: JSON.stringify({ fulfillmentType: 'PICKUP' }),
+    });
+    assert.equal(orderRes.status, 201);
+
+    // Verify batch in DB is strictly quantity 0, OUT_OF_STOCK, and isPurchasable false
+    const finalBatch = await Batch.findById(bData._id);
+    assert.equal(finalBatch.quantity, 0);
+    assert.equal(finalBatch.status, BATCH_STATUS.OUT_OF_STOCK);
+    assert.equal(finalBatch.isPurchasable, false);
+
+    // Verify latest audit record reflects OUT_OF_STOCK
+    const auditRecord = await InventoryAudit.findOne({ batchId: bData._id }).sort({ createdAt: -1 });
+    assert.ok(auditRecord);
+    assert.equal(auditRecord.newQuantity, 0);
+    assert.equal(auditRecord.batchStatusAfter, BATCH_STATUS.OUT_OF_STOCK);
   });
 });

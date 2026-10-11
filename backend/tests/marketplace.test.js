@@ -371,4 +371,42 @@ describe('NearExpiry Customer Marketplace & Wishlist Integration Suite', () => {
     const emptyBody = await emptyRes.json();
     assert.equal(emptyBody.data.count, 0);
   });
+
+  it('5. Marketplace search securely handles special regex characters, empty searches, and normal searches without crashing or ReDoS', async () => {
+    // 5.1 Special regex characters that normally throw SyntaxError in unescaped RegExp
+    const specialChars = ['[', '*', '(', ')', '\\', '?', '+', '^', '$', '{', '}'];
+    for (const char of specialChars) {
+      const res = await fetch(`${baseUrl}/marketplace/products?search=${encodeURIComponent(char)}`);
+      assert.equal(res.status, 200, `Search with char '${char}' should return 200 OK`);
+      const body = await res.json();
+      assert.equal(body.success, true);
+      assert.ok(Array.isArray(body.data.products));
+    }
+
+    // 5.2 Combined complex pattern that could crash unescaped regex
+    const complexRes = await fetch(`${baseUrl}/marketplace/products?search=${encodeURIComponent('[abc]*(test)\\\\')}`);
+    assert.equal(complexRes.status, 200);
+    const complexBody = await complexRes.json();
+    assert.equal(complexBody.success, true);
+
+    // 5.3 Empty search query returns all purchasable products normally
+    const emptySearchRes = await fetch(`${baseUrl}/marketplace/products?search=`);
+    assert.equal(emptySearchRes.status, 200);
+    const emptySearchBody = await emptySearchRes.json();
+    assert.equal(emptySearchBody.success, true);
+    assert.ok(emptySearchBody.data.products.length > 0);
+
+    // 5.4 Brand with special characters is also safely escaped
+    const specialBrandRes = await fetch(`${baseUrl}/marketplace/products?brand=${encodeURIComponent('[Special+Brand]')}`);
+    assert.equal(specialBrandRes.status, 200);
+    const specialBrandBody = await specialBrandRes.json();
+    assert.equal(specialBrandBody.success, true);
+
+    // 5.5 Normal search still accurately finds the product
+    const normalRes = await fetch(`${baseUrl}/marketplace/products?search=Epigamia`);
+    assert.equal(normalRes.status, 200);
+    const normalBody = await normalRes.json();
+    assert.equal(normalBody.success, true);
+    assert.ok(normalBody.data.products.some((p) => p.name.includes('Epigamia')));
+  });
 });

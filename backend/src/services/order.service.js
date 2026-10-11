@@ -19,6 +19,7 @@ import {
 import { generateBillReceiptService } from './billing.service.js';
 import { emitToUser, emitToStore } from '../config/socket.js';
 import { SOCKET_EVENTS } from '../constants/socketEvents.js';
+import { invalidateProductCache, invalidatePattern } from '../utils/cache.util.js';
 
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 
@@ -129,6 +130,31 @@ export const createOrderService = async (customerId, payload, userActor) => {
           );
         }
 
+        let finalStatus = updatedBatch.status;
+        let finalPurchasable = updatedBatch.isPurchasable;
+
+        // If concurrent checkouts reduced batch to 0, ensure status is atomically OUT_OF_STOCK
+        if (
+          updatedBatch.quantity === 0 &&
+          (finalStatus !== BATCH_STATUS.OUT_OF_STOCK || finalPurchasable !== false)
+        ) {
+          finalStatus = BATCH_STATUS.OUT_OF_STOCK;
+          finalPurchasable = false;
+          await Batch.findByIdAndUpdate(
+            alloc.batchId,
+            {
+              $set: {
+                status: BATCH_STATUS.OUT_OF_STOCK,
+                isPurchasable: false,
+              },
+            },
+            session ? { session } : {}
+          );
+        }
+
+        const actualRemainingQuantity = updatedBatch.quantity;
+        const actualPreviousQuantity = actualRemainingQuantity + alloc.allocatedQuantity;
+
         reservedDeductions.push({
           batchId: alloc.batchId,
           quantity: alloc.allocatedQuantity,
@@ -136,9 +162,9 @@ export const createOrderService = async (customerId, payload, userActor) => {
           productName: item.productName,
           storeId: checkoutData.storeId,
           batchNumber: alloc.batchNumber,
-          previousQuantity: currentBatch.quantity,
-          newQuantity: newQty,
-          batchStatusAfter: newStatus,
+          previousQuantity: actualPreviousQuantity,
+          newQuantity: actualRemainingQuantity,
+          batchStatusAfter: finalStatus,
         });
       }
     }
@@ -294,6 +320,19 @@ export const createOrderService = async (customerId, payload, userActor) => {
       console.error('[Notification] Error dispatching order notifications:', notifErr);
     }
 
+    // Cache invalidation: Non-blocking invalidation of affected product & marketplace cache
+    try {
+      const affectedProductIds = [
+        ...new Set(checkoutData.items.map((i) => i.productId?.toString()).filter(Boolean)),
+      ];
+      await Promise.allSettled([
+        ...affectedProductIds.map((pId) => invalidateProductCache(pId)),
+        invalidatePattern('nearexpiry:marketplace:products:*'),
+      ]);
+    } catch (cacheErr) {
+      console.error('[Cache] Order creation cache invalidation error:', cacheErr);
+    }
+
     return createdOrder;
   } catch (error) {
     if (session) {
@@ -301,12 +340,27 @@ export const createOrderService = async (customerId, payload, userActor) => {
     } else {
       // Manual Compensation Rollback for standalone MongoDB
       for (const ded of reservedDeductions) {
-        await Batch.findByIdAndUpdate(ded.batchId, {
-          $inc: {
-            quantity: ded.quantity,
-            soldQuantity: -ded.quantity,
+        const restored = await Batch.findByIdAndUpdate(
+          ded.batchId,
+          {
+            $inc: {
+              quantity: ded.quantity,
+              soldQuantity: -ded.quantity,
+            },
           },
-        });
+          { new: true }
+        );
+        if (restored && restored.quantity > 0 && restored.status === BATCH_STATUS.OUT_OF_STOCK) {
+          const restoredStatus = computeBatchStatus(restored.remainingDays, restored.quantity);
+          const restoredPurchasable = isBatchPurchasable(
+            restored.remainingDays,
+            restored.quantity,
+            restoredStatus
+          );
+          await Batch.findByIdAndUpdate(ded.batchId, {
+            $set: { status: restoredStatus, isPurchasable: restoredPurchasable },
+          });
+        }
       }
     }
     throw error;
@@ -750,6 +804,19 @@ export const cancelOrderService = async (orderId, userActor, reason) => {
     }
   } catch (sockErr) {
     console.error('[Socket.IO] Error emitting order cancellation events:', sockErr);
+  }
+
+  // Cache invalidation: Non-blocking invalidation of restored products & marketplace cache
+  try {
+    const affectedProductIds = [
+      ...new Set(order.items.map((i) => i.productId?.toString()).filter(Boolean)),
+    ];
+    await Promise.allSettled([
+      ...affectedProductIds.map((pId) => invalidateProductCache(pId)),
+      invalidatePattern('nearexpiry:marketplace:products:*'),
+    ]);
+  } catch (cacheErr) {
+    console.error('[Cache] Order cancellation cache invalidation error:', cacheErr);
   }
 
   return order;

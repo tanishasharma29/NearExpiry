@@ -22,6 +22,7 @@ import { Store } from '../src/models/store.model.js';
 import { Category, CATEGORY_STATUS } from '../src/models/category.model.js';
 import { Product, PRODUCT_STATUS } from '../src/models/product.model.js';
 import { Order, ORDER_STATUS } from '../src/models/order.model.js';
+import { runExpiryProcessingJob } from '../src/services/expiryScheduler.service.js';
 
 /**
  * High-fidelity in-memory Redis mock client for robust, hermetic test execution.
@@ -619,6 +620,174 @@ describe('NearExpiry Phase 23: Redis Integration & Intelligent Caching Suite', (
       assert.equal(batchBody.success, true);
       assert.ok(batchBody.data.batches.length > 0);
       assert.equal(batchBody.data.batches[0].batchNumber, `BATCH-REM-${ts}`);
+    });
+  });
+
+  // =========================================================================
+  // 7. Pre-Deployment Hardening Invalidation Suite (Orders & Expiry Scheduler)
+  // =========================================================================
+  describe('7. Order and Scheduler Cache Invalidation', () => {
+    let customerToken;
+    let hardeningProduct;
+    let hardeningBatch;
+
+    before(async () => {
+      // Register customer
+      const custRes = await fetch(`${baseUrl}/auth/register/customer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: 'Cache Order Customer',
+          email: `cache.cust.${ts}@nearexpiry.test`,
+          phone: '9876543299',
+          password: 'Password123!',
+        }),
+      });
+      const custData = await custRes.json();
+      customerToken = custData.data.token;
+
+      // Create product
+      const prodRes = await fetch(`${baseUrl}/products`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${sellerToken}`,
+        },
+        body: JSON.stringify({
+          name: `Hardening Product ${ts}`,
+          description: 'Product for order cache invalidation verification',
+          brand: 'HardeningBrand',
+          category: testCategory._id.toString(),
+          image: 'https://images.example.com/hardening.jpg',
+          unit: 'pcs',
+        }),
+      });
+      hardeningProduct = (await prodRes.json()).data.product;
+
+      // Create batch (10 units)
+      const mfg = new Date();
+      const exp = new Date(Date.now() + 6 * 24 * 60 * 60 * 1000);
+      const bRes = await fetch(`${baseUrl}/batches`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${sellerToken}`,
+        },
+        body: JSON.stringify({
+          productId: hardeningProduct._id,
+          batchNumber: `BATCH-HARD-${ts}`,
+          quantity: 10,
+          originalPrice: 120,
+          currentPrice: 80,
+          manufacturingDate: mfg.toISOString(),
+          expiryDate: exp.toISOString(),
+        }),
+      });
+      hardeningBatch = (await bRes.json()).data.batch;
+    });
+
+    it('order creation invalidates affected marketplace deals and product cache keys', async () => {
+      const marketplaceKey = 'nearexpiry:marketplace:products:order_create_test';
+      const detailKey = `nearexpiry:products:detail:${hardeningProduct._id}`;
+      const listKey = 'nearexpiry:products:list:order_create_test';
+
+      await setCache(marketplaceKey, { deals: [] }, 180);
+      await setCache(detailKey, hardeningProduct, 900);
+      await setCache(listKey, { products: [] }, 300);
+
+      // Add to cart & place order
+      await fetch(`${baseUrl}/cart/items`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${customerToken}`,
+        },
+        body: JSON.stringify({ productId: hardeningProduct._id, quantity: 2 }),
+      });
+
+      const orderRes = await fetch(`${baseUrl}/orders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${customerToken}`,
+        },
+        body: JSON.stringify({ fulfillmentType: 'PICKUP' }),
+      });
+      assert.equal(orderRes.status, 201);
+
+      // Verify marketplace and product caches are evicted
+      assert.equal(await getCache(marketplaceKey), null, 'Marketplace cache must be invalidated on order placement');
+      assert.equal(await getCache(detailKey), null, 'Product detail cache must be invalidated on order placement');
+      assert.equal(await getCache(listKey), null, 'Product list cache must be invalidated on order placement');
+    });
+
+    it('order cancellation invalidates affected marketplace deals and product cache keys', async () => {
+      // First place an order to cancel
+      await fetch(`${baseUrl}/cart/items`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${customerToken}`,
+        },
+        body: JSON.stringify({ productId: hardeningProduct._id, quantity: 1 }),
+      });
+
+      const orderRes = await fetch(`${baseUrl}/orders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${customerToken}`,
+        },
+        body: JSON.stringify({ fulfillmentType: 'PICKUP' }),
+      });
+      const order = (await orderRes.json()).data;
+
+      // Seed cache entries
+      const marketplaceKey = 'nearexpiry:marketplace:products:order_cancel_test';
+      const detailKey = `nearexpiry:products:detail:${hardeningProduct._id}`;
+      const listKey = 'nearexpiry:products:list:order_cancel_test';
+
+      await setCache(marketplaceKey, { deals: [] }, 180);
+      await setCache(detailKey, hardeningProduct, 900);
+      await setCache(listKey, { products: [] }, 300);
+
+      // Cancel order
+      const cancelRes = await fetch(`${baseUrl}/orders/${order._id}/cancel`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${customerToken}`,
+        },
+        body: JSON.stringify({ reason: 'Customer changed mind' }),
+      });
+      assert.equal(cancelRes.status, 200);
+
+      // Verify caches evicted upon restock
+      assert.equal(await getCache(marketplaceKey), null, 'Marketplace cache must be invalidated on order cancellation');
+      assert.equal(await getCache(detailKey), null, 'Product detail cache must be invalidated on order cancellation');
+      assert.equal(await getCache(listKey), null, 'Product list cache must be invalidated on order cancellation');
+    });
+
+    it('expiry scheduler runExpiryProcessingJob invalidates affected marketplace and product caches on batch updates without evicting category cache', async () => {
+      const marketplaceKey = 'nearexpiry:marketplace:products:scheduler_test';
+      const listKey = 'nearexpiry:products:list:scheduler_test';
+      const categoryKey = 'nearexpiry:categories:list:persistent_category';
+
+      await setCache(marketplaceKey, { deals: [] }, 180);
+      await setCache(listKey, { products: [] }, 300);
+      await setCache(categoryKey, { categories: ['preserved'] }, 3600);
+
+      // Trigger expiry processing job
+      const jobResult = await runExpiryProcessingJob({ triggerType: 'ADMIN_MANUAL' });
+      assert.ok(jobResult);
+
+      // Verify marketplace and product caches evicted
+      assert.equal(await getCache(marketplaceKey), null, 'Marketplace cache must be invalidated on scheduler batch updates');
+      assert.equal(await getCache(listKey), null, 'Product list cache must be invalidated on scheduler batch updates');
+
+      // Verify category cache is strictly preserved
+      const preservedCategory = await getCache(categoryKey);
+      assert.ok(preservedCategory, 'Category cache must be preserved and not evicted by scheduler batch updates');
     });
   });
 });
