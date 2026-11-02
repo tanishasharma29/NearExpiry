@@ -242,22 +242,22 @@ export const LandingPage = () => {
 
       {/* Impact Counters */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-            <div className="text-3xl font-black text-brand-600">Up to 75%</div>
-            <div className="text-xs font-medium text-gray-500 mt-1">Dynamic Expiry Discounts</div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4 text-center">
+          <div className="bg-white p-3.5 sm:p-6 rounded-xl sm:rounded-2xl border border-gray-100 shadow-sm">
+            <div className="text-xl sm:text-3xl font-black text-brand-600">Up to 75%</div>
+            <div className="text-[11px] sm:text-xs font-medium text-gray-500 mt-0.5 sm:mt-1">Dynamic Expiry Discounts</div>
           </div>
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-            <div className="text-3xl font-black text-emerald-600">100% FEFO</div>
-            <div className="text-xs font-medium text-gray-500 mt-1">Strict Batch Integrity</div>
+          <div className="bg-white p-3.5 sm:p-6 rounded-xl sm:rounded-2xl border border-gray-100 shadow-sm">
+            <div className="text-xl sm:text-3xl font-black text-emerald-600">100% FEFO</div>
+            <div className="text-[11px] sm:text-xs font-medium text-gray-500 mt-0.5 sm:mt-1">Strict Batch Integrity</div>
           </div>
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-            <div className="text-3xl font-black text-amber-500">Real-Time</div>
-            <div className="text-xs font-medium text-gray-500 mt-1">Automated Expiry Radar</div>
+          <div className="bg-white p-3.5 sm:p-6 rounded-xl sm:rounded-2xl border border-gray-100 shadow-sm">
+            <div className="text-xl sm:text-3xl font-black text-amber-500">Real-Time</div>
+            <div className="text-[11px] sm:text-xs font-medium text-gray-500 mt-0.5 sm:mt-1">Automated Expiry Radar</div>
           </div>
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-            <div className="text-3xl font-black text-blue-600">Zero Waste</div>
-            <div className="text-xs font-medium text-gray-500 mt-1">Food Waste Prevented</div>
+          <div className="bg-white p-3.5 sm:p-6 rounded-xl sm:rounded-2xl border border-gray-100 shadow-sm">
+            <div className="text-xl sm:text-3xl font-black text-blue-600">Zero Waste</div>
+            <div className="text-[11px] sm:text-xs font-medium text-gray-500 mt-0.5 sm:mt-1">Food Waste Prevented</div>
           </div>
         </div>
       </section>
@@ -289,7 +289,7 @@ export const LandingPage = () => {
         </div>
 
         {/* Customer-Facing Category Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-5 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5 mb-8">
           {categories.map((cat) => {
             const isSelected = activeCategoryKey === cat.key;
             return (
@@ -339,10 +339,10 @@ export const LandingPage = () => {
                 </div>
 
                 {/* Card Body */}
-                <div className="p-4 sm:p-5 flex flex-col flex-grow justify-between">
+                <div className="p-3 sm:p-5 flex flex-col flex-grow justify-between">
                   <div>
                     <h3
-                      className={`font-bold text-base transition-colors ${
+                      className={`font-bold text-sm sm:text-base transition-colors ${
                         isSelected ? 'text-emerald-700' : 'text-gray-900 group-hover:text-emerald-600'
                       }`}
                     >
@@ -447,7 +447,7 @@ export const LandingPage = () => {
               {currentCatDeals.map((product) => (
                 <div
                   key={product._id}
-                  className="w-[270px] sm:w-[290px] md:w-[305px] flex-shrink-0 snap-start"
+                  className="w-[220px] sm:w-[280px] md:w-[305px] flex-shrink-0 snap-start"
                 >
                   <ProductCard product={product} />
                 </div>
@@ -500,7 +500,7 @@ export const LandingPage = () => {
         {loading ? (
           <LoadingSpinner text="Locating nearby urgent lots..." />
         ) : urgentDeals.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
             {urgentDeals.map((product) => (
               <ProductCard key={product._id} product={product} />
             ))}

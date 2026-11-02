@@ -170,38 +170,40 @@ export const CartPage = () => {
             return (
               <div
                 key={item._id || productId}
-                className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center gap-4 hover:shadow-md transition"
+                className="bg-white p-3.5 sm:p-5 rounded-2xl border border-gray-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 hover:shadow-md transition"
               >
-                <img
-                  src={image}
-                  alt={productName}
-                  className="w-20 h-20 rounded-xl object-cover bg-gray-100 flex-shrink-0 border border-gray-100"
-                  onError={(e) => handleImgError(e, productName)}
-                />
+                <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                  <img
+                    src={image}
+                    alt={productName}
+                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover bg-gray-100 flex-shrink-0 border border-gray-100"
+                    onError={(e) => handleImgError(e, productName)}
+                  />
 
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-bold text-brand-700 uppercase">{brand}</div>
-                  <h3 className="font-bold text-gray-900 text-sm truncate">{productName}</h3>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[10px] sm:text-xs font-bold text-brand-700 uppercase truncate">{brand}</div>
+                    <h3 className="font-bold text-gray-900 text-sm truncate">{productName}</h3>
 
-                  <div className="flex items-baseline gap-2 mt-1">
-                    <span className="font-black text-gray-900 text-base">
-                      ₹{effectivePrice.toFixed(2)}
-                    </span>
-                    {originalPrice > effectivePrice && (
-                      <span className="text-xs text-gray-400 line-through">
-                        ₹{originalPrice.toFixed(2)}
+                    <div className="flex items-baseline gap-2 mt-1">
+                      <span className="font-black text-gray-900 text-base">
+                        ₹{effectivePrice.toFixed(2)}
                       </span>
-                    )}
-                    {originalPrice > effectivePrice && (
-                      <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
-                        {Math.round(((originalPrice - effectivePrice) / originalPrice) * 100)}% OFF
-                      </span>
-                    )}
+                      {originalPrice > effectivePrice && (
+                        <span className="text-xs text-gray-400 line-through">
+                          ₹{originalPrice.toFixed(2)}
+                        </span>
+                      )}
+                      {originalPrice > effectivePrice && (
+                        <span className="text-[11px] sm:text-xs font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+                          {Math.round(((originalPrice - effectivePrice) / originalPrice) * 100)}% OFF
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                {/* Quantity Controls */}
-                <div className="flex items-center gap-2">
+                {/* Quantity Controls & Remove */}
+                <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100">
                   <div className="flex items-center border border-gray-200 rounded-lg bg-gray-50 p-1">
                     <button
                       onClick={() => updateQuantity(productId, Math.max(1, quantity - 1))}

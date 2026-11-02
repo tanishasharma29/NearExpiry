@@ -198,11 +198,11 @@ export const WhyChooseNearExpiry = () => {
           The NearExpiry Advantage
         </div>
 
-        <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900 tracking-tight leading-tight">
+        <h2 className="text-2xl sm:text-4xl md:text-5xl font-black text-gray-900 tracking-tight leading-tight">
           Why Choose NearExpiry?
         </h2>
 
-        <p className="text-base sm:text-lg text-gray-700 font-semibold mt-2 leading-relaxed">
+        <p className="text-sm sm:text-lg text-gray-700 font-semibold mt-2 leading-relaxed">
           Built for Sellers. Better for Buyers. Smarter for Everyone.
         </p>
 
@@ -244,7 +244,7 @@ export const WhyChooseNearExpiry = () => {
                     handleCardToggle(pillar.id);
                   }
                 }}
-                className={`relative rounded-3xl p-6 sm:p-7 bg-white text-left cursor-pointer transition-all duration-300 transform select-none ${
+                className={`relative rounded-3xl p-5 sm:p-7 bg-white text-left cursor-pointer transition-all duration-300 transform select-none ${
                   isExpanded
                     ? `${pillar.activeBorder} -translate-y-1`
                     : `${pillar.inactiveBorder} hover:-translate-y-1`

@@ -156,14 +156,14 @@ export const HowItWorksSection = () => {
           </p>
 
           {/* Interactive Step Switcher Tabs */}
-          <div className="inline-flex items-center gap-2 p-1.5 bg-gray-100/80 rounded-full border border-gray-200 mt-4 shadow-inner">
+          <div className="inline-flex max-w-full overflow-x-auto no-scrollbar items-center gap-1.5 sm:gap-2 p-1 sm:p-1.5 bg-gray-100/80 rounded-full border border-gray-200 mt-4 shadow-inner">
             {steps.map((s) => {
               const isTabActive = activeStep === s.id;
               return (
                 <button
                   key={s.id}
                   onClick={() => setActiveStep(s.id)}
-                  className={`px-4 py-2 rounded-full text-xs font-bold transition-all duration-300 flex items-center gap-2 ${
+                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-[11px] sm:text-xs font-bold transition-all duration-300 flex items-center gap-1.5 sm:gap-2 whitespace-nowrap ${
                     isTabActive
                       ? `${s.tabActive} scale-105`
                       : 'text-gray-500 hover:text-gray-900 hover:bg-gray-200/50'

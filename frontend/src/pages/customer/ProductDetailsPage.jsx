@@ -89,7 +89,7 @@ export const ProductDetailsPage = () => {
         <ArrowLeft className="w-4 h-4" /> Back to Marketplace
       </Link>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-10 bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 shadow-sm">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-10 bg-white p-4 sm:p-8 rounded-2xl sm:rounded-3xl border border-gray-200 shadow-sm">
         {/* Left: Product Image & Badges */}
         <div className="space-y-4">
           <div className="relative aspect-square rounded-2xl overflow-hidden bg-gray-100 border border-gray-200">
@@ -123,10 +123,10 @@ export const ProductDetailsPage = () => {
             <div className="text-xs font-bold text-brand-700 uppercase tracking-wider">
               {product.brand || 'Verified Retailer'} • {product.category?.name || 'Grocery'}
             </div>
-            <h1 className="text-3xl font-black text-gray-900">{product.name}</h1>
+            <h1 className="text-2xl sm:text-3xl font-black text-gray-900">{product.name}</h1>
             <p className="text-sm text-gray-600 leading-relaxed">{product.description}</p>
 
-            <div className="pt-2 flex items-center gap-4">
+            <div className="pt-2 flex flex-wrap items-center gap-3 sm:gap-4">
               <DistanceBadge
                 distanceKm={product.distanceKm ?? product.distance}
                 storeName={store?.storeName || product.storeId?.storeName}
@@ -155,8 +155,8 @@ export const ProductDetailsPage = () => {
           {/* Add to Cart Actions */}
           <div className="space-y-3 pt-4 border-t border-gray-100">
             {isPurchasable ? (
-              <div className="flex items-center gap-4">
-                <div className="flex items-center border border-gray-300 rounded-xl bg-gray-50 p-1">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+                <div className="flex items-center justify-center border border-gray-300 rounded-xl bg-gray-50 p-1">
                   <button
                     onClick={() => setQuantity((q) => Math.max(1, q - 1))}
                     className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center font-bold text-gray-700 hover:bg-gray-100"

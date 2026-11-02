@@ -94,7 +94,7 @@ export const ScrollBanners = () => {
             BANNER 1: GROCERY RESCUE (Whole Background Image)
             ========================================================= */}
         <div className="w-full flex-shrink-0 snap-center min-w-full">
-          <div className="relative rounded-3xl bg-emerald-950 text-white p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[500px] md:min-h-[520px] flex flex-col justify-center">
+          <div className="relative rounded-3xl bg-emerald-950 text-white p-5 sm:p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[440px] sm:min-h-[500px] md:min-h-[520px] flex flex-col justify-center">
             {/* Whole Background Image */}
             <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
               <img
@@ -121,7 +121,7 @@ export const ScrollBanners = () => {
                 <Sparkles className="w-3.5 h-3.5 text-amber-300" />
                 NearExpiry
               </div>
-              <h1 className="text-4xl md:text-6xl font-black tracking-tight leading-tight">
+              <h1 className="text-2xl sm:text-4xl md:text-6xl font-black tracking-tight leading-tight">
                 Eat Fresh, <br />
                 <span className="text-amber-300">Save Big,</span> <br />
                 Waste Nothing.
@@ -129,17 +129,17 @@ export const ScrollBanners = () => {
               <p className="text-base md:text-lg text-emerald-100/90 leading-relaxed font-normal">
                 NearExpiry connects local neighborhood supermarkets with smart shoppers. Enjoy genuine groceries at steep dynamic discounts before they expire.
               </p>
-              <div className="flex flex-wrap items-center gap-4 pt-2">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-4 pt-2">
                 <Link
                   to="/marketplace"
-                  className="px-6 py-3.5 bg-amber-400 hover:bg-amber-300 text-gray-950 font-bold text-sm rounded-xl shadow-lg hover:shadow-xl transition flex items-center gap-2"
+                  className="w-full sm:w-auto px-5 sm:px-6 py-3 sm:py-3.5 bg-amber-400 hover:bg-amber-300 text-gray-950 font-bold text-xs sm:text-sm rounded-xl shadow-lg hover:shadow-xl transition flex items-center justify-center gap-2"
                 >
                   Browse Today's Deals
                   <ArrowRight className="w-4 h-4" />
                 </Link>
                 <Link
                   to="/register-seller"
-                  className="px-6 py-3.5 bg-white/10 hover:bg-white/20 text-white font-semibold text-sm rounded-xl backdrop-blur-md border border-white/20 transition flex items-center gap-2"
+                  className="w-full sm:w-auto px-5 sm:px-6 py-3 sm:py-3.5 bg-white/10 hover:bg-white/20 text-white font-semibold text-xs sm:text-sm rounded-xl backdrop-blur-md border border-white/20 transition flex items-center justify-center gap-2"
                 >
                   <Store className="w-4 h-4" />
                   Become a Retail Partner
@@ -153,7 +153,7 @@ export const ScrollBanners = () => {
             BANNER 2: HEALTHY GROCERY & SNACKS (Whole Background Image)
             ========================================================= */}
         <div className="w-full flex-shrink-0 snap-center min-w-full">
-          <div className="relative rounded-3xl bg-emerald-950 text-white p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[500px] md:min-h-[520px] flex flex-col justify-center">
+          <div className="relative rounded-3xl bg-emerald-950 text-white p-5 sm:p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[440px] sm:min-h-[500px] md:min-h-[520px] flex flex-col justify-center">
             {/* Whole Background Image */}
             <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
               <img
@@ -180,7 +180,7 @@ export const ScrollBanners = () => {
                 <Leaf className="w-3.5 h-3.5 text-emerald-400" />
                 100% Genuine · Quality Assured Snacks
               </div>
-              <h2 className="text-3xl sm:text-4xl md:text-6xl font-black tracking-tight leading-tight">
+              <h2 className="text-2xl sm:text-4xl md:text-6xl font-black tracking-tight leading-tight">
                 Good Food. <br />
                 <span className="text-emerald-400">Better Prices.</span>
               </h2>
@@ -188,17 +188,17 @@ export const ScrollBanners = () => {
                 Discover wholesome organic snacks, artisan granola, and pantry favorites from verified local grocers at dynamic discounts before expiry.
               </p>
               {/* Same 2 functional CTA buttons just like other banners */}
-              <div className="flex flex-wrap items-center gap-4 pt-2">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-4 pt-2">
                 <Link
                   to="/marketplace"
-                  className="px-6 py-3.5 bg-amber-400 hover:bg-amber-300 text-gray-950 font-bold text-sm rounded-xl shadow-lg hover:shadow-xl transition flex items-center gap-2"
+                  className="w-full sm:w-auto px-5 sm:px-6 py-3 sm:py-3.5 bg-amber-400 hover:bg-amber-300 text-gray-950 font-bold text-xs sm:text-sm rounded-xl shadow-lg hover:shadow-xl transition flex items-center justify-center gap-2"
                 >
                   Browse Today's Deals
                   <ArrowRight className="w-4 h-4" />
                 </Link>
                 <Link
                   to="/register-seller"
-                  className="px-6 py-3.5 bg-white/10 hover:bg-white/20 text-white font-semibold text-sm rounded-xl backdrop-blur-md border border-white/20 transition flex items-center gap-2"
+                  className="w-full sm:w-auto px-5 sm:px-6 py-3 sm:py-3.5 bg-white/10 hover:bg-white/20 text-white font-semibold text-xs sm:text-sm rounded-xl backdrop-blur-md border border-white/20 transition flex items-center justify-center gap-2"
                 >
                   <Store className="w-4 h-4" />
                   Become a Retail Partner
@@ -212,7 +212,7 @@ export const ScrollBanners = () => {
             BANNER 3: HOUSEHOLD ESSENTIALS (Whole Background Image)
             ========================================================= */}
         <div className="w-full flex-shrink-0 snap-center min-w-full">
-          <div className="relative rounded-3xl bg-cyan-950 text-white p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[500px] md:min-h-[520px] flex flex-col justify-center">
+          <div className="relative rounded-3xl bg-cyan-950 text-white p-5 sm:p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[440px] sm:min-h-[500px] md:min-h-[520px] flex flex-col justify-center">
             {/* Whole Background Image */}
             <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
               <img
@@ -239,7 +239,7 @@ export const ScrollBanners = () => {
                 <ShieldCheck className="w-3.5 h-3.5 text-cyan-300" />
                 Everyday Home & Care Essentials
               </div>
-              <h2 className="text-3xl sm:text-4xl md:text-6xl font-black tracking-tight leading-tight">
+              <h2 className="text-2xl sm:text-4xl md:text-6xl font-black tracking-tight leading-tight">
                 Everyday Essentials. <br />
                 <span className="text-cyan-300">Smarter Prices.</span>
               </h2>
@@ -247,17 +247,17 @@ export const ScrollBanners = () => {
                 Stock up on top-quality cleaning products, paper goods, and daily home essentials from your neighborhood supermarkets at steep dynamic markdowns.
               </p>
               {/* Same 2 functional CTA buttons just like other banners */}
-              <div className="flex flex-wrap items-center gap-4 pt-2">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-4 pt-2">
                 <Link
                   to="/marketplace"
-                  className="px-6 py-3.5 bg-amber-400 hover:bg-amber-300 text-gray-950 font-bold text-sm rounded-xl shadow-lg hover:shadow-xl transition flex items-center gap-2"
+                  className="w-full sm:w-auto px-5 sm:px-6 py-3 sm:py-3.5 bg-amber-400 hover:bg-amber-300 text-gray-950 font-bold text-xs sm:text-sm rounded-xl shadow-lg hover:shadow-xl transition flex items-center justify-center gap-2"
                 >
                   Browse Today's Deals
                   <ArrowRight className="w-4 h-4" />
                 </Link>
                 <Link
                   to="/register-seller"
-                  className="px-6 py-3.5 bg-white/10 hover:bg-white/20 text-white font-semibold text-sm rounded-xl backdrop-blur-md border border-white/20 transition flex items-center gap-2"
+                  className="w-full sm:w-auto px-5 sm:px-6 py-3 sm:py-3.5 bg-white/10 hover:bg-white/20 text-white font-semibold text-xs sm:text-sm rounded-xl backdrop-blur-md border border-white/20 transition flex items-center justify-center gap-2"
                 >
                   <Store className="w-4 h-4" />
                   Become a Retail Partner
@@ -271,7 +271,7 @@ export const ScrollBanners = () => {
             BANNER 4: PHARMACY & WELLNESS (Whole Background Image)
             ========================================================= */}
         <div className="w-full flex-shrink-0 snap-center min-w-full">
-          <div className="relative rounded-3xl bg-teal-950 text-white p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[500px] md:min-h-[520px] flex flex-col justify-center">
+          <div className="relative rounded-3xl bg-teal-950 text-white p-5 sm:p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[440px] sm:min-h-[500px] md:min-h-[520px] flex flex-col justify-center">
             {/* Whole Background Image */}
             <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
               <img
@@ -292,7 +292,7 @@ export const ScrollBanners = () => {
                 <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
                 Health, Wellness & Nutrition Essentials
               </div>
-              <h2 className="text-3xl sm:text-4xl md:text-6xl font-black tracking-tight leading-tight">
+              <h2 className="text-2xl sm:text-4xl md:text-6xl font-black tracking-tight leading-tight">
                 Better Wellness. <br />
                 <span className="text-emerald-400">Smart Savings.</span>
               </h2>
@@ -300,17 +300,17 @@ export const ScrollBanners = () => {
                 Find genuine dietary supplements, daily vitamins, and wellness essentials verified under NearExpiry's strict FEFO expiry protocols.
               </p>
               {/* Same 2 functional CTA buttons just like other banners */}
-              <div className="flex flex-wrap items-center gap-4 pt-2">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-4 pt-2">
                 <Link
                   to="/marketplace"
-                  className="px-6 py-3.5 bg-amber-400 hover:bg-amber-300 text-gray-950 font-bold text-sm rounded-xl shadow-lg hover:shadow-xl transition flex items-center gap-2"
+                  className="w-full sm:w-auto px-5 sm:px-6 py-3 sm:py-3.5 bg-amber-400 hover:bg-amber-300 text-gray-950 font-bold text-xs sm:text-sm rounded-xl shadow-lg hover:shadow-xl transition flex items-center justify-center gap-2"
                 >
                   Browse Today's Deals
                   <ArrowRight className="w-4 h-4" />
                 </Link>
                 <Link
                   to="/register-seller"
-                  className="px-6 py-3.5 bg-white/10 hover:bg-white/20 text-white font-semibold text-sm rounded-xl backdrop-blur-md border border-white/20 transition flex items-center gap-2"
+                  className="w-full sm:w-auto px-5 sm:px-6 py-3 sm:py-3.5 bg-white/10 hover:bg-white/20 text-white font-semibold text-xs sm:text-sm rounded-xl backdrop-blur-md border border-white/20 transition flex items-center justify-center gap-2"
                 >
                   <Store className="w-4 h-4" />
                   Become a Retail Partner
@@ -324,7 +324,7 @@ export const ScrollBanners = () => {
             BANNER 5: HAIR CARE & BEAUTY (Whole Background Image)
             ========================================================= */}
         <div className="w-full flex-shrink-0 snap-center min-w-full">
-          <div className="relative rounded-3xl bg-stone-950 text-white p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[500px] md:min-h-[520px] flex flex-col justify-center">
+          <div className="relative rounded-3xl bg-stone-950 text-white p-5 sm:p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[440px] sm:min-h-[500px] md:min-h-[520px] flex flex-col justify-center">
             {/* Whole Background Image */}
             <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
               <img
@@ -345,7 +345,7 @@ export const ScrollBanners = () => {
                 <Sparkles className="w-3.5 h-3.5 text-amber-300" />
                 Personal Care & Hair Beauty Rescue
               </div>
-              <h2 className="text-3xl sm:text-4xl md:text-6xl font-black tracking-tight leading-tight">
+              <h2 className="text-2xl sm:text-4xl md:text-6xl font-black tracking-tight leading-tight">
                 Care More. <br />
                 <span className="text-amber-300">Spend Less.</span>
               </h2>
@@ -353,17 +353,17 @@ export const ScrollBanners = () => {
                 Discover premium hair care, nourishing serums, and personal care essentials rescued from supermarket surplus at remarkable price cuts before expiry.
               </p>
               {/* Same 2 functional CTA buttons just like other banners */}
-              <div className="flex flex-wrap items-center gap-4 pt-2">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-4 pt-2">
                 <Link
                   to="/marketplace"
-                  className="px-6 py-3.5 bg-amber-400 hover:bg-amber-300 text-gray-950 font-bold text-sm rounded-xl shadow-lg hover:shadow-xl transition flex items-center gap-2"
+                  className="w-full sm:w-auto px-5 sm:px-6 py-3 sm:py-3.5 bg-amber-400 hover:bg-amber-300 text-gray-950 font-bold text-xs sm:text-sm rounded-xl shadow-lg hover:shadow-xl transition flex items-center justify-center gap-2"
                 >
                   Browse Today's Deals
                   <ArrowRight className="w-4 h-4" />
                 </Link>
                 <Link
                   to="/register-seller"
-                  className="px-6 py-3.5 bg-white/10 hover:bg-white/20 text-white font-semibold text-sm rounded-xl backdrop-blur-md border border-white/20 transition flex items-center gap-2"
+                  className="w-full sm:w-auto px-5 sm:px-6 py-3 sm:py-3.5 bg-white/10 hover:bg-white/20 text-white font-semibold text-xs sm:text-sm rounded-xl backdrop-blur-md border border-white/20 transition flex items-center justify-center gap-2"
                 >
                   <Store className="w-4 h-4" />
                   Become a Retail Partner
@@ -380,23 +380,23 @@ export const ScrollBanners = () => {
       <button
         onClick={scrollPrev}
         disabled={currentIndex === 0}
-        className={`absolute left-7 sm:left-10 top-1/2 -translate-y-1/2 z-30 w-12 h-12 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center backdrop-blur-md border border-white/30 shadow-2xl transition-all duration-200 hover:scale-110 active:scale-95 ${
+        className={`absolute left-2 sm:left-10 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-12 sm:h-12 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center backdrop-blur-md border border-white/30 shadow-2xl transition-all duration-200 hover:scale-110 active:scale-95 ${
           currentIndex === 0 ? 'opacity-30 cursor-not-allowed pointer-events-none' : 'opacity-90 hover:opacity-100 cursor-pointer'
         }`}
         aria-label="Previous banner"
       >
-        <ChevronLeft className="w-7 h-7 text-white" />
+        <ChevronLeft className="w-5 h-5 sm:w-7 sm:h-7 text-white" />
       </button>
 
       <button
         onClick={scrollNext}
         disabled={currentIndex === totalBanners - 1}
-        className={`absolute right-7 sm:right-10 top-1/2 -translate-y-1/2 z-30 w-12 h-12 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center backdrop-blur-md border border-white/30 shadow-2xl transition-all duration-200 hover:scale-110 active:scale-95 ${
+        className={`absolute right-2 sm:right-10 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-12 sm:h-12 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center backdrop-blur-md border border-white/30 shadow-2xl transition-all duration-200 hover:scale-110 active:scale-95 ${
           currentIndex === totalBanners - 1 ? 'opacity-30 cursor-not-allowed pointer-events-none' : 'opacity-90 hover:opacity-100 cursor-pointer'
         }`}
         aria-label="Next banner"
       >
-        <ChevronRight className="w-7 h-7 text-white" />
+        <ChevronRight className="w-5 h-5 sm:w-7 sm:h-7 text-white" />
       </button>
 
       {/* =========================================================

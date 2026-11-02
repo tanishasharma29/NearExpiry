@@ -141,26 +141,26 @@ export const ProductCard = ({ product }) => {
       </div>
 
       {/* Content Area */}
-      <div className="p-4 flex flex-col flex-grow">
+      <div className="p-2.5 sm:p-4 flex flex-col flex-grow">
         {/* Brand & Category */}
-        <div className="text-xs font-semibold text-brand-700 uppercase tracking-wide mb-1">
+        <div className="text-[10px] sm:text-xs font-semibold text-brand-700 uppercase tracking-wide mb-0.5 sm:mb-1 truncate">
           {product.brand || product.category?.name || 'Hyperlocal Grocery'}
         </div>
 
         {/* Product Name */}
         <Link to={`/product/${product._id}`} className="hover:text-brand-600 transition">
-          <h3 className="font-semibold text-gray-900 text-base line-clamp-1" title={product.name}>
+          <h3 className="font-bold text-gray-900 text-xs sm:text-sm md:text-base line-clamp-2 min-h-[2rem] sm:min-h-[2.5rem]" title={product.name}>
             {product.name}
           </h3>
         </Link>
 
         {/* Package info */}
-        <div className="text-xs text-gray-500 mb-2">
+        <div className="text-[11px] sm:text-xs text-gray-500 mb-1.5 sm:mb-2 truncate">
           {product.packageSize ? `${product.packageSize} • ` : ''}{product.unit || 'pack'}
         </div>
 
         {/* Store & Distance Badge */}
-        <div className="mb-3">
+        <div className="mb-2 sm:mb-3">
           <DistanceBadge
             distanceKm={product.distanceKm ?? product.distance}
             storeName={product.store?.storeName || product.storeId?.storeName}
@@ -169,8 +169,8 @@ export const ProductCard = ({ product }) => {
         </div>
 
         {/* Price & Stock Row */}
-        <div className="mt-auto pt-3 border-t border-gray-100 flex items-end justify-between">
-          <div>
+        <div className="mt-auto pt-2 sm:pt-3 border-t border-gray-100 flex items-end justify-between gap-1">
+          <div className="min-w-0">
             <PriceTag
               currentPrice={currentPrice}
               originalPrice={originalPrice}
@@ -189,7 +189,7 @@ export const ProductCard = ({ product }) => {
             type="button"
             onClick={handleAddToCart}
             disabled={!isPurchasable || cartLoading}
-            className={`p-2.5 rounded-xl flex items-center justify-center transition-all duration-200 shadow-sm ${
+            className={`p-2 sm:p-2.5 rounded-xl flex items-center justify-center transition-all duration-200 shadow-sm flex-shrink-0 ${
               addedAnimation
                 ? 'bg-emerald-600 text-white scale-105 shadow-md ring-2 ring-emerald-300'
                 : isPurchasable

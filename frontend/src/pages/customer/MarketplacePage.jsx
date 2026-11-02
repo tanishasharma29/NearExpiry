@@ -77,18 +77,18 @@ export const MarketplacePage = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Title & Stats */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-3xl font-black text-gray-900">Hyperlocal Marketplace</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="text-2xl sm:text-3xl font-black text-gray-900">Hyperlocal Marketplace</h1>
+          <p className="text-xs sm:text-sm text-gray-500">
             Real-time dynamic pricing powered by First-Expired-First-Out (FEFO) algorithms
           </p>
         </div>
 
         {/* Sort Select */}
-        <div className="flex items-center gap-2">
-          <ArrowUpDown className="w-4 h-4 text-gray-500" />
-          <span className="text-xs font-semibold text-gray-700">Sort by:</span>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <ArrowUpDown className="w-4 h-4 text-gray-500 flex-shrink-0" />
+          <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">Sort by:</span>
           <select
             value={`${sortBy}:${sortOrder}`}
             onChange={(e) => {
@@ -109,9 +109,9 @@ export const MarketplacePage = () => {
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm space-y-3">
+      <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-gray-200 shadow-sm space-y-3">
         {/* Quick Expiry Windows */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs no-scrollbar">
           <span className="font-bold text-gray-700 uppercase tracking-wider text-[11px] whitespace-nowrap">
             Expiry Window:
           </span>
@@ -196,7 +196,7 @@ export const MarketplacePage = () => {
         <LoadingSpinner text="Querying active FEFO batches..." />
       ) : products.length > 0 ? (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
             {products.map((product) => (
               <ProductCard key={product._id} product={product} />
             ))}
