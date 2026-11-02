@@ -16,8 +16,21 @@ export class ApiError extends Error {
   }
 }
 
+const sanitizeBaseUrl = (rawUrl) => {
+  if (!rawUrl || typeof rawUrl !== 'string') return '/api/v1';
+  let cleaned = rawUrl.trim().replace(/^<|>$/g, '');
+  if (!cleaned.startsWith('http://') && !cleaned.startsWith('https://') && !cleaned.startsWith('/')) {
+    cleaned = `https://${cleaned}`;
+  }
+  cleaned = cleaned.replace(/\/+$/, '');
+  if (cleaned.startsWith('http') && !cleaned.includes('/api/v1')) {
+    cleaned = `${cleaned}/api/v1`;
+  }
+  return cleaned;
+};
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api/v1',
+  baseURL: sanitizeBaseUrl(import.meta.env.VITE_API_URL),
   headers: {
     'Content-Type': 'application/json',
   },

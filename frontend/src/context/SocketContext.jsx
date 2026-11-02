@@ -12,13 +12,22 @@ export const SocketProvider = ({ children }) => {
 
   // Compute Socket.IO server URL
   const getSocketUrl = () => {
-    if (import.meta.env.VITE_SOCKET_URL) {
-      return import.meta.env.VITE_SOCKET_URL;
+    let socketUrl = import.meta.env.VITE_SOCKET_URL;
+    if (socketUrl && typeof socketUrl === 'string') {
+      let cleaned = socketUrl.trim().replace(/^<|>$/g, '');
+      if (!cleaned.startsWith('http://') && !cleaned.startsWith('https://')) {
+        cleaned = `https://${cleaned}`;
+      }
+      return cleaned.replace(/\/+$/, '');
     }
     const apiUrl = import.meta.env.VITE_API_URL;
-    if (apiUrl && apiUrl.startsWith('http')) {
+    if (apiUrl && typeof apiUrl === 'string') {
       try {
-        const parsed = new URL(apiUrl);
+        let safeApi = apiUrl.trim().replace(/^<|>$/g, '');
+        if (!safeApi.startsWith('http://') && !safeApi.startsWith('https://')) {
+          safeApi = `https://${safeApi}`;
+        }
+        const parsed = new URL(safeApi);
         return parsed.origin;
       } catch {
         return 'http://localhost:5000';
