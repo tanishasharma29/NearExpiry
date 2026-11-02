@@ -32,6 +32,16 @@ app.use(cookieParser());
 
 app.use(env.API_PREFIX, apiRoutes);
 
+// Root landing route for health probe and browser checks
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'NearExpiry API Server is live and running!',
+    healthCheck: `${env.API_PREFIX}/health`,
+    version: '1.0.0',
+  });
+});
+
 app.use(notFoundHandler);
 
 app.use(globalErrorHandler);
