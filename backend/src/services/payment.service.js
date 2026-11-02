@@ -89,7 +89,7 @@ export const processPaymentService = async (customerId, payload, userActor) => {
 
     let payment;
     if (session) {
-      const created = await Payment.create([paymentDoc], { session });
+      const created = await Payment.create([paymentDoc], { session, ordered: true });
       payment = created[0];
     } else {
       payment = await Payment.create(paymentDoc);

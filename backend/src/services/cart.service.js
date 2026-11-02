@@ -842,7 +842,7 @@ export const reserveCartStockService = async (userId, userActor = null) => {
               performedByRole: userActor?.role || 'CUSTOMER',
             },
           ],
-          session ? { session } : {}
+          session ? { session, ordered: true } : {}
         );
       }
     }

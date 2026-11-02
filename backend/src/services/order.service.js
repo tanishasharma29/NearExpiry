@@ -230,7 +230,7 @@ export const createOrderService = async (customerId, payload, userActor) => {
     };
 
     if (session) {
-      const created = await Order.create([orderDocData], { session });
+      const created = await Order.create([orderDocData], { session, ordered: true });
       createdOrder = created[0];
     } else {
       createdOrder = await Order.create(orderDocData);
@@ -255,13 +255,19 @@ export const createOrderService = async (customerId, payload, userActor) => {
       performedByRole: userActor?.role || 'CUSTOMER',
     }));
 
+    if (auditEntries.length > 0) {
+      if (session) {
+        await InventoryAudit.create(auditEntries, { session, ordered: true });
+      } else {
+        await InventoryAudit.create(auditEntries);
+      }
+    }
+
     if (session) {
-      await InventoryAudit.create(auditEntries, { session });
       // Step 5: Clear Customer's Cart inside transaction
       await Cart.findOneAndUpdate({ userId: customerId }, { items: [] }, { session });
       await session.commitTransaction();
     } else {
-      await InventoryAudit.create(auditEntries);
       await Cart.findOneAndUpdate({ userId: customerId }, { items: [] });
     }
 
