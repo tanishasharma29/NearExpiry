@@ -64,6 +64,7 @@ const NAVIGATION_SECTIONS = [
 
 export const SellerLayout = () => {
   const { user, logout } = useAuth();
+  const { subscribe } = useSocket();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
