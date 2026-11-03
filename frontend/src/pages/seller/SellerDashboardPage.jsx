@@ -438,7 +438,7 @@ export const SellerDashboardPage = () => {
       )}
 
       {/* 2. Operational Inventory KPI Strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-4">
         <MerchantStatCard
           label="Total Inventory Units"
           value={kpis.totalInventory !== undefined ? kpis.totalInventory.toLocaleString('en-IN') : 0}

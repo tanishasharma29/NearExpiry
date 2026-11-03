@@ -68,45 +68,45 @@ export const MerchantStatCard = ({
   return (
     <div
       onClick={onClick}
-      className={`relative bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-sm border-l-4 ${styles.accent} transition-all duration-200 flex flex-col justify-between ${
+      className={`relative bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 p-3 sm:p-5 shadow-xs sm:shadow-sm border-l-4 ${styles.accent} transition-all duration-200 flex flex-col justify-between ${
         isClickable ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5' : 'hover:border-slate-300'
       } ${className}`}
     >
       <div>
         {/* Top Header Row: Label + Badge (Left) and Icon (Right) */}
-        <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="flex items-center justify-between gap-2 mb-1 sm:mb-2">
           <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider leading-tight">
+            <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider leading-tight">
               {label}
             </span>
             {badge && (
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${styles.badge}`}>
+              <span className={`text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${styles.badge}`}>
                 {badge}
               </span>
             )}
           </div>
 
           {Icon && (
-            <div className={`p-2 rounded-lg border flex-shrink-0 ${styles.iconBg}`}>
-              <Icon className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+            <div className={`p-1.5 sm:p-2 rounded-lg border flex-shrink-0 ${styles.iconBg}`}>
+              <Icon className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5" />
             </div>
           )}
         </div>
 
         {/* Dedicated Full-Width Value Row (Guaranteed No Overlap with Icon) */}
-        <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight break-words py-1">
+        <div className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight break-words py-0.5 sm:py-1 leading-none sm:leading-tight">
           {value ?? '—'}
         </div>
       </div>
 
       {/* Bottom Context Row: Subtext & Trend Indicator */}
       {(subtext || trend) && (
-        <div className="mt-2.5 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 gap-2">
-          {subtext && <div className="truncate text-[11px]">{subtext}</div>}
+        <div className="mt-1.5 sm:mt-2.5 pt-1.5 sm:pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 gap-2">
+          {subtext && <div className="truncate text-[10px] sm:text-[11px] text-slate-500 font-medium">{subtext}</div>}
 
           {trend && (
             <div
-              className={`flex items-center gap-1 font-semibold flex-shrink-0 text-[11px] ${
+              className={`flex items-center gap-1 font-semibold flex-shrink-0 text-[10px] sm:text-[11px] ${
                 trend.isPositive === true
                   ? 'text-emerald-600'
                   : trend.isPositive === false
@@ -114,11 +114,11 @@ export const MerchantStatCard = ({
                   : 'text-slate-500'
               }`}
             >
-              {trend.isPositive === true && <TrendingUp className="w-3.5 h-3.5" />}
-              {trend.isPositive === false && <TrendingDown className="w-3.5 h-3.5" />}
-              {trend.isPositive === undefined && <Minus className="w-3.5 h-3.5" />}
+              {trend.isPositive === true && <TrendingUp className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
+              {trend.isPositive === false && <TrendingDown className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
+              {trend.isPositive === undefined && <Minus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
               <span>{trend.value}</span>
-              {trend.label && <span className="text-[10px] text-slate-400 font-normal">({trend.label})</span>}
+              {trend.label && <span className="text-[9px] sm:text-[10px] text-slate-400 font-normal">({trend.label})</span>}
             </div>
           )}
         </div>
