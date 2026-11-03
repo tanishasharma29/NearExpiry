@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
@@ -12,14 +12,20 @@ import {
   LifeBuoy,
   BarChart3,
   ShieldCheck,
+  ShieldAlert,
   LogOut,
   ExternalLink,
   Menu,
   X,
   Activity,
+  Bell,
+  BellRing,
+  CheckCheck,
+  MessageSquare,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
+import { notificationService } from '../services/notificationService';
 
 /**
  * Admin Navigation Groups
@@ -74,7 +80,83 @@ export const AdminLayout = () => {
   const { user, logout } = useAuth();
   const { isConnected, liveNotifications, dismissAlert } = useSocket();
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // In-App Notifications State
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const notifDropdownRef = useRef(null);
+
+  const fetchNotifications = async () => {
+    try {
+      const [notifRes, countRes] = await Promise.all([
+        notificationService.getNotifications({ limit: 15 }).catch(() => ({ notifications: [] })),
+        notificationService.getUnreadCount().catch(() => ({ unreadCount: 0 })),
+      ]);
+      const notifList = notifRes?.data?.notifications || notifRes?.notifications || [];
+      const unread = countRes?.data?.unreadCount ?? countRes?.unreadCount ?? 0;
+      setNotifications(notifList);
+      setUnreadCount(unread);
+    } catch (err) {
+      console.warn('Unable to load admin notifications:', err?.message);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  // Refresh notifications when real-time socket alert arrives
+  useEffect(() => {
+    if (liveNotifications.length > 0) {
+      fetchNotifications();
+    }
+  }, [liveNotifications]);
+
+  // Click outside to close notifications dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notifDropdownRef.current && !notifDropdownRef.current.contains(event.target)) {
+        setNotificationsOpen(false);
+      }
+    };
+    if (notificationsOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [notificationsOpen]);
+
+  const handleMarkAllRead = async () => {
+    try {
+      await notificationService.markAllAsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+    } catch (err) {
+      console.error('Failed to mark all notifications as read:', err);
+    }
+  };
+
+  const handleNotificationClick = async (notif) => {
+    try {
+      if (!notif.isRead) {
+        await notificationService.markAsRead(notif._id);
+        setNotifications((prev) =>
+          prev.map((n) => (n._id === notif._id ? { ...n, isRead: true } : n))
+        );
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      }
+      setNotificationsOpen(false);
+      if (notif.actionUrl) {
+        navigate(notif.actionUrl);
+      }
+    } catch (err) {
+      console.error('Failed to process notification click:', err);
+    }
+  };
 
   // Close mobile drawer on route transition
   useEffect(() => {
@@ -286,6 +368,105 @@ export const AdminLayout = () => {
             <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-xs font-bold shadow-xs">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse motion-reduce:animate-none" />
               <span>Platform Operations Active</span>
+            </div>
+
+            {/* In-App Notifications Bell Dropdown */}
+            <div className="relative" ref={notifDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setNotificationsOpen((prev) => !prev)}
+                className="relative p-2 rounded-xl text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-600"
+                aria-label={`Notifications ${unreadCount > 0 ? `(${unreadCount} unread)` : ''}`}
+                title="In-App Notifications"
+              >
+                <Bell className="w-5 h-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-black text-white bg-rose-500 rounded-full border-2 border-white shadow-xs animate-in zoom-in-50">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {notificationsOpen && (
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-gray-200 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm text-gray-900">Admin Notifications</span>
+                      {unreadCount > 0 && (
+                        <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                          {unreadCount} new
+                        </span>
+                      )}
+                    </div>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={handleMarkAllRead}
+                        className="text-xs text-purple-600 hover:text-purple-700 font-semibold flex items-center gap-1"
+                      >
+                        <CheckCheck className="w-3.5 h-3.5" />
+                        <span>Mark all read</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="max-h-80 overflow-y-auto divide-y divide-gray-100">
+                    {notifications.length === 0 ? (
+                      <div className="py-8 text-center px-4">
+                        <Bell className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                        <p className="text-xs text-gray-500 font-medium">No notifications yet</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">Platform alerts and seller inquiries will appear here</p>
+                      </div>
+                    ) : (
+                      notifications.map((notif) => {
+                        const isSellerSupport = notif.title?.includes('[Seller Support]');
+
+                        return (
+                          <div
+                            key={notif._id}
+                            onClick={() => handleNotificationClick(notif)}
+                            className={`p-3.5 hover:bg-purple-50/50 cursor-pointer transition-colors flex gap-3 ${
+                              !notif.isRead ? 'bg-purple-50/30' : ''
+                            }`}
+                          >
+                            <div className="flex-shrink-0 mt-0.5">
+                              {isSellerSupport ? (
+                                <div className="p-1.5 rounded-lg bg-amber-100 text-amber-800">
+                                  <MessageSquare className="w-4 h-4" />
+                                </div>
+                              ) : (
+                                <div className="p-1.5 rounded-lg bg-gray-100 text-gray-600">
+                                  <BellRing className="w-4 h-4" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2 mb-0.5">
+                                <p className={`text-xs font-bold truncate ${!notif.isRead ? 'text-gray-900' : 'text-gray-600'}`}>
+                                  {notif.title}
+                                </p>
+                                {!notif.isRead && (
+                                  <span className="w-2 h-2 rounded-full bg-purple-600 flex-shrink-0" />
+                                )}
+                              </div>
+                              <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">
+                                {notif.message}
+                              </p>
+                              <div className="flex items-center justify-between mt-1 text-[10px] text-gray-400">
+                                <span>{new Date(notif.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                {notif.actionUrl && (
+                                  <span className="text-purple-600 font-semibold hover:underline">
+                                    View in Sellers &rarr;
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Authenticated Admin Identity */}
