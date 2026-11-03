@@ -138,7 +138,7 @@ export const HowItWorksSection = () => {
 
   return (
     <section id="how-it-works" className="bg-white py-16 sm:py-20 border-y border-gray-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-10 2xl:px-16">
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-14 space-y-3">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-700 uppercase tracking-wider shadow-sm">
@@ -188,7 +188,7 @@ export const HowItWorksSection = () => {
           {/* Subtle connecting workflow line across steps on desktop */}
           <div className="hidden md:block absolute top-16 left-[18%] right-[18%] h-0.5 bg-gradient-to-r from-emerald-200 via-amber-200 to-blue-200 pointer-events-none z-0" />
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10 items-stretch">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 2xl:gap-10 relative z-10 items-stretch">
             {steps.map((step) => {
               const PillIcon = step.pillIcon;
               const isActive = activeStep === step.id;

@@ -241,7 +241,7 @@ export const LandingPage = () => {
       <ScrollBanners />
 
       {/* Impact Counters */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-10 2xl:px-16">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4 text-center">
           <div className="bg-white p-3.5 sm:p-6 rounded-xl sm:rounded-2xl border border-gray-100 shadow-sm">
             <div className="text-xl sm:text-3xl font-black text-brand-600">Up to 75%</div>
@@ -263,7 +263,7 @@ export const LandingPage = () => {
       </section>
 
       {/* Explore by Category Section */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-10 2xl:px-16">
         {/* Section Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
           <div>
@@ -289,7 +289,7 @@ export const LandingPage = () => {
         </div>
 
         {/* Customer-Facing Category Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-5 2xl:gap-6 mb-8">
           {categories.map((cat) => {
             const isSelected = activeCategoryKey === cat.key;
             return (
@@ -479,7 +479,7 @@ export const LandingPage = () => {
       </section>
 
       {/* Urgent Flash Deals */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-10 2xl:px-16">
         <div className="flex items-center justify-between mb-6">
           <div>
             <div className="inline-flex items-center gap-1.5 text-xs font-bold text-red-600 bg-red-50 px-2.5 py-0.5 rounded-full mb-1 border border-red-200">
@@ -500,7 +500,7 @@ export const LandingPage = () => {
         {loading ? (
           <LoadingSpinner text="Locating nearby urgent lots..." />
         ) : urgentDeals.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-6">
             {urgentDeals.map((product) => (
               <ProductCard key={product._id} product={product} />
             ))}

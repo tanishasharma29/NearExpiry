@@ -65,7 +65,7 @@ export const PublicLayout = () => {
 
       {/* Main Navbar */}
       <header className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-10 2xl:px-16">
           <div className="flex items-center justify-between h-14 sm:h-16 gap-2 sm:gap-4">
             {/* Brand Logo */}
             <Link to="/" className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
@@ -81,7 +81,7 @@ export const PublicLayout = () => {
             </Link>
 
             {/* Global Search Bar (Desktop/Tablet) */}
-            <form onSubmit={handleSearch} className="flex-1 max-w-lg hidden sm:block">
+            <form onSubmit={handleSearch} className="flex-1 max-w-lg lg:max-w-xl xl:max-w-2xl hidden sm:block">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -442,7 +442,7 @@ export const PublicLayout = () => {
 
       {/* Public Footer */}
       <footer className="bg-gray-900 text-gray-300 py-10 sm:py-12 mt-12 sm:mt-16 border-t border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-10 2xl:px-16">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
             <div>
               <div className="flex items-center gap-2 mb-3">

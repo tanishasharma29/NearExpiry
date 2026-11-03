@@ -34,7 +34,7 @@ export const PromotionalBannerSection = () => {
   };
 
   return (
-    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 my-8 sm:my-12">
+    <section className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-10 2xl:px-16 my-8 sm:my-12">
       <div className="relative rounded-[28px] sm:rounded-3xl bg-[#f6f3ea] border border-[#ebe5d8] p-8 sm:p-12 lg:p-16 overflow-hidden shadow-xs">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
           

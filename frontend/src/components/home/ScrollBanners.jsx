@@ -79,7 +79,7 @@ export const ScrollBanners = () => {
   };
 
   return (
-    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative group">
+    <section className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-10 2xl:px-16 relative group">
       {/* Horizontal Scroll Track */}
       <div
         ref={scrollRef}
@@ -94,7 +94,7 @@ export const ScrollBanners = () => {
             BANNER 1: GROCERY RESCUE (Whole Background Image)
             ========================================================= */}
         <div className="w-full flex-shrink-0 snap-center min-w-full">
-          <div className="relative rounded-3xl bg-emerald-950 text-white p-5 sm:p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[440px] sm:min-h-[500px] md:min-h-[520px] flex flex-col justify-center">
+          <div className="relative rounded-3xl bg-emerald-950 text-white p-5 sm:p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[440px] sm:min-h-[500px] md:min-h-[520px] lg:min-h-[560px] 2xl:min-h-[600px] flex flex-col justify-center">
             {/* Whole Background Image */}
             <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
               <img
@@ -116,7 +116,7 @@ export const ScrollBanners = () => {
             </div>
 
             {/* Foreground UI Layer with full functionality */}
-            <div className="relative z-20 max-w-2xl space-y-6">
+            <div className="relative z-20 max-w-2xl 2xl:max-w-3xl space-y-6">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-semibold text-emerald-200">
                 <Sparkles className="w-3.5 h-3.5 text-amber-300" />
                 NearExpiry
@@ -153,7 +153,7 @@ export const ScrollBanners = () => {
             BANNER 2: HEALTHY GROCERY & SNACKS (Whole Background Image)
             ========================================================= */}
         <div className="w-full flex-shrink-0 snap-center min-w-full">
-          <div className="relative rounded-3xl bg-emerald-950 text-white p-5 sm:p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[440px] sm:min-h-[500px] md:min-h-[520px] flex flex-col justify-center">
+          <div className="relative rounded-3xl bg-emerald-950 text-white p-5 sm:p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[440px] sm:min-h-[500px] md:min-h-[520px] lg:min-h-[560px] 2xl:min-h-[600px] flex flex-col justify-center">
             {/* Whole Background Image */}
             <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
               <img
@@ -175,7 +175,7 @@ export const ScrollBanners = () => {
             </div>
 
             {/* Foreground UI Layer with full functionality */}
-            <div className="relative z-20 max-w-2xl space-y-6">
+            <div className="relative z-20 max-w-2xl 2xl:max-w-3xl space-y-6">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 backdrop-blur-md border border-emerald-400/30 text-xs font-semibold text-emerald-300">
                 <Leaf className="w-3.5 h-3.5 text-emerald-400" />
                 100% Genuine · Quality Assured Snacks
@@ -212,7 +212,7 @@ export const ScrollBanners = () => {
             BANNER 3: HOUSEHOLD ESSENTIALS (Whole Background Image)
             ========================================================= */}
         <div className="w-full flex-shrink-0 snap-center min-w-full">
-          <div className="relative rounded-3xl bg-cyan-950 text-white p-5 sm:p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[440px] sm:min-h-[500px] md:min-h-[520px] flex flex-col justify-center">
+          <div className="relative rounded-3xl bg-cyan-950 text-white p-5 sm:p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[440px] sm:min-h-[500px] md:min-h-[520px] lg:min-h-[560px] 2xl:min-h-[600px] flex flex-col justify-center">
             {/* Whole Background Image */}
             <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
               <img
@@ -234,7 +234,7 @@ export const ScrollBanners = () => {
             </div>
 
             {/* Foreground UI Layer with full functionality */}
-            <div className="relative z-20 max-w-2xl space-y-6">
+            <div className="relative z-20 max-w-2xl 2xl:max-w-3xl space-y-6">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/20 backdrop-blur-md border border-cyan-400/30 text-xs font-semibold text-cyan-200">
                 <ShieldCheck className="w-3.5 h-3.5 text-cyan-300" />
                 Everyday Home & Care Essentials
@@ -271,7 +271,7 @@ export const ScrollBanners = () => {
             BANNER 4: PHARMACY & WELLNESS (Whole Background Image)
             ========================================================= */}
         <div className="w-full flex-shrink-0 snap-center min-w-full">
-          <div className="relative rounded-3xl bg-teal-950 text-white p-5 sm:p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[440px] sm:min-h-[500px] md:min-h-[520px] flex flex-col justify-center">
+          <div className="relative rounded-3xl bg-teal-950 text-white p-5 sm:p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[440px] sm:min-h-[500px] md:min-h-[520px] lg:min-h-[560px] 2xl:min-h-[600px] flex flex-col justify-center">
             {/* Whole Background Image */}
             <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
               <img
@@ -287,7 +287,7 @@ export const ScrollBanners = () => {
             </div>
 
             {/* Foreground UI Layer with full functionality */}
-            <div className="relative z-20 max-w-2xl space-y-6">
+            <div className="relative z-20 max-w-2xl 2xl:max-w-3xl space-y-6">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 backdrop-blur-md border border-emerald-400/30 text-xs font-semibold text-emerald-300">
                 <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
                 Health, Wellness & Nutrition Essentials
@@ -324,7 +324,7 @@ export const ScrollBanners = () => {
             BANNER 5: HAIR CARE & BEAUTY (Whole Background Image)
             ========================================================= */}
         <div className="w-full flex-shrink-0 snap-center min-w-full">
-          <div className="relative rounded-3xl bg-stone-950 text-white p-5 sm:p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[440px] sm:min-h-[500px] md:min-h-[520px] flex flex-col justify-center">
+          <div className="relative rounded-3xl bg-stone-950 text-white p-5 sm:p-8 md:p-14 lg:p-16 overflow-hidden shadow-2xl min-h-[440px] sm:min-h-[500px] md:min-h-[520px] lg:min-h-[560px] 2xl:min-h-[600px] flex flex-col justify-center">
             {/* Whole Background Image */}
             <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
               <img
@@ -340,7 +340,7 @@ export const ScrollBanners = () => {
             </div>
 
             {/* Foreground UI Layer with full functionality */}
-            <div className="relative z-20 max-w-2xl space-y-6">
+            <div className="relative z-20 max-w-2xl 2xl:max-w-3xl space-y-6">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 backdrop-blur-md border border-amber-400/30 text-xs font-semibold text-amber-300">
                 <Sparkles className="w-3.5 h-3.5 text-amber-300" />
                 Personal Care & Hair Beauty Rescue
@@ -380,7 +380,7 @@ export const ScrollBanners = () => {
       <button
         onClick={scrollPrev}
         disabled={currentIndex === 0}
-        className={`absolute left-2 sm:left-10 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-12 sm:h-12 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center backdrop-blur-md border border-white/30 shadow-2xl transition-all duration-200 hover:scale-110 active:scale-95 ${
+        className={`absolute left-2 sm:left-6 lg:left-12 2xl:left-16 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-12 sm:h-12 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center backdrop-blur-md border border-white/30 shadow-2xl transition-all duration-200 hover:scale-110 active:scale-95 ${
           currentIndex === 0 ? 'opacity-30 cursor-not-allowed pointer-events-none' : 'opacity-90 hover:opacity-100 cursor-pointer'
         }`}
         aria-label="Previous banner"
@@ -391,7 +391,7 @@ export const ScrollBanners = () => {
       <button
         onClick={scrollNext}
         disabled={currentIndex === totalBanners - 1}
-        className={`absolute right-2 sm:right-10 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-12 sm:h-12 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center backdrop-blur-md border border-white/30 shadow-2xl transition-all duration-200 hover:scale-110 active:scale-95 ${
+        className={`absolute right-2 sm:right-6 lg:right-12 2xl:right-16 top-1/2 -translate-y-1/2 z-30 w-9 h-9 sm:w-12 sm:h-12 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center backdrop-blur-md border border-white/30 shadow-2xl transition-all duration-200 hover:scale-110 active:scale-95 ${
           currentIndex === totalBanners - 1 ? 'opacity-30 cursor-not-allowed pointer-events-none' : 'opacity-90 hover:opacity-100 cursor-pointer'
         }`}
         aria-label="Next banner"

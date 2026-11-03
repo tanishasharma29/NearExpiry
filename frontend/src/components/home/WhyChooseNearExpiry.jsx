@@ -188,7 +188,7 @@ export const WhyChooseNearExpiry = () => {
   return (
     <section
       ref={sectionRef}
-      className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12"
+      className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-10 2xl:px-16 py-12"
       aria-label="Why Choose NearExpiry"
     >
       {/* Section Header */}
@@ -212,7 +212,7 @@ export const WhyChooseNearExpiry = () => {
       </div>
 
       {/* 3 Interactive Feature Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 2xl:gap-10 items-start">
         {pillars.map((pillar, index) => {
           const Icon = pillar.icon;
           const isExpanded = activeCard === pillar.id;
