@@ -8,21 +8,22 @@ const passwordSchema = z
 export const registerCustomerSchema = z.object({
   body: z.object({
     name: z
-      .string({ required_error: 'Name is required' })
+      .string({ required_error: 'Full name is required' })
       .trim()
       .min(2, 'Name must be at least 2 characters')
       .max(80, 'Name cannot exceed 80 characters'),
     email: z
       .string({ required_error: 'Email is required' })
       .trim()
-      .email('Please provide a valid email address')
+      .email('Please enter a valid email address')
       .transform((val) => val.toLowerCase()),
     phone: z
       .string()
       .trim()
-      .min(10, 'Phone number must be at least 10 digits')
-      .max(15, 'Phone number cannot exceed 15 digits')
-      .optional(),
+      .regex(/^[0-9+\s()-]{10,15}$/, 'Phone number must be between 10 and 15 digits')
+      .optional()
+      .or(z.literal(''))
+      .transform((val) => (!val ? undefined : val)),
     password: passwordSchema,
   }),
 });

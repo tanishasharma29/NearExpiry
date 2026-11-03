@@ -8,10 +8,10 @@ import { useAuth } from '../../context/AuthContext';
 
 const registerSellerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.string().email('Valid business email required'),
-  phone: z.string().min(10, 'Valid 10-digit mobile number required'),
+  email: z.string().email('Please enter a valid email address'),
+  phone: z.string().regex(/^[0-9+\s()-]{10,15}$/, 'Phone number must be between 10 and 15 digits'),
   storeName: z.string().min(3, 'Store name must be at least 3 characters'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string().min(8, 'Password must be at least 8 characters long'),
 });
 
 export const RegisterSellerPage = () => {
@@ -23,18 +23,52 @@ export const RegisterSellerPage = () => {
   const {
     register,
     handleSubmit,
+    setError,
+    clearErrors,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(registerSellerSchema),
+    mode: 'onTouched',
   });
+
+  const handleInputChange = () => {
+    if (serverError) setServerError('');
+  };
 
   const onSubmit = async (data) => {
     try {
       setServerError('');
+      clearErrors();
       await registerSeller(data);
       navigate('/seller/dashboard');
     } catch (err) {
-      setServerError(err.message || 'Seller registration failed');
+      if (!err.status || err.message === 'Network Error' || err.code === 'ERR_NETWORK') {
+        setServerError('Unable to connect to the server. Please check your internet connection and try again.');
+        return;
+      }
+      if (err.status >= 500) {
+        setServerError('An unexpected server error occurred. Please try again later.');
+        return;
+      }
+      const validationErrors = err.errors || err.data?.errors || [];
+      let fieldErrorMapped = false;
+      if (Array.isArray(validationErrors) && validationErrors.length > 0) {
+        validationErrors.forEach((issue) => {
+          const rawField = issue.field || '';
+          const fieldName = rawField.replace(/^(body|query|params)\./, '');
+          if (['name', 'email', 'phone', 'storeName', 'password'].includes(fieldName)) {
+            setError(fieldName, { type: 'server', message: issue.message });
+            fieldErrorMapped = true;
+          }
+        });
+      }
+      if (err.errorCode === 'DUPLICATE_EMAIL' || err.errorCode === 'DUPLICATE_KEY_ERROR') {
+        const duplicateMsg = 'An account with this email already exists. Please sign in or use another email.';
+        setError('email', { type: 'server', message: duplicateMsg });
+        setServerError(duplicateMsg);
+        return;
+      }
+      setServerError(err.message || (fieldErrorMapped ? 'Please correct the highlighted errors.' : 'Seller registration failed.'));
     }
   };
 

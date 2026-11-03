@@ -56,11 +56,15 @@ api.interceptors.response.use(
     return response.data;
   },
   (error) => {
-    const status = error.response?.status || 500;
+    const status = error.response ? error.response.status : (error.request ? 0 : 500);
     const responseData = error.response?.data;
 
-    const message = responseData?.message || error.message || 'An unexpected error occurred';
-    const errorCode = responseData?.errorCode || 'INTERNAL_ERROR';
+    const message =
+      responseData?.message ||
+      (status === 0
+        ? 'Unable to connect to the server. Please check your internet connection and try again.'
+        : error.message || 'An unexpected error occurred');
+    const errorCode = responseData?.errorCode || (status === 0 ? 'NETWORK_ERROR' : 'INTERNAL_ERROR');
     const validationErrors = responseData?.errors || [];
 
     // Trigger session expiry event on 401 Unauthorized

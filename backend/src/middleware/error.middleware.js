@@ -7,13 +7,27 @@ export const globalErrorHandler = (err, req, res, next) => {
   let error = err;
 
   if (error instanceof ZodError) {
-    const formattedErrors = error.errors.map((issue) => ({
-      field: issue.path.join('.'),
-      message: issue.message,
-    }));
+    const formattedErrors = error.errors.map((issue) => {
+      // Clean leading 'body.', 'query.', or 'params.' from field paths
+      const cleanField =
+        issue.path
+          .filter((segment) => !['body', 'query', 'params'].includes(segment))
+          .join('.') || issue.path.join('.');
+
+      return {
+        field: cleanField,
+        message: issue.message,
+      };
+    });
+
+    const summaryMessage =
+      formattedErrors.length === 1
+        ? formattedErrors[0].message
+        : formattedErrors.map((e) => e.message).join('. ');
+
     error = new ApiError(
       400,
-      'Request validation failed',
+      summaryMessage || 'Request validation failed',
       'VALIDATION_ERROR',
       formattedErrors,
       err.stack
@@ -31,20 +45,31 @@ export const globalErrorHandler = (err, req, res, next) => {
       field: val.path,
       message: val.message,
     }));
+
+    const summaryMessage =
+      formattedErrors.length === 1
+        ? formattedErrors[0].message
+        : formattedErrors.map((e) => e.message).join('. ');
+
     error = new ApiError(
       400,
-      'Database validation failed',
+      summaryMessage || 'Database validation failed',
       'DB_VALIDATION_ERROR',
       formattedErrors,
       err.stack
     );
   } else if (error.code === 11000) {
     const duplicateField = Object.keys(error.keyValue || {})[0] || 'field';
+    const message =
+      duplicateField === 'email'
+        ? 'An account with this email already exists. Please sign in or use another email.'
+        : `Duplicate value entered for ${duplicateField}. Please use another value.`;
+
     error = new ApiError(
       409,
-      `Duplicate value entered for ${duplicateField}. Please use another value.`,
+      message,
       'DUPLICATE_KEY_ERROR',
-      [{ field: duplicateField, message: `${duplicateField} already exists` }],
+      [{ field: duplicateField, message }],
       err.stack
     );
   } else if (!(error instanceof ApiError)) {

@@ -10,9 +10,14 @@ const ensureEmailNotTaken = async (email) => {
   if (existingUser) {
     throw new ApiError(
       409,
-      `An account with email [${email.toLowerCase()}] already exists.`,
+      'An account with this email already exists. Please sign in or use another email.',
       'DUPLICATE_EMAIL',
-      [{ field: 'email', message: 'Email is already registered' }]
+      [
+        {
+          field: 'email',
+          message: 'An account with this email already exists. Please sign in or use another email.',
+        },
+      ]
     );
   }
 };
