@@ -557,7 +557,13 @@ export const AdminSellersPage = () => {
         }}
         eyebrow="SELLER VERIFICATION DOSSIER"
         title={selectedSeller?.sellerProfile?.storeName || selectedSeller?.store?.storeName || selectedSeller?.name || 'Seller Details'}
-        subtitle={`Owner Account: ${selectedSeller?.name} • Registered on ${formatDate(selectedSeller?.createdAt)}`}
+        subtitle={`Owner Account: ${selectedSeller?.name} • Registered on ${formatDate(selectedSeller?.createdAt)} • ${
+          selectedSeller?.verificationStatus === 'APPROVED'
+            ? 'Approved for Demo Use'
+            : selectedSeller?.verificationStatus === 'REJECTED'
+            ? 'Application Rejected'
+            : 'Pending Admin Review'
+        }`}
         footerActions={
           selectedSeller?.verificationStatus === 'PENDING' ? (
             <>
@@ -617,6 +623,24 @@ export const AdminSellersPage = () => {
                 </span>
               </div>
             </div>
+
+            {/* Demo Store Approval Notice */}
+            {selectedSeller.verificationStatus === 'APPROVED' && (
+              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 space-y-1.5 shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 font-black text-emerald-900 text-xs">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>Store Status: Approved for Demo Use</span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider">
+                    Demo Mode Active
+                  </span>
+                </div>
+                <p className="text-[11px] text-emerald-800 leading-relaxed font-medium">
+                  This merchant is authorized to list products and sell surplus groceries on the NearExpiry platform. Legal credentials (PAN, GSTIN, FSSAI) were not submitted and remain <strong>“Not provided”</strong> in compliance with the truthful verification policy.
+                </p>
+              </div>
+            )}
 
             {/* Rejection Notice if rejected */}
             {selectedSeller.verificationStatus === 'REJECTED' && selectedSeller.sellerProfile?.rejectionReason && (
