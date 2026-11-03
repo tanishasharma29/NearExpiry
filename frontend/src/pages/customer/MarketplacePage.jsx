@@ -110,9 +110,9 @@ export const MarketplacePage = () => {
 
       {/* Filter Bar */}
       <div className="bg-white px-3.5 py-2.5 sm:px-4 sm:py-2.5 rounded-2xl border border-gray-200 shadow-xs">
-        <div className="flex flex-wrap items-center justify-between gap-2.5 lg:gap-3">
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-2.5 lg:gap-3">
           {/* Expiry Window Filter Pills */}
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 flex-nowrap min-w-0">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 flex-nowrap min-w-0 w-full xl:w-auto">
             <span className="font-extrabold text-gray-700 uppercase tracking-wider text-[11px] whitespace-nowrap flex-shrink-0">
               Expiry Window:
             </span>
@@ -165,11 +165,11 @@ export const MarketplacePage = () => {
           </div>
 
           {/* Category & Discount Dropdowns + Reset */}
-          <div className="flex items-center gap-2 sm:gap-2.5 text-xs flex-wrap sm:flex-nowrap w-full sm:w-auto justify-between sm:justify-end ml-auto flex-shrink-0">
+          <div className="flex items-center gap-2 sm:gap-2.5 text-xs flex-nowrap w-full xl:w-auto justify-between sm:justify-end xl:ml-auto flex-shrink-0">
             <select
               value={category}
               onChange={(e) => updateParam('category', e.target.value)}
-              className="bg-gray-50 hover:bg-gray-100/80 border border-gray-300 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-gray-700 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition cursor-pointer"
+              className="flex-1 sm:flex-initial bg-gray-50 hover:bg-gray-100/80 border border-gray-300 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-gray-700 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition cursor-pointer min-w-0"
               aria-label="Filter by Category"
             >
               <option value="">All Categories</option>
@@ -183,7 +183,7 @@ export const MarketplacePage = () => {
             <select
               value={minDiscount}
               onChange={(e) => updateParam('minDiscount', e.target.value)}
-              className="bg-gray-50 hover:bg-gray-100/80 border border-gray-300 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-gray-700 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition cursor-pointer"
+              className="flex-1 sm:flex-initial bg-gray-50 hover:bg-gray-100/80 border border-gray-300 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-gray-700 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition cursor-pointer min-w-0"
               aria-label="Filter by Minimum Discount"
             >
               <option value="">Any Discount</option>
@@ -197,7 +197,7 @@ export const MarketplacePage = () => {
               <button
                 type="button"
                 onClick={clearFilters}
-                className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700 font-semibold px-2 py-1 rounded-lg hover:bg-red-50 transition whitespace-nowrap"
+                className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700 font-semibold px-2 py-1 rounded-lg hover:bg-red-50 transition whitespace-nowrap flex-shrink-0"
                 title="Reset all filters"
               >
                 <X className="w-3.5 h-3.5" />
