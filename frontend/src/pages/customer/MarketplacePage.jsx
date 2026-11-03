@@ -75,7 +75,7 @@ export const MarketplacePage = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-4 sm:space-y-5">
       {/* Title & Stats */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
@@ -109,85 +109,102 @@ export const MarketplacePage = () => {
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-gray-200 shadow-sm space-y-3">
-        {/* Quick Expiry Windows */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs no-scrollbar">
-          <span className="font-bold text-gray-700 uppercase tracking-wider text-[11px] whitespace-nowrap">
-            Expiry Window:
-          </span>
-          <button
-            onClick={() => updateParam('expiryWindow', '')}
-            className={`px-3 py-1 rounded-full font-semibold whitespace-nowrap transition ${
-              !expiryWindow ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            All Windows
-          </button>
-          <button
-            onClick={() => updateParam('expiryWindow', 'CRITICAL')}
-            className={`px-3 py-1 rounded-full font-semibold whitespace-nowrap transition ${
-              expiryWindow === 'CRITICAL' ? 'bg-red-600 text-white' : 'bg-red-50 text-red-700 hover:bg-red-100'
-            }`}
-          >
-            🚨 Critical (0-2 Days)
-          </button>
-          <button
-            onClick={() => updateParam('expiryWindow', 'URGENT')}
-            className={`px-3 py-1 rounded-full font-semibold whitespace-nowrap transition ${
-              expiryWindow === 'URGENT' ? 'bg-orange-500 text-white' : 'bg-orange-50 text-orange-800 hover:bg-orange-100'
-            }`}
-          >
-            ⏰ Urgent (3-7 Days)
-          </button>
-          <button
-            onClick={() => updateParam('expiryWindow', 'APPROACHING')}
-            className={`px-3 py-1 rounded-full font-semibold whitespace-nowrap transition ${
-              expiryWindow === 'APPROACHING' ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-900 hover:bg-amber-100'
-            }`}
-          >
-            ⏳ Approaching (8-15 Days)
-          </button>
-        </div>
+      <div className="bg-white px-3.5 py-2.5 sm:px-4 sm:py-2.5 rounded-2xl border border-gray-200 shadow-xs">
+        <div className="flex flex-wrap items-center justify-between gap-2.5 lg:gap-3">
+          {/* Expiry Window Filter Pills */}
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 flex-nowrap min-w-0">
+            <span className="font-extrabold text-gray-700 uppercase tracking-wider text-[11px] whitespace-nowrap flex-shrink-0">
+              Expiry Window:
+            </span>
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-nowrap text-xs">
+              <button
+                type="button"
+                onClick={() => updateParam('expiryWindow', '')}
+                className={`px-3 py-1 rounded-full font-semibold whitespace-nowrap transition ${
+                  !expiryWindow
+                    ? 'bg-gray-900 text-white shadow-xs'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                All Windows
+              </button>
+              <button
+                type="button"
+                onClick={() => updateParam('expiryWindow', 'CRITICAL')}
+                className={`px-3 py-1 rounded-full font-semibold whitespace-nowrap transition ${
+                  expiryWindow === 'CRITICAL'
+                    ? 'bg-red-600 text-white shadow-xs'
+                    : 'bg-red-50 text-red-700 hover:bg-red-100'
+                }`}
+              >
+                🚨 Critical (0-2 Days)
+              </button>
+              <button
+                type="button"
+                onClick={() => updateParam('expiryWindow', 'URGENT')}
+                className={`px-3 py-1 rounded-full font-semibold whitespace-nowrap transition ${
+                  expiryWindow === 'URGENT'
+                    ? 'bg-orange-500 text-white shadow-xs'
+                    : 'bg-orange-50 text-orange-800 hover:bg-orange-100'
+                }`}
+              >
+                ⏰ Urgent (3-7 Days)
+              </button>
+              <button
+                type="button"
+                onClick={() => updateParam('expiryWindow', 'APPROACHING')}
+                className={`px-3 py-1 rounded-full font-semibold whitespace-nowrap transition ${
+                  expiryWindow === 'APPROACHING'
+                    ? 'bg-amber-500 text-white shadow-xs'
+                    : 'bg-amber-50 text-amber-900 hover:bg-amber-100'
+                }`}
+              >
+                ⏳ Approaching (8-15 Days)
+              </button>
+            </div>
+          </div>
 
-        {/* Category & Discount Selectors */}
-        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-gray-100 text-xs">
-          {/* Category Dropdown */}
-          <select
-            value={category}
-            onChange={(e) => updateParam('category', e.target.value)}
-            className="bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1.5 text-gray-700 outline-none"
-          >
-            <option value="">All Categories</option>
-            {categories.map((c) => (
-              <option key={c._id} value={c._id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-
-          {/* Min Discount Dropdown */}
-          <select
-            value={minDiscount}
-            onChange={(e) => updateParam('minDiscount', e.target.value)}
-            className="bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1.5 text-gray-700 outline-none"
-          >
-            <option value="">Any Discount</option>
-            <option value="25">25%+ OFF</option>
-            <option value="40">40%+ OFF</option>
-            <option value="60">60%+ OFF</option>
-            <option value="75">75% OFF</option>
-          </select>
-
-          {/* Active filter pills */}
-          {(search || category || expiryWindow || minDiscount) && (
-            <button
-              onClick={clearFilters}
-              className="inline-flex items-center gap-1 text-red-600 hover:text-red-700 font-semibold ml-auto"
+          {/* Category & Discount Dropdowns + Reset */}
+          <div className="flex items-center gap-2 sm:gap-2.5 text-xs flex-wrap sm:flex-nowrap w-full sm:w-auto justify-between sm:justify-end ml-auto flex-shrink-0">
+            <select
+              value={category}
+              onChange={(e) => updateParam('category', e.target.value)}
+              className="bg-gray-50 hover:bg-gray-100/80 border border-gray-300 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-gray-700 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition cursor-pointer"
+              aria-label="Filter by Category"
             >
-              <X className="w-3.5 h-3.5" />
-              Reset Filters
-            </button>
-          )}
+              <option value="">All Categories</option>
+              {categories.map((c) => (
+                <option key={c._id} value={c._id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={minDiscount}
+              onChange={(e) => updateParam('minDiscount', e.target.value)}
+              className="bg-gray-50 hover:bg-gray-100/80 border border-gray-300 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-gray-700 outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition cursor-pointer"
+              aria-label="Filter by Minimum Discount"
+            >
+              <option value="">Any Discount</option>
+              <option value="25">25%+ OFF</option>
+              <option value="40">40%+ OFF</option>
+              <option value="60">60%+ OFF</option>
+              <option value="75">75% OFF</option>
+            </select>
+
+            {(search || category || expiryWindow || minDiscount) && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700 font-semibold px-2 py-1 rounded-lg hover:bg-red-50 transition whitespace-nowrap"
+                title="Reset all filters"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>Reset</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
