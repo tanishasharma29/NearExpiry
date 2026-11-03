@@ -231,7 +231,7 @@ export const SellerLayout = () => {
   const renderNavigationContent = () => (
     <div className="flex flex-col h-full bg-slate-900 text-slate-200">
       {/* Brand Header */}
-      <div className="p-5 border-b border-slate-800/80">
+      <div className="p-5 border-b border-slate-800/80 flex-shrink-0">
         <Link
           to="/"
           className="flex items-center gap-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 rounded-lg p-1"
@@ -293,7 +293,7 @@ export const SellerLayout = () => {
 
       {/* Grouped Navigation Links */}
       <nav
-        className="flex-1 px-3 py-4 space-y-4 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800"
+        className="flex-1 min-h-0 px-3 py-4 space-y-4 overflow-y-auto"
         aria-label="Merchant Navigation"
       >
         {NAVIGATION_SECTIONS.map((section) => (
@@ -346,7 +346,7 @@ export const SellerLayout = () => {
       </nav>
 
       {/* Bottom Actions */}
-      <div className="p-4 border-t border-slate-800/80 space-y-2">
+      <div className="p-4 border-t border-slate-800/80 space-y-2 flex-shrink-0">
         <Link
           to="/marketplace"
           className="flex items-center justify-between text-xs text-slate-400 hover:text-white p-2.5 rounded-xl hover:bg-slate-800/80 transition-all font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -368,9 +368,9 @@ export const SellerLayout = () => {
   );
 
   return (
-    <div className="min-h-screen flex bg-slate-50 text-slate-900 font-sans">
+    <div className="h-screen flex bg-slate-50 text-slate-900 font-sans overflow-hidden">
       {/* 1. Desktop Fixed Sidebar */}
-      <aside className="hidden lg:flex w-64 flex-col flex-shrink-0 border-r border-slate-800 z-20">
+      <aside className="hidden lg:flex w-64 flex-col flex-shrink-0 border-r border-slate-800 h-screen sticky top-0 z-20">
         {renderNavigationContent()}
       </aside>
 
@@ -405,9 +405,9 @@ export const SellerLayout = () => {
       </div>
 
       {/* 3. Main Content Shell */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto">
         {/* Top Header */}
-        <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 flex items-center justify-between sticky top-0 z-30 shadow-xs">
+        <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 flex items-center justify-between sticky top-0 z-30 shadow-xs flex-shrink-0">
           {/* Left: Mobile Toggle & Page Title */}
           <div className="flex items-center gap-3 min-w-0">
             <button
