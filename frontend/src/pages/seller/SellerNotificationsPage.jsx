@@ -21,3 +21,4 @@ export const SellerNotificationsPage = () => {
 };
 
 export default SellerNotificationsPage;
+

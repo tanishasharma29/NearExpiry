@@ -77,3 +77,4 @@ export const getNotificationCategoryMeta = (notif, role = 'SELLER') => {
   }
   return { key: 'SYSTEM', label: 'Announcements & Alerts', badgeColor: 'bg-slate-100 text-slate-800 border-slate-300' };
 };
+
