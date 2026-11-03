@@ -5,4 +5,5 @@ export { RescuePerformanceWidget } from './RescuePerformanceWidget';
 export { StatusBadge } from './StatusBadge';
 export { RiskIndicator } from './RiskIndicator';
 export { SellerSupportModal } from './SellerSupportModal';
+export { SellerDocumentsModal } from './SellerDocumentsModal';
 

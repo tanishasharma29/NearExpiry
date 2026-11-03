@@ -45,6 +45,7 @@ export const updateSellerProfileService = async (sellerUserId, payload) => {
   }
 
   if (payload.storeName !== undefined) seller.sellerProfile.storeName = payload.storeName;
+  if (payload.panNumber !== undefined) seller.sellerProfile.panNumber = payload.panNumber;
   if (payload.businessLicenseNumber !== undefined) {
     seller.sellerProfile.businessLicenseNumber = payload.businessLicenseNumber;
   }
@@ -76,6 +77,9 @@ export const updateSellerProfileService = async (sellerUserId, payload) => {
   const store = await Store.findOne({ ownerId: seller._id });
   if (store) {
     if (payload.storeName) store.storeName = payload.storeName;
+    if (payload.panNumber !== undefined) {
+      store.businessDetails.panNumber = payload.panNumber;
+    }
     if (payload.businessLicenseNumber !== undefined) {
       store.businessDetails.businessLicenseNumber = payload.businessLicenseNumber;
     }
@@ -89,6 +93,33 @@ export const updateSellerProfileService = async (sellerUserId, payload) => {
       store.businessDetails.cosmeticLicenseNumber = payload.cosmeticLicenseNumber;
     }
     await store.save();
+  }
+
+  // Notify administrator if new business/tax documents were submitted for verification
+  const documentsSubmitted =
+    Boolean(payload.panNumber) ||
+    Boolean(payload.gstNumber) ||
+    Boolean(payload.fssaiLicenseNumber);
+
+  if (documentsSubmitted) {
+    const storeName = store?.storeName || seller.sellerProfile?.storeName || 'Merchant Store';
+    const adminUser = await User.findOne({ role: USER_ROLES.ADMIN, isActive: true });
+    if (adminUser) {
+      await Notification.create({
+        recipient: adminUser._id,
+        recipientEmail: adminUser.email,
+        recipientRole: 'ADMIN',
+        type: NOTIFICATION_TYPES.SYSTEM_ALERT,
+        title: `[Documents Submitted] ${storeName} submitted business & tax credentials`,
+        message: `Store "${storeName}" (Seller: ${seller.name}, ${seller.email}) has submitted legal credentials (PAN / GSTIN / FSSAI) for review and verification.`,
+        channel: 'IN_APP',
+        entityId: seller._id,
+        entityModel: 'User',
+        actionUrl: `/admin/sellers?sellerId=${seller._id}`,
+      }).catch((err) =>
+        console.warn('[SellerService] Failed to notify admin for document submission:', err.message)
+      );
+    }
   }
 
   return {

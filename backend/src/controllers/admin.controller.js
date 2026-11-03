@@ -5,6 +5,7 @@ import {
   listSellersService,
   reviewSellerApprovalService,
   verifySellerDocumentService,
+  requestSellerDocumentsService,
   listUsersService,
   getUserDetailsService,
   updateUserStatusService,
@@ -55,6 +56,13 @@ export const verifySellerDocument = asyncHandler(async (req, res) => {
   );
   return res.status(200).json(
     new ApiResponse(200, 'Seller document verification updated successfully', result)
+  );
+});
+
+export const requestSellerDocuments = asyncHandler(async (req, res) => {
+  const result = await requestSellerDocumentsService(req.params.id, req.user);
+  return res.status(200).json(
+    new ApiResponse(200, 'Seller document request sent successfully', result)
   );
 });
 

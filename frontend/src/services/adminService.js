@@ -21,6 +21,11 @@ export const adminService = {
     return res.data;
   },
 
+  requestSellerDocuments: async (sellerId) => {
+    const res = await api.post(`/admin/sellers/${sellerId}/request-documents`);
+    return res.data;
+  },
+
   getUsers: async (params = {}) => {
     const res = await api.get('/admin/users', { params });
     return res.data;

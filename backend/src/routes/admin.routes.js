@@ -25,6 +25,7 @@ import {
   listSellers,
   reviewSellerApproval,
   verifySellerDocument,
+  requestSellerDocuments,
   listUsers,
   getUserDetails,
   updateUserStatus,
@@ -71,6 +72,7 @@ router.patch(
   validateRequest(documentVerificationSchema),
   verifySellerDocument
 );
+router.post('/sellers/:id/request-documents', validateRequest(idParamSchema), requestSellerDocuments);
 
 // 3. User Management
 router.get('/users', listUsers);

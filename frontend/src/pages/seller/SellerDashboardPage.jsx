@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   Package,
   Layers,
@@ -24,6 +24,7 @@ import {
   RefreshCw,
   Lock,
   LifeBuoy,
+  FileText,
 } from 'lucide-react';
 import { analyticsService } from '../../services/analyticsService';
 import { orderService } from '../../services/orderService';
@@ -39,10 +40,12 @@ import {
   StatusBadge,
   RiskIndicator,
   SellerSupportModal,
+  SellerDocumentsModal,
 } from '../../components/seller';
 
 export const SellerDashboardPage = () => {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const [analytics, setAnalytics] = useState(null);
   const [recentOrders, setRecentOrders] = useState([]);
   const [batches, setBatches] = useState([]);
@@ -50,6 +53,13 @@ export const SellerDashboardPage = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [supportModalOpen, setSupportModalOpen] = useState(false);
+  const [documentModalOpen, setDocumentModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get('action') === 'submit-docs') {
+      setDocumentModalOpen(true);
+    }
+  }, [searchParams]);
 
   const fetchDashboardData = async (isManualRefresh = false) => {
     try {
@@ -280,6 +290,14 @@ export const SellerDashboardPage = () => {
             <div className="flex items-center gap-2">
               <button
                 type="button"
+                onClick={() => setDocumentModalOpen(true)}
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>Submit Legal Credentials</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => setSupportModalOpen(true)}
                 className="px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
               >
@@ -374,14 +392,24 @@ export const SellerDashboardPage = () => {
                 </div>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setSupportModalOpen(true)}
-              className="px-3.5 py-1.5 bg-white hover:bg-emerald-50 text-emerald-900 border border-emerald-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs"
-            >
-              <LifeBuoy className="w-3.5 h-3.5 text-emerald-700" />
-              <span>Contact Admin Support</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setDocumentModalOpen(true)}
+                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>Submit Legal Credentials</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSupportModalOpen(true)}
+                className="px-3.5 py-1.5 bg-white hover:bg-emerald-50 text-emerald-900 border border-emerald-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs"
+              >
+                <LifeBuoy className="w-3.5 h-3.5 text-emerald-700" />
+                <span>Contact Admin Support</span>
+              </button>
+            </div>
           </div>
 
           <div className="p-3.5 bg-white/85 rounded-xl border border-emerald-200 text-xs text-emerald-950 space-y-2">
@@ -662,6 +690,17 @@ export const SellerDashboardPage = () => {
         isOpen={supportModalOpen}
         onClose={() => setSupportModalOpen(false)}
         defaultSubject="Store Legal Document Verification Request"
+      />
+
+      <SellerDocumentsModal
+        isOpen={documentModalOpen}
+        onClose={() => setDocumentModalOpen(false)}
+        initialData={{
+          panNumber: verificationData?.documents?.pan?.number || '',
+          gstNumber: verificationData?.documents?.gstin?.number || '',
+          fssaiLicenseNumber: verificationData?.documents?.fssai?.number || '',
+        }}
+        onSuccess={() => fetchDashboardData(true)}
       />
     </div>
   );

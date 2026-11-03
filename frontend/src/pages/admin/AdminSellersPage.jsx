@@ -201,6 +201,26 @@ export const AdminSellersPage = () => {
     }
   };
 
+  const handleRequestDocuments = async (sellerId) => {
+    try {
+      setActionLoadingId(`${sellerId}-request`);
+      const res = await adminService.requestSellerDocuments(sellerId);
+      setFeedbackMessage({
+        type: 'success',
+        text: res.message || 'Document submission request sent to merchant successfully.',
+      });
+      setTimeout(() => setFeedbackMessage(null), 6000);
+    } catch (err) {
+      setFeedbackMessage({
+        type: 'error',
+        text: err.response?.data?.message || err.message || 'Failed to request documents from seller.',
+      });
+      setTimeout(() => setFeedbackMessage(null), 6000);
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
   const openRejectModal = (seller) => {
     setSellerToReject(seller);
     setRejectionReason('');
@@ -688,12 +708,20 @@ export const AdminSellersPage = () => {
 
             {/* Section B: Available KYC & Business Credentials */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <h4 className="text-xs font-extrabold uppercase tracking-wider text-gray-900 flex items-center gap-1.5">
                   <FileText className="w-4 h-4 text-purple-700" />
                   <span>Business & Tax Credentials</span>
                 </h4>
-                <span className="text-[10px] text-gray-500 font-medium">Demo stores can be approved without legal documents</span>
+                <button
+                  type="button"
+                  onClick={() => handleRequestDocuments(selectedSeller._id)}
+                  disabled={actionLoadingId === `${selectedSeller._id}-request`}
+                  className="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 shadow-2xs disabled:opacity-50 self-start sm:self-auto"
+                >
+                  <Mail className="w-3.5 h-3.5 text-purple-600" />
+                  <span>{actionLoadingId === `${selectedSeller._id}-request` ? 'Sending Request...' : 'Request Documents from Seller'}</span>
+                </button>
               </div>
               <div className="bg-white border border-gray-200 rounded-2xl p-4 divide-y divide-gray-100">
                 {/* PAN */}

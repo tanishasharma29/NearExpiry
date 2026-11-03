@@ -398,6 +398,43 @@ export const verifySellerDocumentService = async (sellerId, docType, payload, ad
 };
 
 /**
+ * Sends a formal request notification to a seller asking for PAN, GSTIN, and FSSAI credentials.
+ */
+export const requestSellerDocumentsService = async (sellerId, adminUser) => {
+  const seller = await User.findById(sellerId);
+  if (!seller || seller.role !== USER_ROLES.SELLER) {
+    throw new ApiError(404, 'Seller profile not found.', 'SELLER_NOT_FOUND');
+  }
+
+  const store = await Store.findOne({ ownerId: seller._id });
+  const storeName = store?.storeName || seller.sellerProfile?.storeName || 'Merchant Store';
+
+  // Send Notification to Seller
+  await Notification.create({
+    recipient: seller._id,
+    recipientEmail: seller.email,
+    recipientRole: 'SELLER',
+    type: NOTIFICATION_TYPES.SYSTEM_ALERT,
+    title: '[Action Required] Please Submit Business & Tax Documents',
+    message: `NearExpiry Admin (${adminUser.name || 'Platform Governance'}) has requested your PAN, GSTIN, and FSSAI credentials to verify store "${storeName}". Please update your credentials on your dashboard.`,
+    channel: 'IN_APP',
+    entityId: seller._id,
+    entityModel: 'User',
+    actionUrl: '/seller/dashboard?action=submit-docs',
+  }).catch((err) => {
+    console.warn('[AdminService] Failed to notify seller for document request:', err.message);
+  });
+
+  return {
+    success: true,
+    sellerId: seller._id,
+    storeName,
+    sellerEmail: seller.email,
+    message: `Document request notification sent to seller "${seller.name}" (${seller.email}).`,
+  };
+};
+
+/**
  * 3. User Management.
  */
 export const listUsersService = async (queryParams = {}) => {
