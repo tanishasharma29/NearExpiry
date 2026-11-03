@@ -179,7 +179,7 @@ export const createSellerSupportRequestService = async (sellerUserId, payload) =
       channel: 'IN_APP',
       entityId: seller._id,
       entityModel: 'User',
-      actionUrl: '/admin/sellers',
+      actionUrl: `/admin/sellers?sellerId=${seller._id}`,
     }).catch((err) => {
       console.warn('[SellerService] Failed to create admin notification for support request:', err.message);
     });

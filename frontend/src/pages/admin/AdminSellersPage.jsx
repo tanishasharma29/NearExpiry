@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Store,
   Check,
@@ -39,6 +40,10 @@ export const AdminSellersPage = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
+  // URL search params for deep-linking into specific seller dossier
+  const [searchParams, setSearchParams] = useSearchParams();
+  const targetSellerId = searchParams.get('sellerId');
+
   // Selected seller dossier drawer
   const [selectedSeller, setSelectedSeller] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -77,6 +82,39 @@ export const AdminSellersPage = () => {
   useEffect(() => {
     fetchSellers();
   }, [statusFilter]);
+
+  // Deep-link auto-open seller dossier if sellerId exists in URL
+  useEffect(() => {
+    if (targetSellerId && sellers.length > 0) {
+      const match = sellers.find(
+        (s) => s._id === targetSellerId || s.store?._id === targetSellerId || s.store?.ownerId === targetSellerId
+      );
+      if (match) {
+        setSelectedSeller(match);
+        setDrawerOpen(true);
+      }
+    }
+  }, [targetSellerId, sellers]);
+
+  // Listen to custom window event if triggered from Admin Header Notifications
+  useEffect(() => {
+    const handleOpenDossierEvent = (e) => {
+      const sellerId = e.detail?.sellerId;
+      if (sellerId && sellers.length > 0) {
+        const match = sellers.find(
+          (s) => s._id === sellerId || s.store?._id === sellerId || s.store?.ownerId === sellerId
+        );
+        if (match) {
+          setSelectedSeller(match);
+          setDrawerOpen(true);
+        }
+      }
+    };
+    window.addEventListener('nearexpiry:open-seller-dossier', handleOpenDossierEvent);
+    return () => {
+      window.removeEventListener('nearexpiry:open-seller-dossier', handleOpenDossierEvent);
+    };
+  }, [sellers]);
 
   // Handle live client search filter over loaded list or re-fetch on search enter
   const filteredSellers = useMemo(() => {
@@ -509,7 +547,14 @@ export const AdminSellersPage = () => {
       {/* 4. SELLER DOSSIER / DETAIL DRAWER */}
       <AdminDetailDrawer
         isOpen={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
+        onClose={() => {
+          setDrawerOpen(false);
+          if (searchParams.get('sellerId')) {
+            const next = new URLSearchParams(searchParams);
+            next.delete('sellerId');
+            setSearchParams(next, { replace: true });
+          }
+        }}
         eyebrow="SELLER VERIFICATION DOSSIER"
         title={selectedSeller?.sellerProfile?.storeName || selectedSeller?.store?.storeName || selectedSeller?.name || 'Seller Details'}
         subtitle={`Owner Account: ${selectedSeller?.name} • Registered on ${formatDate(selectedSeller?.createdAt)}`}

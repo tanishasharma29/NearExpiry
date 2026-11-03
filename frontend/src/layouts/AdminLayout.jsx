@@ -26,6 +26,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import { notificationService } from '../services/notificationService';
+import { Modal } from '../components/common/Modal';
 
 /**
  * Admin Navigation Groups
@@ -87,6 +88,7 @@ export const AdminLayout = () => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [selectedNotifModal, setSelectedNotifModal] = useState(null);
   const notifDropdownRef = useRef(null);
 
   const fetchNotifications = async () => {
@@ -150,11 +152,21 @@ export const AdminLayout = () => {
         setUnreadCount((prev) => Math.max(0, prev - 1));
       }
       setNotificationsOpen(false);
-      if (notif.actionUrl) {
-        navigate(notif.actionUrl);
-      }
+      setSelectedNotifModal(notif);
     } catch (err) {
       console.error('Failed to process notification click:', err);
+    }
+  };
+
+  const handleOpenSellerDossier = (notif) => {
+    const sellerId = notif?.entityId;
+    setSelectedNotifModal(null);
+    if (location.pathname === '/admin/sellers') {
+      window.dispatchEvent(
+        new CustomEvent('nearexpiry:open-seller-dossier', { detail: { sellerId } })
+      );
+    } else {
+      navigate(`/admin/sellers?sellerId=${sellerId || ''}`);
     }
   };
 
@@ -451,13 +463,11 @@ export const AdminLayout = () => {
                               <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">
                                 {notif.message}
                               </p>
-                              <div className="flex items-center justify-between mt-1 text-[10px] text-gray-400">
+                              <div className="flex items-center justify-between mt-1.5 text-[10px] text-gray-400">
                                 <span>{new Date(notif.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                                {notif.actionUrl && (
-                                  <span className="text-purple-600 font-semibold hover:underline">
-                                    View in Sellers &rarr;
-                                  </span>
-                                )}
+                                <span className="text-purple-600 font-semibold hover:underline flex items-center gap-1">
+                                  View Full Message &rarr;
+                                </span>
                               </div>
                             </div>
                           </div>
@@ -514,6 +524,54 @@ export const AdminLayout = () => {
           <Outlet />
         </main>
       </div>
+
+      {/* Full Notification Detail Modal */}
+      <Modal
+        isOpen={Boolean(selectedNotifModal)}
+        onClose={() => setSelectedNotifModal(null)}
+        title={selectedNotifModal?.title || 'Notification Details'}
+        maxWidth="max-w-xl"
+      >
+        <div className="space-y-4 text-xs">
+          <div className="flex items-center justify-between text-gray-500 pb-2 border-b border-gray-100">
+            <span className="font-medium">
+              Received: {selectedNotifModal?.createdAt ? new Date(selectedNotifModal.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : 'Just now'}
+            </span>
+            <span className="px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 font-bold text-[10px] uppercase tracking-wide border border-purple-200">
+              {selectedNotifModal?.type || 'SYSTEM_ALERT'}
+            </span>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-extrabold uppercase tracking-wider text-gray-700 mb-1.5">
+              Full Inquiry / Message
+            </label>
+            <div className="p-4 bg-gray-50 border border-gray-200 rounded-2xl text-xs text-gray-800 leading-relaxed font-normal whitespace-pre-wrap select-text">
+              {selectedNotifModal?.message}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-100">
+            <button
+              type="button"
+              onClick={() => setSelectedNotifModal(null)}
+              className="px-4 py-2 border border-gray-300 hover:bg-gray-100 text-gray-700 font-bold rounded-xl transition"
+            >
+              Close
+            </button>
+            {(selectedNotifModal?.actionUrl || selectedNotifModal?.entityId) && (
+              <button
+                type="button"
+                onClick={() => handleOpenSellerDossier(selectedNotifModal)}
+                className="px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white font-bold rounded-xl shadow-xs transition flex items-center gap-1.5"
+              >
+                <Store className="w-4 h-4" />
+                <span>Open Seller Dossier & Review</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
