@@ -388,11 +388,12 @@ export const getUserNotificationsService = async (userId, queryParams = {}) => {
   const skip = (page - 1) * limit;
 
   const filter = { recipient: userId };
-  if (queryParams.isRead !== undefined) {
+  if (queryParams.isRead !== undefined && queryParams.isRead !== '') {
     filter.isRead = queryParams.isRead === 'true' || queryParams.isRead === true;
   }
-  if (queryParams.type) {
-    filter.type = queryParams.type;
+  const typeFilter = queryParams.type || queryParams.category;
+  if (typeFilter && typeFilter !== 'ALL') {
+    filter.type = typeFilter;
   }
 
   const [notifications, total, unreadCount] = await Promise.all([

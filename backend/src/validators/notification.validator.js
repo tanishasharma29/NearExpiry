@@ -9,7 +9,8 @@ export const listNotificationsSchema = z.object({
       page: z.string().regex(/^\d+$/).optional(),
       limit: z.string().regex(/^\d+$/).optional(),
       isRead: z.enum(['true', 'false']).optional(),
-      type: z.enum(Object.values(NOTIFICATION_TYPES)).optional(),
+      type: z.string().trim().optional(),
+      category: z.string().trim().optional(),
     })
     .optional(),
 });

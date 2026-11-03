@@ -59,6 +59,7 @@ const NAVIGATION_SECTIONS = [
     title: 'INSIGHTS',
     items: [
       { label: 'Store Analytics', path: '/seller/analytics', icon: BarChart3, requiresApproval: true },
+      { label: 'Notifications', path: '/seller/notifications', icon: Bell, requiresApproval: false },
     ],
   },
 ];
@@ -576,6 +577,17 @@ export const SellerLayout = () => {
                         );
                       })
                     )}
+                  </div>
+
+                  <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-100 text-center">
+                    <Link
+                      to="/seller/notifications"
+                      onClick={() => setNotificationsOpen(false)}
+                      className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center justify-center gap-1.5 hover:underline"
+                    >
+                      <span>View all notifications</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
                   </div>
                 </div>
               )}

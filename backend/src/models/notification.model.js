@@ -76,6 +76,11 @@ const notificationSchema = new mongoose.Schema(
       trim: true,
       maxlength: 2000,
     },
+    actionUrl: {
+      type: String,
+      default: null,
+      trim: true,
+    },
     data: {
       type: mongoose.Schema.Types.Mixed,
       default: {},

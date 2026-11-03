@@ -22,6 +22,7 @@ import {
   BellRing,
   CheckCheck,
   MessageSquare,
+  ArrowRight,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
@@ -38,6 +39,7 @@ const NAV_GROUPS = [
     group: 'OVERVIEW',
     items: [
       { label: 'Overview Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
+      { label: 'Notifications', path: '/admin/notifications', icon: Bell },
     ],
   },
   {
@@ -474,6 +476,17 @@ export const AdminLayout = () => {
                         );
                       })
                     )}
+                  </div>
+
+                  <div className="px-4 py-2.5 bg-gray-50 border-t border-gray-100 text-center">
+                    <Link
+                      to="/admin/notifications"
+                      onClick={() => setNotificationsOpen(false)}
+                      className="text-xs font-bold text-purple-700 hover:text-purple-800 flex items-center justify-center gap-1.5 hover:underline"
+                    >
+                      <span>View all notifications</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
                   </div>
                 </div>
               )}

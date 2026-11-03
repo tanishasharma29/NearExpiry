@@ -38,6 +38,7 @@ import { SellerExpiryAlertsPage } from './pages/seller/SellerExpiryAlertsPage';
 import { SellerOrdersPage } from './pages/seller/SellerOrdersPage';
 import { SellerBillingPage } from './pages/seller/SellerBillingPage';
 import { SellerAnalyticsPage } from './pages/seller/SellerAnalyticsPage';
+import { SellerNotificationsPage } from './pages/seller/SellerNotificationsPage';
 
 // Admin Pages
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
@@ -51,6 +52,7 @@ import { AdminAnalyticsPage } from './pages/admin/AdminAnalyticsPage';
 import { AdminOrdersPage } from './pages/admin/AdminOrdersPage';
 import { AdminSupportPage } from './pages/admin/AdminSupportPage';
 import { AdminAuditLogsPage } from './pages/admin/AdminAuditLogsPage';
+import { AdminNotificationsPage } from './pages/admin/AdminNotificationsPage';
 
 export default function App() {
   return (
@@ -150,6 +152,7 @@ export default function App() {
                 <Route path="orders" element={<SellerOrdersPage />} />
                 <Route path="billing" element={<SellerBillingPage />} />
                 <Route path="analytics" element={<SellerAnalyticsPage />} />
+                <Route path="notifications" element={<SellerNotificationsPage />} />
               </Route>
 
               {/* 4. Admin Protected Command Center */}
@@ -173,6 +176,7 @@ export default function App() {
                 <Route path="support" element={<AdminSupportPage />} />
                 <Route path="audit-logs" element={<AdminAuditLogsPage />} />
                 <Route path="analytics" element={<AdminAnalyticsPage />} />
+                <Route path="notifications" element={<AdminNotificationsPage />} />
               </Route>
 
               {/* Fallback */}
