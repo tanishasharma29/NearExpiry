@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Package,
@@ -25,6 +25,7 @@ import {
   Clock,
   Sparkles,
   AlertTriangle,
+  ArrowRight,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
@@ -64,8 +65,9 @@ const NAVIGATION_SECTIONS = [
 
 export const SellerLayout = () => {
   const { user, logout } = useAuth();
-  const { subscribe } = useSocket();
+  const { subscribe, liveNotifications, dismissAlert } = useSocket();
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Authoritative Verification State
@@ -184,6 +186,24 @@ export const SellerLayout = () => {
       setUnreadCount(0);
     } catch (err) {
       console.error('Failed to mark all notifications as read:', err);
+    }
+  };
+
+  const handleNotificationClick = async (notif) => {
+    try {
+      if (!notif.isRead) {
+        await notificationService.markAsRead(notif._id);
+        setNotifications((prev) =>
+          prev.map((n) => (n._id === notif._id ? { ...n, isRead: true } : n))
+        );
+        setUnreadCount((c) => Math.max(0, c - 1));
+      }
+      setNotificationsOpen(false);
+      if (notif.actionUrl) {
+        navigate(notif.actionUrl);
+      }
+    } catch (err) {
+      console.error('Failed to handle notification click:', err);
     }
   };
 
@@ -502,7 +522,8 @@ export const SellerLayout = () => {
                         return (
                           <div
                             key={notif._id}
-                            className={`p-3.5 hover:bg-slate-50 transition-colors flex gap-3 ${
+                            onClick={() => handleNotificationClick(notif)}
+                            className={`p-3.5 hover:bg-slate-50 cursor-pointer transition-colors flex gap-3 ${
                               !notif.isRead ? 'bg-emerald-50/30' : ''
                             }`}
                           >
@@ -523,7 +544,7 @@ export const SellerLayout = () => {
                             </div>
                             <div className="min-w-0 flex-1">
                               <div className="flex items-start justify-between gap-1 mb-0.5">
-                                <h4 className="text-xs font-bold text-slate-900 leading-snug">
+                                <h4 className={`text-xs font-bold leading-snug ${!notif.isRead ? 'text-slate-900 font-extrabold' : 'text-slate-700'}`}>
                                   {notif.title}
                                 </h4>
                                 <span className="text-[10px] text-slate-400 whitespace-nowrap ml-1">
@@ -533,17 +554,23 @@ export const SellerLayout = () => {
                               <p className="text-xs text-slate-600 leading-relaxed">
                                 {notif.message}
                               </p>
-                              {!notif.isRead && (
-                                <div className="mt-2 flex justify-end">
+                              <div className="mt-2 flex items-center justify-between">
+                                {notif.actionUrl ? (
+                                  <span className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 hover:underline">
+                                    <span>Submit Details Now</span>
+                                    <ArrowRight className="w-3 h-3" />
+                                  </span>
+                                ) : <div />}
+                                {!notif.isRead && (
                                   <button
                                     onClick={(e) => handleMarkAsRead(notif._id, e)}
-                                    className="text-[11px] text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1"
+                                    className="text-[11px] text-slate-500 hover:text-slate-700 font-medium flex items-center gap-1"
                                   >
                                     <Check className="w-3 h-3" />
-                                    <span>Mark as read</span>
+                                    <span>Mark read</span>
                                   </button>
-                                </div>
-                              )}
+                                )}
+                              </div>
                             </div>
                           </div>
                         );
@@ -564,6 +591,41 @@ export const SellerLayout = () => {
             </div>
           </div>
         </header>
+
+        {/* Real-Time Live Notification Banner for Sellers */}
+        {liveNotifications && liveNotifications.filter((n) => n.type === 'notification:new' || n.type === 'DOCUMENT_REQUEST').length > 0 && (
+          <div className="bg-purple-950 text-white px-4 py-2.5 flex items-center justify-between text-xs font-semibold shadow-inner border-b border-purple-800">
+            <div className="flex items-center gap-2 truncate">
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping flex-shrink-0" />
+              <span className="font-extrabold text-amber-300 uppercase tracking-wider text-[10px]">ACTION REQUIRED:</span>
+              <span className="truncate text-purple-100">
+                {liveNotifications.find((n) => n.type === 'notification:new' || n.type === 'DOCUMENT_REQUEST')?.title || 'Admin Request'} —{' '}
+                {liveNotifications.find((n) => n.type === 'notification:new' || n.type === 'DOCUMENT_REQUEST')?.message}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0 ml-4">
+              <button
+                onClick={() => {
+                  const alert = liveNotifications.find((n) => n.type === 'notification:new' || n.type === 'DOCUMENT_REQUEST');
+                  if (alert?.id) dismissAlert(alert.id);
+                  navigate('/seller/dashboard?action=submit-docs');
+                }}
+                className="text-xs px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition shadow-xs"
+              >
+                Submit Now
+              </button>
+              <button
+                onClick={() => {
+                  const alert = liveNotifications.find((n) => n.type === 'notification:new' || n.type === 'DOCUMENT_REQUEST');
+                  if (alert?.id) dismissAlert(alert.id);
+                }}
+                className="text-purple-300 hover:text-white text-xs px-2 py-0.5 rounded transition"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Page Outlet or Unapproved Gate */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8">

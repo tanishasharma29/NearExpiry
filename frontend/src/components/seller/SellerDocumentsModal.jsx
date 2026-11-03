@@ -135,3 +135,4 @@ export const SellerDocumentsModal = ({ isOpen, onClose, initialData = {}, onSucc
 };
 
 export default SellerDocumentsModal;
+

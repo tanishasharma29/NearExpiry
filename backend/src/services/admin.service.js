@@ -9,6 +9,7 @@ import { InventoryAudit } from '../models/inventory.model.js';
 import { PriceRule } from '../models/priceRule.model.js';
 import { PriceAuditLog } from '../models/priceAudit.model.js';
 import { ExpiryAlert } from '../models/expiryAlert.model.js';
+import { Notification, NOTIFICATION_TYPES } from '../models/notification.model.js';
 import { ApiError } from '../utils/ApiError.js';
 import { toCalendarDayEpochUTC } from '../utils/shelfLife.js';
 import { resetDefaultPriceRulesService } from './priceRule.service.js';
@@ -18,7 +19,7 @@ import {
   notifySellerStoreRejected,
 } from './notification.service.js';
 import { invalidateProductCache } from '../utils/cache.util.js';
-import { emitToAdmin } from '../config/socket.js';
+import { emitToAdmin, emitToUser, emitToStore } from '../config/socket.js';
 import { SOCKET_EVENTS } from '../constants/socketEvents.js';
 import {
   extractDocumentDossier,
@@ -410,20 +411,41 @@ export const requestSellerDocumentsService = async (sellerId, adminUser) => {
   const storeName = store?.storeName || seller.sellerProfile?.storeName || 'Merchant Store';
 
   // Send Notification to Seller
-  await Notification.create({
-    recipient: seller._id,
-    recipientEmail: seller.email,
-    recipientRole: 'SELLER',
-    type: NOTIFICATION_TYPES.SYSTEM_ALERT,
-    title: '[Action Required] Please Submit Business & Tax Documents',
-    message: `NearExpiry Admin (${adminUser.name || 'Platform Governance'}) has requested your PAN, GSTIN, and FSSAI credentials to verify store "${storeName}". Please update your credentials on your dashboard.`,
-    channel: 'IN_APP',
-    entityId: seller._id,
-    entityModel: 'User',
-    actionUrl: '/seller/dashboard?action=submit-docs',
-  }).catch((err) => {
+  let notifDoc = null;
+  try {
+    notifDoc = await Notification.create({
+      recipient: seller._id,
+      recipientEmail: seller.email,
+      recipientRole: 'SELLER',
+      type: NOTIFICATION_TYPES.SYSTEM_ALERT,
+      title: '[Action Required] Please Submit Business & Tax Documents',
+      message: `NearExpiry Admin (${adminUser.name || 'Platform Governance'}) has requested your PAN, GSTIN, and FSSAI credentials to verify store "${storeName}". Please update your credentials on your dashboard.`,
+      channel: 'IN_APP',
+      entityId: seller._id,
+      entityModel: 'User',
+      actionUrl: '/seller/dashboard?action=submit-docs',
+    });
+  } catch (err) {
     console.warn('[AdminService] Failed to notify seller for document request:', err.message);
-  });
+  }
+
+  // Real-time Socket.IO notification delivery directly to seller
+  try {
+    const payload = {
+      title: '[Action Required] Please Submit Business & Tax Documents',
+      message: `NearExpiry Admin has requested your PAN, GSTIN, and FSSAI credentials to verify store "${storeName}".`,
+      type: 'DOCUMENT_REQUEST',
+      actionUrl: '/seller/dashboard?action=submit-docs',
+      createdAt: new Date().toISOString(),
+      notification: notifDoc || null,
+    };
+    emitToUser(seller._id, SOCKET_EVENTS.NOTIFICATION_NEW, payload);
+    if (store?._id) {
+      emitToStore(store._id, SOCKET_EVENTS.NOTIFICATION_NEW, payload);
+    }
+  } catch (sockErr) {
+    console.warn('[AdminService] Real-time notification emission to seller failed:', sockErr.message);
+  }
 
   return {
     success: true,
