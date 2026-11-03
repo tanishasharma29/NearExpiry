@@ -231,3 +231,4 @@ describe('Customer Registration Validation & Error Handling Suite', () => {
     });
   });
 });
+

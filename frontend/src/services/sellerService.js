@@ -15,6 +15,11 @@ export const sellerService = {
     const res = await api.get('/sellers/verification-status');
     return res.data;
   },
+
+  submitSupportRequest: async (payload) => {
+    const res = await api.post('/sellers/support-request', payload);
+    return res.data;
+  },
 };
 
 export default sellerService;

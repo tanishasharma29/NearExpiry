@@ -1,6 +1,11 @@
 import { User, USER_ROLES } from '../models/user.model.js';
 import { Store } from '../models/store.model.js';
+import { Notification, NOTIFICATION_TYPES } from '../models/notification.model.js';
 import { ApiError } from '../utils/ApiError.js';
+import { extractDocumentDossier } from '../utils/documentVerification.util.js';
+import { emitToAdmin } from '../config/socket.js';
+import { SOCKET_EVENTS } from '../constants/socketEvents.js';
+import { recordSecurityEvent, SECURITY_EVENT_TYPES } from '../utils/securityAudit.js';
 
 /**
  * Retrieves the authenticated Seller's profile along with their Store (if created).
@@ -119,17 +124,23 @@ export const getSellerVerificationStatusService = async (sellerUserId) => {
     ? 'APPROVED'
     : seller.verificationStatus || store?.verificationStatus || 'PENDING';
 
+  const documents = extractDocumentDossier(seller, store);
+  const isDemoApproved = isApproved && !documents.allDocumentsVerified;
+
   return {
     sellerId: seller._id,
     email: seller.email,
     verificationStatus: effectiveStatus,
+    storeStatus: effectiveStatus,
     isApproved,
+    isDemoApproved,
     isRejected,
     isPending: !isApproved && !isRejected && !isSuspended,
     submittedAt: seller.sellerProfile?.submittedAt || seller.createdAt,
     reviewedAt: seller.sellerProfile?.reviewedAt || store?.verificationAudit?.reviewedAt || null,
     rejectionReason:
       seller.sellerProfile?.rejectionReason || store?.verificationAudit?.rejectionReason || null,
+    documents,
     store: store
       ? {
           storeId: store._id,
@@ -139,5 +150,61 @@ export const getSellerVerificationStatusService = async (sellerUserId) => {
           isActive: store.isActive,
         }
       : null,
+  };
+};
+
+/**
+ * Handles seller support inquiries regarding demo approval & legal document verification.
+ */
+export const createSellerSupportRequestService = async (sellerUserId, payload) => {
+  const seller = await User.findById(sellerUserId);
+  if (!seller || seller.role !== USER_ROLES.SELLER) {
+    throw new ApiError(404, 'Seller profile not found.', 'SELLER_NOT_FOUND');
+  }
+
+  const store = await Store.findOne({ ownerId: seller._id });
+  const storeName = store?.storeName || seller.sellerProfile?.storeName || 'Merchant Store';
+  const ticketRef = `TKT-${Date.now().toString().slice(-6)}`;
+
+  // Find an admin user to assign / notify
+  const adminUser = await User.findOne({ role: USER_ROLES.ADMIN, isActive: true });
+  if (adminUser) {
+    await Notification.create({
+      recipient: adminUser._id,
+      recipientEmail: adminUser.email,
+      recipientRole: 'ADMIN',
+      type: NOTIFICATION_TYPES.SYSTEM_ALERT,
+      title: `[Seller Support] ${payload.subject}`,
+      message: `Store "${storeName}" (Seller: ${seller.name}, ${seller.email}) submitted a support request: "${payload.message}". Reference: ${ticketRef}`,
+      channel: 'IN_APP',
+      entityId: seller._id,
+      entityModel: 'User',
+      actionUrl: '/admin/sellers',
+    }).catch((err) => {
+      console.warn('[SellerService] Failed to create admin notification for support request:', err.message);
+    });
+  }
+
+  // Real-time alert to admins
+  try {
+    emitToAdmin(SOCKET_EVENTS.ADMIN_ALERT, {
+      alertType: 'SELLER_SUPPORT_REQUEST',
+      title: `Seller Support Request: ${payload.subject}`,
+      message: `Merchant "${storeName}" submitted a support request regarding store verification.`,
+      severity: 'INFO',
+      entityId: seller._id,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (sockErr) {
+    console.warn('[Socket.IO] Error emitting support request to admin:', sockErr.message);
+  }
+
+  return {
+    ticketId: ticketRef,
+    storeName,
+    subject: payload.subject,
+    submittedAt: new Date(),
+    status: 'SUBMITTED',
+    message: 'Your support request has been submitted to NearExpiry platform administrators. We will contact you regarding document verification.',
   };
 };

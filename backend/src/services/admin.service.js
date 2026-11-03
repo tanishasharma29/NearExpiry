@@ -20,6 +20,11 @@ import {
 import { invalidateProductCache } from '../utils/cache.util.js';
 import { emitToAdmin } from '../config/socket.js';
 import { SOCKET_EVENTS } from '../constants/socketEvents.js';
+import {
+  extractDocumentDossier,
+  DOCUMENT_VERIFICATION_STATUS,
+} from '../utils/documentVerification.util.js';
+import { recordSecurityEvent, SECURITY_EVENT_TYPES } from '../utils/securityAudit.js';
 
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 
@@ -184,10 +189,14 @@ export const listSellersService = async (queryParams = {}) => {
   const stores = await Store.find({ ownerId: { $in: sellerIds } }).lean();
   const storeMap = new Map(stores.map((st) => [st.ownerId.toString(), st]));
 
-  const enrichedSellers = sellers.map((s) => ({
-    ...s,
-    store: storeMap.get(s._id.toString()) || null,
-  }));
+  const enrichedSellers = sellers.map((s) => {
+    const store = storeMap.get(s._id.toString()) || null;
+    return {
+      ...s,
+      store,
+      documents: extractDocumentDossier(s, store),
+    };
+  });
 
   return {
     sellers: enrichedSellers,
@@ -213,6 +222,7 @@ export const reviewSellerApprovalService = async (sellerId, payload, adminUser) 
   const { status, rejectionReason } = payload;
   const now = new Date();
 
+  // Update store approval status without modifying document verification status
   seller.verificationStatus = status;
   if (!seller.sellerProfile) {
     seller.sellerProfile = { storeName: 'Store' };
@@ -222,7 +232,7 @@ export const reviewSellerApprovalService = async (sellerId, payload, adminUser) 
   seller.sellerProfile.rejectionReason = rejectionReason || null;
   await seller.save();
 
-  // Synchronize Seller's Store
+  // Synchronize Seller's Store without altering document verification
   const store = await Store.findOne({ ownerId: seller._id });
   if (store) {
     store.verificationStatus = status;
@@ -234,6 +244,21 @@ export const reviewSellerApprovalService = async (sellerId, payload, adminUser) 
     };
     await store.save();
   }
+
+  // Record audit log for store approval/rejection
+  await recordSecurityEvent({
+    eventType: SECURITY_EVENT_TYPES.SELLER_STORE_APPROVAL,
+    userId: adminUser._id,
+    email: adminUser.email,
+    role: adminUser.role,
+    details: {
+      sellerId: seller._id,
+      storeId: store?._id,
+      status,
+      rejectionReason: rejectionReason || null,
+      isDemoApproval: status === VERIFICATION_STATUS.APPROVED,
+    },
+  });
 
   // Generate real in-app notification for the seller after successful persistence
   const storeName = store?.storeName || seller.sellerProfile?.storeName || 'Your Store';
@@ -284,7 +309,91 @@ export const reviewSellerApprovalService = async (sellerId, payload, adminUser) 
           isActive: store.isActive,
         }
       : null,
+    documents: extractDocumentDossier(seller, store),
     reviewedAt: now,
+  };
+};
+
+/**
+ * Verify or Reject an individual legal credential (PAN, GSTIN, FSSAI).
+ * Document verification is strictly separated from Store approval.
+ */
+export const verifySellerDocumentService = async (sellerId, docType, payload, adminUser) => {
+  if (!mongoose.Types.ObjectId.isValid(sellerId)) {
+    throw new ApiError(400, 'Invalid seller ID format.', 'INVALID_SELLER_ID');
+  }
+
+  const normalizedDocType = docType.toLowerCase();
+  if (!['pan', 'gstin', 'fssai'].includes(normalizedDocType)) {
+    throw new ApiError(400, 'Invalid document type. Must be pan, gstin, or fssai.', 'INVALID_DOC_TYPE');
+  }
+
+  const seller = await User.findOne({ _id: sellerId, role: USER_ROLES.SELLER });
+  if (!seller) {
+    throw new ApiError(404, 'Seller not found.', 'SELLER_NOT_FOUND');
+  }
+
+  const store = await Store.findOne({ ownerId: seller._id });
+
+  // Check if document was submitted before allowing verification
+  const currentDossier = extractDocumentDossier(seller, store);
+  const targetDoc = currentDossier[normalizedDocType];
+  if (!targetDoc?.number && payload.status === DOCUMENT_VERIFICATION_STATUS.VERIFIED) {
+    throw new ApiError(
+      400,
+      `Cannot mark ${normalizedDocType.toUpperCase()} as Verified because it has not been provided.`,
+      'DOC_NOT_PROVIDED'
+    );
+  }
+
+  const now = new Date();
+  const updateInfo = {
+    status: payload.status,
+    verifiedAt: payload.status === DOCUMENT_VERIFICATION_STATUS.VERIFIED ? now : null,
+    verifiedBy: adminUser._id,
+    rejectionReason: payload.status === DOCUMENT_VERIFICATION_STATUS.REJECTED ? payload.rejectionReason || payload.notes || null : null,
+    notes: payload.notes || null,
+  };
+
+  // Update seller profile document verification
+  if (!seller.sellerProfile) {
+    seller.sellerProfile = { storeName: 'Store' };
+  }
+  if (!seller.sellerProfile.documentVerification) {
+    seller.sellerProfile.documentVerification = {};
+  }
+  seller.sellerProfile.documentVerification[normalizedDocType] = updateInfo;
+  await seller.save();
+
+  // Update store document verification
+  if (store) {
+    if (!store.documentVerification) {
+      store.documentVerification = {};
+    }
+    store.documentVerification[normalizedDocType] = updateInfo;
+    await store.save();
+  }
+
+  // Audit Log
+  await recordSecurityEvent({
+    eventType: SECURITY_EVENT_TYPES.SELLER_DOCUMENT_VERIFICATION,
+    userId: adminUser._id,
+    email: adminUser.email,
+    role: adminUser.role,
+    details: {
+      sellerId: seller._id,
+      storeId: store?._id,
+      docType: normalizedDocType,
+      status: payload.status,
+      notes: payload.notes || null,
+    },
+  });
+
+  return {
+    sellerId: seller._id,
+    docType: normalizedDocType,
+    documentStatus: payload.status,
+    documents: extractDocumentDossier(seller, store),
   };
 };
 

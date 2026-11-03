@@ -16,6 +16,11 @@ export const adminService = {
     return res.data;
   },
 
+  updateSellerDocumentVerification: async (sellerId, docType, payload) => {
+    const res = await api.patch(`/admin/sellers/${sellerId}/documents/${docType}`, payload);
+    return res.data;
+  },
+
   getUsers: async (params = {}) => {
     const res = await api.get('/admin/users', { params });
     return res.data;

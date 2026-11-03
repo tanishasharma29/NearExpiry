@@ -3,12 +3,16 @@ import {
   getSellerProfile,
   updateSellerProfile,
   getSellerVerificationStatus,
+  createSellerSupportRequest,
 } from '../controllers/seller.controller.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { authorizeRoles } from '../middleware/role.middleware.js';
 import { validateRequest } from '../middleware/validate.middleware.js';
 import { USER_ROLES } from '../models/user.model.js';
-import { updateSellerProfileSchema } from '../validators/sellerStore.validator.js';
+import {
+  updateSellerProfileSchema,
+  sellerSupportRequestSchema,
+} from '../validators/sellerStore.validator.js';
 
 const router = Router();
 
@@ -19,5 +23,6 @@ router.get('/profile', getSellerProfile);
 router.put('/profile', validateRequest(updateSellerProfileSchema), updateSellerProfile);
 router.patch('/profile', validateRequest(updateSellerProfileSchema), updateSellerProfile);
 router.get('/verification-status', getSellerVerificationStatus);
+router.post('/support-request', validateRequest(sellerSupportRequestSchema), createSellerSupportRequest);
 
 export default router;

@@ -4,6 +4,7 @@ import {
   getAdminDashboardMetricsService,
   listSellersService,
   reviewSellerApprovalService,
+  verifySellerDocumentService,
   listUsersService,
   getUserDetailsService,
   updateUserStatusService,
@@ -42,6 +43,18 @@ export const reviewSellerApproval = asyncHandler(async (req, res) => {
   const result = await reviewSellerApprovalService(req.params.id, req.body, req.user);
   return res.status(200).json(
     new ApiResponse(200, 'Seller approval review completed', result)
+  );
+});
+
+export const verifySellerDocument = asyncHandler(async (req, res) => {
+  const result = await verifySellerDocumentService(
+    req.params.id,
+    req.params.docType,
+    req.body,
+    req.user
+  );
+  return res.status(200).json(
+    new ApiResponse(200, 'Seller document verification updated successfully', result)
   );
 });
 

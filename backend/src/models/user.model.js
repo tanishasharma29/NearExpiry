@@ -16,13 +16,41 @@ export const VERIFICATION_STATUS = Object.freeze({
   SUSPENDED: 'SUSPENDED',
 });
 
+export const DOCUMENT_VERIFICATION_STATUS = Object.freeze({
+  NOT_PROVIDED: 'NOT_PROVIDED',
+  SUBMITTED_NOT_VERIFIED: 'SUBMITTED_NOT_VERIFIED',
+  VERIFIED: 'VERIFIED',
+  REJECTED: 'REJECTED',
+});
+
+const singleDocVerificationSchema = new mongoose.Schema(
+  {
+    status: {
+      type: String,
+      enum: Object.values(DOCUMENT_VERIFICATION_STATUS),
+      default: DOCUMENT_VERIFICATION_STATUS.NOT_PROVIDED,
+    },
+    verifiedAt: { type: Date, default: null },
+    verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    rejectionReason: { type: String, default: null },
+    notes: { type: String, default: null },
+  },
+  { _id: false }
+);
+
 const sellerProfileSchema = new mongoose.Schema(
   {
     storeName: { type: String, trim: true, required: true },
+    panNumber: { type: String, trim: true, default: null },
     businessLicenseNumber: { type: String, trim: true, default: null },
     gstNumber: { type: String, trim: true, default: null },
     fssaiLicenseNumber: { type: String, trim: true, default: null },
     cosmeticLicenseNumber: { type: String, trim: true, default: null },
+    documentVerification: {
+      pan: { type: singleDocVerificationSchema, default: () => ({ status: 'NOT_PROVIDED' }) },
+      gstin: { type: singleDocVerificationSchema, default: () => ({ status: 'NOT_PROVIDED' }) },
+      fssai: { type: singleDocVerificationSchema, default: () => ({ status: 'NOT_PROVIDED' }) },
+    },
     address: {
       street: { type: String, trim: true, default: '' },
       city: { type: String, trim: true, default: '' },

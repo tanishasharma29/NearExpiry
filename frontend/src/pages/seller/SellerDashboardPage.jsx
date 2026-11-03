@@ -23,6 +23,7 @@ import {
   Store,
   RefreshCw,
   Lock,
+  LifeBuoy,
 } from 'lucide-react';
 import { analyticsService } from '../../services/analyticsService';
 import { orderService } from '../../services/orderService';
@@ -37,6 +38,7 @@ import {
   RescuePerformanceWidget,
   StatusBadge,
   RiskIndicator,
+  SellerSupportModal,
 } from '../../components/seller';
 
 export const SellerDashboardPage = () => {
@@ -47,6 +49,7 @@ export const SellerDashboardPage = () => {
   const [verificationData, setVerificationData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [supportModalOpen, setSupportModalOpen] = useState(false);
 
   const fetchDashboardData = async (isManualRefresh = false) => {
     try {
@@ -261,85 +264,148 @@ export const SellerDashboardPage = () => {
         }
       />
 
-      {/* Verification Status Experience Banner */}
+      {/* Transparent Verification & Store Status Dossier Summary */}
       {isPending && (
-        <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
-          <div className="flex items-start gap-3.5">
-            <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-700 flex-shrink-0 mt-0.5">
-              <Clock className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-bold text-sm sm:text-base text-amber-950">
-                  Your store application is under review.
-                </h3>
-                <span className="px-2.5 py-0.5 text-[10px] font-extrabold uppercase rounded-full bg-amber-200/80 text-amber-900 border border-amber-300">
-                  Pending Review
-                </span>
+        <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-950 space-y-3.5 shadow-xs">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-700 flex-shrink-0">
+                <Clock className="w-5 h-5" />
               </div>
-              <p className="text-xs text-amber-800 leading-relaxed max-w-2xl">
-                Our compliance team is verifying your retail documents and KYC permits. Operational features (product creation, batch listing, inventory changes, and order processing) will be automatically unlocked upon approval.
-              </p>
+              <div>
+                <div className="text-xs text-amber-800 font-bold uppercase tracking-wider">Store Status</div>
+                <div className="text-base font-extrabold text-amber-950">Pending Review</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSupportModalOpen(true)}
+                className="px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+              >
+                <LifeBuoy className="w-3.5 h-3.5" />
+                <span>Contact Admin Support</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => fetchDashboardData(true)}
+                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+                <span>Sync</span>
+              </button>
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-center">
-            <button
-              onClick={() => fetchDashboardData(true)}
-              className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-              <span>Check Status</span>
-            </button>
+
+          <div className="p-3.5 bg-white/80 rounded-xl border border-amber-200 text-xs text-amber-900 space-y-2">
+            <div className="font-extrabold text-[11px] uppercase tracking-wider text-amber-950">
+              Legal Document Verification
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 font-mono text-xs">
+              <div className="p-2 bg-amber-50/60 rounded-lg border border-amber-100 flex justify-between sm:flex-col">
+                <span className="text-gray-500 font-sans">PAN:</span>
+                <span className="font-bold text-gray-800 font-sans">{verificationData?.documents?.pan?.label || 'Not provided'}</span>
+              </div>
+              <div className="p-2 bg-amber-50/60 rounded-lg border border-amber-100 flex justify-between sm:flex-col">
+                <span className="text-gray-500 font-sans">GSTIN:</span>
+                <span className="font-bold text-gray-800 font-sans">{verificationData?.documents?.gstin?.label || 'Not provided'}</span>
+              </div>
+              <div className="p-2 bg-amber-50/60 rounded-lg border border-amber-100 flex justify-between sm:flex-col">
+                <span className="text-gray-500 font-sans">FSSAI:</span>
+                <span className="font-bold text-gray-800 font-sans">{verificationData?.documents?.fssai?.label || 'Not provided'}</span>
+              </div>
+            </div>
+            <p className="text-xs text-amber-900/90 leading-relaxed pt-1">
+              “Your store application is pending administrator review. For this demo, an administrator may approve your store for demo use without legal documents. Contact admin support if document verification is required.”
+            </p>
           </div>
         </div>
       )}
 
       {isRejected && (
-        <div className="p-5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
-          <div className="flex items-start gap-3.5">
-            <div className="p-2.5 rounded-xl bg-rose-500/20 text-rose-700 flex-shrink-0 mt-0.5">
-              <ShieldAlert className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-bold text-sm sm:text-base text-rose-950">
-                  Your store application was rejected.
-                </h3>
-                <span className="px-2.5 py-0.5 text-[10px] font-extrabold uppercase rounded-full bg-rose-200/80 text-rose-900 border border-rose-300">
-                  Application Rejected
-                </span>
+        <div className="p-5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-950 space-y-3.5 shadow-xs">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-rose-500/20 text-rose-700 flex-shrink-0">
+                <ShieldAlert className="w-5 h-5" />
               </div>
-              <p className="text-xs text-rose-800 leading-relaxed max-w-2xl">
-                {rejectionReason
-                  ? `Reason: ${rejectionReason}. Please review your application status and contact support if you need clarification.`
-                  : 'Your store application has been rejected. Please review your application status and contact support if you need clarification.'}
-              </p>
+              <div>
+                <div className="text-xs text-rose-800 font-bold uppercase tracking-wider">Store Status</div>
+                <div className="text-base font-extrabold text-rose-950">Application Rejected</div>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-center">
-            <Link
-              to="/profile"
-              className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-2xs"
+            <button
+              type="button"
+              onClick={() => setSupportModalOpen(true)}
+              className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs"
             >
-              Review Profile
-            </Link>
+              <LifeBuoy className="w-3.5 h-3.5" />
+              <span>Contact Admin Support</span>
+            </button>
+          </div>
+
+          <div className="p-3.5 bg-white/80 rounded-xl border border-rose-200 text-xs text-rose-900 space-y-1.5">
+            <p className="font-semibold text-rose-950">
+              {rejectionReason
+                ? `Reason: ${rejectionReason}.`
+                : 'Your store application was rejected by platform governance.'}
+            </p>
+            <p className="text-rose-800">
+              Please contact admin support if you need clarification or wish to resubmit with updated credentials.
+            </p>
           </div>
         </div>
       )}
 
       {isApproved && (
-        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-950 flex items-center justify-between gap-4 shadow-xs">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-700 flex-shrink-0">
-              <ShieldCheck className="w-4 h-4" />
+        <div className="p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-950 space-y-3.5 shadow-xs">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-700 flex-shrink-0">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-xs text-emerald-800 font-bold uppercase tracking-wider">Store Status</div>
+                <div className="text-base font-extrabold text-emerald-950 flex items-center gap-2">
+                  <span>Approved for demo use</span>
+                  <span className="px-2 py-0.5 text-[10px] font-extrabold uppercase rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    Demo Mode Active
+                  </span>
+                </div>
+              </div>
             </div>
-            <div className="text-xs font-semibold text-emerald-900">
-              Your store has been approved. Store management is available.
-            </div>
+            <button
+              type="button"
+              onClick={() => setSupportModalOpen(true)}
+              className="px-3.5 py-1.5 bg-white hover:bg-emerald-50 text-emerald-900 border border-emerald-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs"
+            >
+              <LifeBuoy className="w-3.5 h-3.5 text-emerald-700" />
+              <span>Contact Admin Support</span>
+            </button>
           </div>
-          <span className="hidden sm:inline-flex px-2 py-0.5 text-[10px] font-extrabold uppercase rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
-            Verified & Active
-          </span>
+
+          <div className="p-3.5 bg-white/85 rounded-xl border border-emerald-200 text-xs text-emerald-950 space-y-2">
+            <div className="font-extrabold text-[11px] uppercase tracking-wider text-emerald-900">
+              Legal Document Verification
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 font-mono text-xs">
+              <div className="p-2 bg-emerald-50/50 rounded-lg border border-emerald-100 flex justify-between sm:flex-col">
+                <span className="text-gray-500 font-sans">PAN:</span>
+                <span className="font-bold text-gray-800 font-sans">{verificationData?.documents?.pan?.label || 'Not provided'}</span>
+              </div>
+              <div className="p-2 bg-emerald-50/50 rounded-lg border border-emerald-100 flex justify-between sm:flex-col">
+                <span className="text-gray-500 font-sans">GSTIN:</span>
+                <span className="font-bold text-gray-800 font-sans">{verificationData?.documents?.gstin?.label || 'Not provided'}</span>
+              </div>
+              <div className="p-2 bg-emerald-50/50 rounded-lg border border-emerald-100 flex justify-between sm:flex-col">
+                <span className="text-gray-500 font-sans">FSSAI:</span>
+                <span className="font-bold text-gray-800 font-sans">{verificationData?.documents?.fssai?.label || 'Not provided'}</span>
+              </div>
+            </div>
+            <p className="text-xs text-emerald-900/90 leading-relaxed pt-1">
+              “Your store is approved for demo use. Legal documents have not been submitted or verified. Contact admin support if document verification is required.”
+            </p>
+          </div>
         </div>
       )}
 
@@ -591,6 +657,12 @@ export const SellerDashboardPage = () => {
           })}
         </div>
       </div>
+
+      <SellerSupportModal
+        isOpen={supportModalOpen}
+        onClose={() => setSupportModalOpen(false)}
+        defaultSubject="Store Legal Document Verification Request"
+      />
     </div>
   );
 };

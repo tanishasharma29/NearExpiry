@@ -5,6 +5,7 @@ import { validateRequest } from '../middleware/validate.middleware.js';
 import { USER_ROLES } from '../models/user.model.js';
 import {
   sellerApprovalSchema,
+  documentVerificationSchema,
   userStatusSchema,
   storeStatusSchema,
   productModerationSchema,
@@ -23,6 +24,7 @@ import {
   getDashboardMetrics,
   listSellers,
   reviewSellerApproval,
+  verifySellerDocument,
   listUsers,
   getUserDetails,
   updateUserStatus,
@@ -61,9 +63,14 @@ router.use(authenticate, authorizeRoles(USER_ROLES.ADMIN));
 // 1. Dashboard
 router.get('/dashboard', getDashboardMetrics);
 
-// 2. Seller Approval / Rejection
+// 2. Seller Approval / Rejection & Document Verification
 router.get('/sellers', listSellers);
 router.patch('/sellers/:id/approval', validateRequest(sellerApprovalSchema), reviewSellerApproval);
+router.patch(
+  '/sellers/:id/documents/:docType',
+  validateRequest(documentVerificationSchema),
+  verifySellerDocument
+);
 
 // 3. User Management
 router.get('/users', listUsers);

@@ -4,6 +4,7 @@ import {
   getSellerProfileService,
   updateSellerProfileService,
   getSellerVerificationStatusService,
+  createSellerSupportRequestService,
 } from '../services/seller.service.js';
 
 /**
@@ -37,4 +38,14 @@ export const getSellerVerificationStatus = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(new ApiResponse(200, 'Seller verification status retrieved', statusData));
+});
+
+/**
+ * @desc    Submit seller support request regarding document verification
+ * @route   POST /api/v1/sellers/support-request
+ * @access  Private (SELLER)
+ */
+export const createSellerSupportRequest = asyncHandler(async (req, res) => {
+  const data = await createSellerSupportRequestService(req.user._id, req.body);
+  return res.status(201).json(new ApiResponse(201, 'Support request submitted successfully', data));
 });

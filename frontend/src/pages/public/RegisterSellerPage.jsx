@@ -3,8 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Store, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { Store, AlertCircle, Eye, EyeOff, CheckCircle2, LifeBuoy, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { SellerSupportModal } from '../../components/seller/SellerSupportModal';
 
 const registerSellerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -19,6 +20,8 @@ export const RegisterSellerPage = () => {
   const navigate = useNavigate();
   const [serverError, setServerError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [registeredSuccess, setRegisteredSuccess] = useState(false);
+  const [supportModalOpen, setSupportModalOpen] = useState(false);
 
   const {
     register,
@@ -40,7 +43,7 @@ export const RegisterSellerPage = () => {
       setServerError('');
       clearErrors();
       await registerSeller(data);
-      navigate('/seller/dashboard');
+      setRegisteredSuccess(true);
     } catch (err) {
       if (!err.status || err.message === 'Network Error' || err.code === 'ERR_NETWORK') {
         setServerError('Unable to connect to the server. Please check your internet connection and try again.');
@@ -71,6 +74,51 @@ export const RegisterSellerPage = () => {
       setServerError(err.message || (fieldErrorMapped ? 'Please correct the highlighted errors.' : 'Seller registration failed.'));
     }
   };
+
+  if (registeredSuccess) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-lg bg-white p-8 rounded-3xl border border-gray-200 shadow-xl space-y-6 text-center">
+          <div className="w-16 h-16 rounded-3xl bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center shadow-inner">
+            <CheckCircle2 className="w-8 h-8" />
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="text-2xl font-black text-gray-900">Store Registered Successfully</h2>
+            <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl text-xs sm:text-sm text-emerald-950 font-medium leading-relaxed text-left">
+              “Your store has been registered successfully. For this demo, the administrator may approve your store without legal documents. Contact admin support if document verification is required.”
+            </div>
+          </div>
+
+          <div className="space-y-3 pt-2">
+            <button
+              type="button"
+              onClick={() => navigate('/seller/dashboard')}
+              className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition flex items-center justify-center gap-2 text-sm"
+            >
+              <span>Proceed to Seller Dashboard</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSupportModalOpen(true)}
+              className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl transition flex items-center justify-center gap-2 text-xs"
+            >
+              <LifeBuoy className="w-4 h-4 text-brand-600" />
+              <span>Contact Admin Support</span>
+            </button>
+          </div>
+
+          <SellerSupportModal
+            isOpen={supportModalOpen}
+            onClose={() => setSupportModalOpen(false)}
+            defaultSubject="Store Legal Document Verification Request"
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">

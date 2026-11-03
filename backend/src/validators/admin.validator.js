@@ -18,6 +18,31 @@ export const sellerApprovalSchema = z.object({
   }),
 });
 
+export const documentVerificationSchema = z.object({
+  params: z.object({
+    id: z.string().regex(objectIdRegex, 'Invalid seller ID format'),
+    docType: z.enum(['pan', 'gstin', 'fssai']),
+  }),
+  body: z
+    .object({
+      status: z.enum(['VERIFIED', 'REJECTED', 'SUBMITTED_NOT_VERIFIED', 'NOT_PROVIDED']),
+      rejectionReason: z.string().trim().max(500).optional(),
+      notes: z.string().trim().max(500).optional(),
+    })
+    .refine(
+      (data) => {
+        if (data.status === 'REJECTED') {
+          return Boolean(data.rejectionReason && data.rejectionReason.trim().length > 0);
+        }
+        return true;
+      },
+      {
+        message: 'Rejection reason is required when document status is REJECTED',
+        path: ['rejectionReason'],
+      }
+    ),
+});
+
 export const userStatusSchema = z.object({
   params: z.object({
     id: z.string().regex(objectIdRegex, 'Invalid user ID format'),

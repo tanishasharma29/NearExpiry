@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
-import { VERIFICATION_STATUS } from './user.model.js';
+import { VERIFICATION_STATUS, DOCUMENT_VERIFICATION_STATUS } from './user.model.js';
+
+export { DOCUMENT_VERIFICATION_STATUS };
 
 export const STORE_OPERATIONAL_STATUS = Object.freeze({
   OPEN: 'OPEN',
@@ -7,6 +9,21 @@ export const STORE_OPERATIONAL_STATUS = Object.freeze({
   MAINTENANCE: 'MAINTENANCE',
   INACTIVE: 'INACTIVE',
 });
+
+const singleDocVerificationSchema = new mongoose.Schema(
+  {
+    status: {
+      type: String,
+      enum: Object.values(DOCUMENT_VERIFICATION_STATUS),
+      default: DOCUMENT_VERIFICATION_STATUS.NOT_PROVIDED,
+    },
+    verifiedAt: { type: Date, default: null },
+    verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    rejectionReason: { type: String, default: null },
+    notes: { type: String, default: null },
+  },
+  { _id: false }
+);
 
 const addressSchema = new mongoose.Schema(
   {
@@ -60,10 +77,16 @@ const storeSchema = new mongoose.Schema(
       default: null,
     },
     businessDetails: {
+      panNumber: { type: String, trim: true, default: null },
       businessLicenseNumber: { type: String, trim: true, default: null },
       gstNumber: { type: String, trim: true, default: null },
       fssaiLicenseNumber: { type: String, trim: true, default: null },
       cosmeticLicenseNumber: { type: String, trim: true, default: null },
+    },
+    documentVerification: {
+      pan: { type: singleDocVerificationSchema, default: () => ({ status: 'NOT_PROVIDED' }) },
+      gstin: { type: singleDocVerificationSchema, default: () => ({ status: 'NOT_PROVIDED' }) },
+      fssai: { type: singleDocVerificationSchema, default: () => ({ status: 'NOT_PROVIDED' }) },
     },
     address: {
       type: addressSchema,

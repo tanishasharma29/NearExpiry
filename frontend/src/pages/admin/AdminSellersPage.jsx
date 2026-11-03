@@ -48,6 +48,10 @@ export const AdminSellersPage = () => {
   const [sellerToReject, setSellerToReject] = useState(null);
   const [rejectionReason, setRejectionReason] = useState('');
 
+  // Demo Approval confirmation modal states
+  const [demoApprovalModalOpen, setDemoApprovalModalOpen] = useState(false);
+  const [sellerToApproveDemo, setSellerToApproveDemo] = useState(null);
+
   // Action loading states
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [feedbackMessage, setFeedbackMessage] = useState(null);
@@ -91,14 +95,34 @@ export const AdminSellersPage = () => {
     return sellers.filter((s) => s.verificationStatus === 'PENDING').length;
   }, [sellers]);
 
-  const handleApprove = async (sellerId, storeName) => {
+  const requestApprove = (seller) => {
+    const sellerId = seller._id;
+    const storeName = seller.sellerProfile?.storeName || seller.store?.storeName || seller.name;
+    const docs = seller.documents || {};
+    const hasMissingDocs =
+      docs.hasMissingDocs ??
+      (!docs.pan?.number || !docs.gstin?.number || !docs.fssai?.number);
+
+    if (hasMissingDocs) {
+      setSellerToApproveDemo({ sellerId, storeName, seller });
+      setDemoApprovalModalOpen(true);
+    } else {
+      executeApprove(sellerId, storeName, false);
+    }
+  };
+
+  const executeApprove = async (sellerId, storeName, isDemo) => {
     try {
       setActionLoadingId(sellerId);
       await adminService.updateSellerApproval(sellerId, { status: 'APPROVED' });
       setFeedbackMessage({
         type: 'success',
-        text: `Seller permit approved and store activated for "${storeName || 'Merchant'}".`,
+        text: isDemo
+          ? `Demo store approved for "${storeName || 'Merchant'}". Legal documents remain Not provided.`
+          : `Seller permit approved and store activated for "${storeName || 'Merchant'}".`,
       });
+      setDemoApprovalModalOpen(false);
+      setSellerToApproveDemo(null);
       if (drawerOpen && selectedSeller?._id === sellerId) {
         setSelectedSeller((prev) => (prev ? { ...prev, verificationStatus: 'APPROVED' } : null));
       }
@@ -107,6 +131,32 @@ export const AdminSellersPage = () => {
       setFeedbackMessage({
         type: 'error',
         text: err.message || 'Failed to approve seller permit.',
+      });
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleVerifyDocument = async (sellerId, docType, status) => {
+    try {
+      setActionLoadingId(`${sellerId}-${docType}`);
+      const res = await adminService.updateSellerDocumentVerification(sellerId, docType, { status });
+      const updatedDocs = res?.documents || res?.data?.documents;
+      setFeedbackMessage({
+        type: 'success',
+        text: `${docType.toUpperCase()} credential updated to ${status === 'VERIFIED' ? 'Verified' : 'Rejected'}.`,
+      });
+      if (selectedSeller?._id === sellerId && updatedDocs) {
+        setSelectedSeller((prev) => ({
+          ...prev,
+          documents: updatedDocs,
+        }));
+      }
+      await fetchSellers();
+    } catch (err) {
+      setFeedbackMessage({
+        type: 'error',
+        text: err.message || `Failed to update ${docType.toUpperCase()} status.`,
       });
     } finally {
       setActionLoadingId(null);
@@ -335,7 +385,7 @@ export const AdminSellersPage = () => {
                           <>
                             <button
                               type="button"
-                              onClick={() => handleApprove(s._id, storeName)}
+                              onClick={() => requestApprove(s)}
                               disabled={isProcessing}
                               className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-xs transition disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                             >
@@ -407,7 +457,7 @@ export const AdminSellersPage = () => {
                       <>
                         <button
                           type="button"
-                          onClick={() => handleApprove(s._id, storeName)}
+                          onClick={() => requestApprove(s)}
                           disabled={isProcessing}
                           className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-xs transition"
                         >
@@ -486,7 +536,7 @@ export const AdminSellersPage = () => {
               <button
                 type="button"
                 onClick={() => {
-                  handleApprove(selectedSeller._id, selectedSeller?.sellerProfile?.storeName || selectedSeller?.name);
+                  requestApprove(selectedSeller);
                 }}
                 disabled={actionLoadingId === selectedSeller?._id}
                 className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition disabled:opacity-50"
@@ -569,28 +619,153 @@ export const AdminSellersPage = () => {
 
             {/* Section B: Available KYC & Business Credentials */}
             <div className="space-y-3">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-gray-900 flex items-center gap-1.5">
-                <FileText className="w-4 h-4 text-purple-700" />
-                <span>Business & Tax Credentials</span>
-              </h4>
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-extrabold uppercase tracking-wider text-gray-900 flex items-center gap-1.5">
+                  <FileText className="w-4 h-4 text-purple-700" />
+                  <span>Business & Tax Credentials</span>
+                </h4>
+                <span className="text-[10px] text-gray-500 font-medium">Demo stores can be approved without legal documents</span>
+              </div>
               <div className="bg-white border border-gray-200 rounded-2xl p-4 divide-y divide-gray-100">
-                <div className="py-2 flex justify-between">
-                  <span className="text-gray-500">PAN Number</span>
-                  <span className="font-mono font-bold text-gray-900">
-                    {selectedSeller.sellerProfile?.panNumber || 'Not provided'}
-                  </span>
+                {/* PAN */}
+                <div className="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <span className="text-gray-500 block text-[11px] font-bold">PAN Number</span>
+                    <span className="font-mono font-bold text-gray-900 text-xs">
+                      {selectedSeller.documents?.pan?.number || selectedSeller.sellerProfile?.panNumber || selectedSeller.sellerProfile?.businessLicenseNumber || 'Not provided'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
+                        selectedSeller.documents?.pan?.status === 'VERIFIED'
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                          : selectedSeller.documents?.pan?.status === 'REJECTED'
+                          ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                          : selectedSeller.documents?.pan?.status === 'SUBMITTED_NOT_VERIFIED'
+                          ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                          : 'bg-gray-100 text-gray-600 border border-gray-200'
+                      }`}
+                    >
+                      {selectedSeller.documents?.pan?.label || (selectedSeller.sellerProfile?.panNumber ? 'Submitted — Not verified' : 'Not provided')}
+                    </span>
+                    {(selectedSeller.documents?.pan?.number || selectedSeller.sellerProfile?.panNumber) && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleVerifyDocument(selectedSeller._id, 'pan', 'VERIFIED')}
+                          disabled={actionLoadingId === `${selectedSeller._id}-pan`}
+                          className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
+                          title="Mark PAN as Verified"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleVerifyDocument(selectedSeller._id, 'pan', 'REJECTED')}
+                          disabled={actionLoadingId === `${selectedSeller._id}-pan`}
+                          className="p-1 text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                          title="Reject PAN"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="py-2 flex justify-between">
-                  <span className="text-gray-500">GSTIN Registration</span>
-                  <span className="font-mono font-bold text-gray-900">
-                    {selectedSeller.sellerProfile?.gstinNumber || 'Not provided'}
-                  </span>
+
+                {/* GSTIN */}
+                <div className="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <span className="text-gray-500 block text-[11px] font-bold">GSTIN Registration</span>
+                    <span className="font-mono font-bold text-gray-900 text-xs">
+                      {selectedSeller.documents?.gstin?.number || selectedSeller.sellerProfile?.gstNumber || 'Not provided'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
+                        selectedSeller.documents?.gstin?.status === 'VERIFIED'
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                          : selectedSeller.documents?.gstin?.status === 'REJECTED'
+                          ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                          : selectedSeller.documents?.gstin?.status === 'SUBMITTED_NOT_VERIFIED'
+                          ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                          : 'bg-gray-100 text-gray-600 border border-gray-200'
+                      }`}
+                    >
+                      {selectedSeller.documents?.gstin?.label || (selectedSeller.sellerProfile?.gstNumber ? 'Submitted — Not verified' : 'Not provided')}
+                    </span>
+                    {(selectedSeller.documents?.gstin?.number || selectedSeller.sellerProfile?.gstNumber) && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleVerifyDocument(selectedSeller._id, 'gstin', 'VERIFIED')}
+                          disabled={actionLoadingId === `${selectedSeller._id}-gstin`}
+                          className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
+                          title="Mark GSTIN as Verified"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleVerifyDocument(selectedSeller._id, 'gstin', 'REJECTED')}
+                          disabled={actionLoadingId === `${selectedSeller._id}-gstin`}
+                          className="p-1 text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                          title="Reject GSTIN"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="py-2 flex justify-between">
-                  <span className="text-gray-500">FSSAI Food License</span>
-                  <span className="font-mono font-bold text-gray-900">
-                    {selectedSeller.sellerProfile?.fssaiNumber || 'Not provided'}
-                  </span>
+
+                {/* FSSAI */}
+                <div className="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <span className="text-gray-500 block text-[11px] font-bold">FSSAI Food License</span>
+                    <span className="font-mono font-bold text-gray-900 text-xs">
+                      {selectedSeller.documents?.fssai?.number || selectedSeller.sellerProfile?.fssaiLicenseNumber || 'Not provided'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
+                        selectedSeller.documents?.fssai?.status === 'VERIFIED'
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                          : selectedSeller.documents?.fssai?.status === 'REJECTED'
+                          ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                          : selectedSeller.documents?.fssai?.status === 'SUBMITTED_NOT_VERIFIED'
+                          ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                          : 'bg-gray-100 text-gray-600 border border-gray-200'
+                      }`}
+                    >
+                      {selectedSeller.documents?.fssai?.label || (selectedSeller.sellerProfile?.fssaiLicenseNumber ? 'Submitted — Not verified' : 'Not provided')}
+                    </span>
+                    {(selectedSeller.documents?.fssai?.number || selectedSeller.sellerProfile?.fssaiLicenseNumber) && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleVerifyDocument(selectedSeller._id, 'fssai', 'VERIFIED')}
+                          disabled={actionLoadingId === `${selectedSeller._id}-fssai`}
+                          className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
+                          title="Mark FSSAI as Verified"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleVerifyDocument(selectedSeller._id, 'fssai', 'REJECTED')}
+                          disabled={actionLoadingId === `${selectedSeller._id}-fssai`}
+                          className="p-1 text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                          title="Reject FSSAI"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -663,6 +838,39 @@ export const AdminSellersPage = () => {
               className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-xs transition disabled:opacity-50"
             >
               {actionLoadingId === sellerToReject?._id ? 'Rejecting...' : 'Confirm Rejection'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Demo Store Approval Confirmation Modal */}
+      <Modal
+        isOpen={demoApprovalModalOpen}
+        onClose={() => setDemoApprovalModalOpen(false)}
+        title="Approve Demo Store"
+      >
+        <div className="space-y-4 text-xs">
+          <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-amber-950 font-medium leading-relaxed">
+            “Approve this demo store without legal document verification? PAN, GSTIN, and FSSAI will remain Not provided. This action approves the store for demo use only.”
+          </div>
+          <div className="text-gray-600">
+            Store: <span className="font-bold text-gray-900">{sellerToApproveDemo?.storeName || 'Merchant'}</span>
+          </div>
+          <div className="flex items-center justify-end gap-2.5 pt-2">
+            <button
+              type="button"
+              onClick={() => setDemoApprovalModalOpen(false)}
+              className="px-4 py-2 border border-gray-300 hover:bg-gray-100 text-gray-700 font-bold rounded-xl transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => executeApprove(sellerToApproveDemo?.sellerId, sellerToApproveDemo?.storeName, true)}
+              disabled={actionLoadingId === sellerToApproveDemo?.sellerId}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs transition disabled:opacity-50"
+            >
+              {actionLoadingId === sellerToApproveDemo?.sellerId ? 'Approving...' : 'Confirm Demo Approval'}
             </button>
           </div>
         </div>

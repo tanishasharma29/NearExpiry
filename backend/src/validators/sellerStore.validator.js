@@ -14,6 +14,7 @@ export const updateSellerProfileSchema = z.object({
     name: z.string().trim().min(2).max(80).optional(),
     phone: z.string().trim().min(10).max(15).optional(),
     storeName: z.string().trim().min(2).max(120).optional(),
+    panNumber: z.string().trim().optional(),
     businessLicenseNumber: z.string().trim().optional(),
     gstNumber: z.string().trim().optional(),
     fssaiLicenseNumber: z.string().trim().optional(),
@@ -21,6 +22,13 @@ export const updateSellerProfileSchema = z.object({
     address: addressValidator.partial().optional(),
     latitude: z.coerce.number().min(-90).max(90).optional(),
     longitude: z.coerce.number().min(-180).max(180).optional(),
+  }),
+});
+
+export const sellerSupportRequestSchema = z.object({
+  body: z.object({
+    subject: z.string({ required_error: 'Subject is required' }).trim().min(3, 'Subject must be at least 3 characters').max(150),
+    message: z.string({ required_error: 'Message is required' }).trim().min(5, 'Message must be at least 5 characters').max(1000),
   }),
 });
 
