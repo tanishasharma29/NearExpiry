@@ -1,5 +1,9 @@
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
 import { ApiResponse } from '../utils/ApiResponse.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { ApiError } from '../utils/ApiError.js';
 import {
   createCustomerComplaintService,
   listCustomerComplaintsService,
@@ -45,6 +49,59 @@ export const replyCustomerComplaint = asyncHandler(async (req, res) => {
 export const closeCustomerComplaint = asyncHandler(async (req, res) => {
   const complaint = await closeCustomerComplaintService(req.params.complaintId, req.user, req.body.reason);
   return res.status(200).json(new ApiResponse(200, 'Complaint closed successfully', complaint));
+});
+
+export const uploadComplaintEvidence = asyncHandler(async (req, res) => {
+  const { image, filename } = req.body;
+  if (!image || typeof image !== 'string') {
+    throw new ApiError(400, 'Image data is required.', 'IMAGE_REQUIRED');
+  }
+
+  // Support base64 data URLs: data:image/(png|jpeg|jpg|webp);base64,...
+  const matches = image.match(/^data:image\/(png|jpeg|jpg|webp);base64,(.+)$/i);
+  if (!matches) {
+    throw new ApiError(
+      400,
+      'Unsupported image format. Allowed formats are PNG, JPG, and WEBP.',
+      'INVALID_IMAGE_FORMAT'
+    );
+  }
+
+  const mimeType = matches[1].toLowerCase();
+  const base64Data = matches[2];
+  const buffer = Buffer.from(base64Data, 'base64');
+
+  // Enforce 5MB limit
+  const maxBytes = 5 * 1024 * 1024;
+  if (buffer.length > maxBytes) {
+    throw new ApiError(400, 'Image file size exceeds the 5MB limit.', 'IMAGE_TOO_LARGE');
+  }
+
+  // Create uploads/evidence directory if it doesn't exist
+  const uploadsDir = path.resolve(process.cwd(), 'uploads', 'evidence');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+
+  const ext = mimeType === 'jpeg' ? 'jpg' : mimeType;
+  const uniqueName = `evidence-${Date.now()}-${crypto.randomBytes(6).toString('hex')}.${ext}`;
+  const filePath = path.join(uploadsDir, uniqueName);
+
+  await fs.promises.writeFile(filePath, buffer);
+
+  // Return full accessible URL
+  const host = req.get('host');
+  const protocol = req.protocol;
+  const publicUrl = `${protocol}://${host}/uploads/evidence/${uniqueName}`;
+
+  return res.status(200).json(
+    new ApiResponse(200, 'Evidence image uploaded successfully', {
+      url: publicUrl,
+      filename: uniqueName,
+      size: buffer.length,
+      mimeType: `image/${mimeType}`,
+    })
+  );
 });
 
 // =========================================================================

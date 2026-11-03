@@ -19,6 +19,15 @@ export const complaintService = {
   },
 
   /**
+   * Upload customer evidence image from device
+   * @param {Object} payload { image, filename }
+   */
+  uploadEvidenceImage: async (payload) => {
+    const res = await api.post('/complaints/upload-evidence', payload);
+    return res.data;
+  },
+
+  /**
    * Retrieve list of complaints filed by the authenticated customer
    * @param {Object} params { page, limit, status }
    */

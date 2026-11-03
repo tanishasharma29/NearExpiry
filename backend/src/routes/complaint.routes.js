@@ -14,6 +14,7 @@ import {
   getCustomerComplaintDetails,
   replyCustomerComplaint,
   closeCustomerComplaint,
+  uploadComplaintEvidence,
 } from '../controllers/complaint.controller.js';
 
 const router = Router();
@@ -35,6 +36,9 @@ router.post('/:complaintId/messages', validateRequest(customerReplySchema), repl
 
 // 5. Customer acknowledges resolution and closes complaint
 router.patch('/:complaintId/close', validateRequest(complaintIdParamSchema), closeCustomerComplaint);
+
+// 6. Upload customer evidence image from device
+router.post('/upload-evidence', uploadComplaintEvidence);
 
 export default router;
 
