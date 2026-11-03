@@ -21,7 +21,7 @@ export const SellerPageHeader = ({
   breadcrumbs = [],
 }) => {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-sm mb-6 transition-all">
+    <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 p-4 sm:p-6 shadow-xs sm:shadow-sm mb-3 sm:mb-6 transition-all">
       {/* Top Meta Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
         <div className="flex items-center gap-2">
