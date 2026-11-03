@@ -35,15 +35,53 @@ export const PublicLayout = () => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
 
-  // Lock body scroll when mobile menu is open
+  // Bulletproof lock body & html scroll when mobile menu is open
   useEffect(() => {
-    if (mobileMenuOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
+    if (!mobileMenuOpen) return;
+
+    // Capture current scroll position
+    const scrollY = window.scrollY || window.pageYOffset || 0;
+    const originalBodyPosition = document.body.style.position;
+    const originalBodyTop = document.body.style.top;
+    const originalBodyWidth = document.body.style.width;
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+
+    // Completely freeze body and documentElement to prevent background scrolling
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+
     return () => {
-      document.body.style.overflow = 'unset';
+      document.documentElement.style.overflow = originalHtmlOverflow;
+      document.body.style.overflow = originalBodyOverflow;
+      document.body.style.position = originalBodyPosition;
+      document.body.style.top = originalBodyTop;
+      document.body.style.width = originalBodyWidth;
+      window.scrollTo(0, scrollY);
+    };
+  }, [mobileMenuOpen]);
+
+  // Handle ESC key and viewport resize
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && mobileMenuOpen) {
+        setMobileMenuOpen(false);
+      }
+    };
+    const handleResize = () => {
+      if (window.innerWidth >= 640 && mobileMenuOpen) {
+        setMobileMenuOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('resize', handleResize);
     };
   }, [mobileMenuOpen]);
 
@@ -231,9 +269,19 @@ export const PublicLayout = () => {
 
         {/* Mobile Navigation Drawer / Dropdown */}
         {mobileMenuOpen && (
-          <div className="sm:hidden fixed inset-0 top-[105px] z-50 flex flex-col bg-gray-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div
+            className="sm:hidden fixed inset-0 top-[105px] z-50 flex flex-col bg-gray-900/60 backdrop-blur-xs animate-in fade-in duration-200"
+            style={{ overscrollBehavior: 'none', touchAction: 'none' }}
+          >
             {/* Drawer Body */}
-            <div className="bg-white border-b border-gray-200 shadow-2xl p-4 max-h-[85vh] overflow-y-auto space-y-4 animate-in slide-in-from-top-4 duration-200">
+            <div
+              className="bg-white border-b border-gray-200 shadow-2xl p-4 max-h-[calc(100vh-110px)] overflow-y-auto space-y-4 animate-in slide-in-from-top-4 duration-200"
+              style={{
+                overscrollBehavior: 'contain',
+                WebkitOverflowScrolling: 'touch',
+                touchAction: 'pan-y',
+              }}
+            >
               {/* User Header / Guest Prompt */}
               {isAuthenticated ? (
                 <div className="p-3 bg-gradient-to-r from-emerald-50 to-emerald-100/60 rounded-2xl border border-emerald-200/80 flex items-center justify-between">
@@ -429,6 +477,7 @@ export const PublicLayout = () => {
             {/* Click-away backdrop dismiss */}
             <div
               className="flex-1"
+              style={{ touchAction: 'none' }}
               onClick={() => setMobileMenuOpen(false)}
             />
           </div>

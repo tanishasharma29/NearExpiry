@@ -154,6 +154,33 @@ export const SellerLayout = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [mobileMenuOpen, notificationsOpen]);
 
+  // Lock body scroll when mobile drawer is open
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+
+    const scrollY = window.scrollY || window.pageYOffset || 0;
+    const originalBodyPosition = document.body.style.position;
+    const originalBodyTop = document.body.style.top;
+    const originalBodyWidth = document.body.style.width;
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+
+    return () => {
+      document.documentElement.style.overflow = originalHtmlOverflow;
+      document.body.style.overflow = originalBodyOverflow;
+      document.body.style.position = originalBodyPosition;
+      document.body.style.top = originalBodyTop;
+      document.body.style.width = originalBodyWidth;
+      window.scrollTo(0, scrollY);
+    };
+  }, [mobileMenuOpen]);
+
   // Dismiss notification dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e) => {
