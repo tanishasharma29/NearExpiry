@@ -540,7 +540,10 @@ export const SellerComplaintsPage = () => {
 
       {/* Resolution Confirmation Modal */}
       {showResolveModal && (
-        <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
+          style={{ zIndex: 70 }}
+        >
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-100 space-y-4">
             <div className="flex items-center gap-2 text-emerald-600">
               <CheckCircle2 className="w-6 h-6" />
