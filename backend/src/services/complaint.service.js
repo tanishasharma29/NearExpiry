@@ -92,6 +92,63 @@ const notifyCustomer = async ({ customerId, type, title, message, complaint, ded
   }
 };
 
+/**
+ * Helper to dispatch complaint notifications to all active administrators
+ */
+const notifyAdminsOnComplaint = async ({ complaint, order, customer, category, subject, isReply = false, replyMessage = '' }) => {
+  try {
+    const adminUsers = await User.find({ role: USER_ROLES.ADMIN, isActive: true })
+      .select('_id email name')
+      .lean();
+    if (!adminUsers || adminUsers.length === 0) return;
+
+    const title = isReply
+      ? `Customer Replied: Dispute ${complaint.complaintNumber}`
+      : `New Dispute Filed: ${complaint.complaintNumber}`;
+
+    const orderNum = order?.orderNumber || complaint.orderNumber || '';
+    const message = isReply
+      ? `Customer ${customer?.name || 'Customer'} replied on dispute #${complaint.complaintNumber} (Order #${orderNum}): "${replyMessage.slice(0, 100)}${replyMessage.length > 100 ? '...' : ''}"`
+      : `Customer ${customer?.name || 'Customer'} filed a complaint for Order #${orderNum} under category [${category}]: "${subject}".`;
+
+    const actionUrl = `/admin/complaints/${complaint._id}`;
+
+    await Promise.allSettled(
+      adminUsers.map((admin) =>
+        defaultDispatcher.dispatch({
+          recipient: admin._id,
+          recipientEmail: admin.email,
+          recipientRole: USER_ROLES.ADMIN,
+          type: NOTIFICATION_TYPES.SYSTEM_ALERT,
+          title,
+          message,
+          actionText: 'Review Dispute',
+          actionUrl,
+          data: {
+            complaintId: complaint._id,
+            complaintNumber: complaint.complaintNumber,
+            orderId: order?._id || complaint.orderId,
+            orderNumber: orderNum,
+            category: complaint.category,
+            status: complaint.status,
+            priority: complaint.priority,
+            customerId: customer?._id || complaint.customerId,
+            customerName: customer?.name || 'Customer',
+            storeId: complaint.storeId,
+            storeName: complaint.storeName || '',
+          },
+          dedupKey: `COMPLAINT_ADMIN:${complaint._id}:${admin._id}:${isReply ? `REPLY_${Date.now()}` : 'CREATED'}`,
+        })
+      )
+    );
+  } catch (err) {
+    console.error(
+      `[Notification] Failed to dispatch admin complaint alerts for ${complaint.complaintNumber}:`,
+      err.message
+    );
+  }
+};
+
 // =========================================================================
 // CUSTOMER COMPLAINT SERVICES
 // =========================================================================
@@ -180,6 +237,16 @@ export const createCustomerComplaintService = async (userActor, data) => {
     message: `Your complaint for order #${order.orderNumber} has been received. Our support team will review it shortly.`,
     complaint,
     dedupSuffix: 'CREATED',
+  });
+
+  // 5.1 In-App Notification to all active Administrators
+  await notifyAdminsOnComplaint({
+    complaint,
+    order,
+    customer: userActor,
+    category,
+    subject,
+    isReply: false,
   });
 
   // Real-Time Socket.IO Alert to Admins
@@ -333,6 +400,31 @@ export const replyCustomerComplaintService = async (complaintId, userActor, { me
   });
 
   await complaint.save();
+
+  // Notify active Administrators of customer reply
+  await notifyAdminsOnComplaint({
+    complaint,
+    order: { orderNumber: complaint.orderNumber, storeId: complaint.storeId },
+    customer: userActor,
+    category: complaint.category,
+    subject: complaint.subject,
+    isReply: true,
+    replyMessage: message,
+  });
+
+  // Real-Time Socket.IO Alert to Admins
+  try {
+    emitToAdmin(SOCKET_EVENTS.ADMIN_ALERT, {
+      alertType: 'COMPLAINT_CUSTOMER_REPLY',
+      title: `Customer Reply: ${complaint.complaintNumber}`,
+      message: `Customer replied on dispute #${complaint.complaintNumber} for order #${complaint.orderNumber}.`,
+      severity: 'INFO',
+      entityId: complaint._id,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (sockErr) {
+    console.error('[Socket.IO] Error emitting complaint reply admin alert:', sockErr);
+  }
 
   // Return sanitized complaint for customer
   const updatedDoc = complaint.toObject();

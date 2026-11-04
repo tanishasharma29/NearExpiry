@@ -458,7 +458,7 @@ export const AdminLayout = () => {
                             }`}
                           >
                             <div className="flex-shrink-0 mt-0.5">
-                              {isSellerSupport ? (
+                              {isSellerSupport || notif.title?.includes('Dispute') || notif.title?.includes('Complaint') ? (
                                 <div className="p-1.5 rounded-lg bg-amber-100 text-amber-800">
                                   <MessageSquare className="w-4 h-4" />
                                 </div>
@@ -590,11 +590,18 @@ export const AdminLayout = () => {
             {(selectedNotifModal?.actionUrl || selectedNotifModal?.entityId) && (
               <button
                 type="button"
-                onClick={() => handleOpenSellerDossier(selectedNotifModal)}
+                onClick={() => {
+                  if (selectedNotifModal?.actionUrl) {
+                    const url = selectedNotifModal.actionUrl;
+                    setSelectedNotifModal(null);
+                    navigate(url);
+                  } else {
+                    handleOpenSellerDossier(selectedNotifModal);
+                  }
+                }}
                 className="px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white font-bold rounded-xl shadow-xs transition flex items-center gap-1.5"
               >
-                <Store className="w-4 h-4" />
-                <span>Open Seller Dossier & Review</span>
+                <span>{selectedNotifModal?.actionText || (selectedNotifModal?.actionUrl ? 'Open Details & Review' : 'Open Seller Dossier & Review')} &rarr;</span>
               </button>
             )}
           </div>
