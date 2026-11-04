@@ -325,6 +325,19 @@ describe('NearExpiry Seller Verification & Store Access Control Workflow', () =>
   });
 
   describe('3. Admin Approval Workflow & In-App Notification', () => {
+    it('should notify active admins with an in-app notification when a new seller registers', async () => {
+      const adminNotif = await Notification.findOne({
+        recipientRole: 'ADMIN',
+        type: NOTIFICATION_TYPES.SYSTEM_ALERT,
+        'data.sellerId': pendingSellerId.toString(),
+      });
+      assert.ok(adminNotif, 'Admin must receive an in-app notification when a seller registers');
+      assert.match(adminNotif.title, /New Seller Registration/i);
+      assert.match(adminNotif.message, /registered store/i);
+      assert.strictEqual(adminNotif.actionUrl, `/admin/sellers?sellerId=${pendingSellerId}`);
+      assert.strictEqual(adminNotif.data.sellerName, 'Pending Seller');
+    });
+
     it('should successfully approve a seller, update MongoDB status, and dispatch in-app notification', async () => {
       const res = await fetch(`${baseUrl}/admin/sellers/${approvedSellerId}/approval`, {
         method: 'PATCH',

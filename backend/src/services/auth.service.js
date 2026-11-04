@@ -4,6 +4,7 @@ import { ApiError } from '../utils/ApiError.js';
 import { generateAccessToken } from '../utils/jwt.js';
 import { emitToAdmin } from '../config/socket.js';
 import { SOCKET_EVENTS } from '../constants/socketEvents.js';
+import { notifyAdminsOnSellerRegistration } from './notification.service.js';
 
 const ensureEmailNotTaken = async (email) => {
   const existingUser = await User.findOne({ email: email.toLowerCase().trim() });
@@ -101,8 +102,9 @@ export const registerSellerService = async (payload) => {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '') + '-' + Math.floor(Math.random() * 10000);
 
+  let store = null;
   try {
-    await Store.create({
+    store = await Store.create({
       ownerId: user._id,
       storeName: storeName || `${name}'s Store`,
       slug,
@@ -139,14 +141,32 @@ export const registerSellerService = async (payload) => {
 
   const token = generateAccessToken(user);
 
-  // Real-Time Socket.IO Alert to Admin
+  // 1. Dispatch in-app & email notification to all active Administrators
+  try {
+    await notifyAdminsOnSellerRegistration({
+      seller: user,
+      store,
+    });
+  } catch (notifErr) {
+    console.error('[Notification] Error notifying admins on seller registration:', notifErr.message);
+  }
+
+  // 2. Real-Time Socket.IO Alert to Admin
   try {
     emitToAdmin(SOCKET_EVENTS.ADMIN_ALERT, {
       alertType: 'NEW_SELLER_REGISTRATION',
-      title: 'New Seller Registration',
+      title: `New Seller Registration: ${storeName || `${name}'s Store`}`,
       message: `Seller [${name}] registered store [${storeName || 'New Store'}]. Verification pending.`,
       severity: 'INFO',
       entityId: user._id,
+      actionUrl: `/admin/sellers?sellerId=${user._id}`,
+      data: {
+        sellerId: user._id.toString(),
+        storeId: store?._id?.toString() || '',
+        storeName: storeName || `${name}'s Store`,
+        sellerName: name,
+        sellerEmail: email,
+      },
       timestamp: new Date().toISOString(),
     });
   } catch (sockErr) {

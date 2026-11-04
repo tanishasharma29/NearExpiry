@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { Notification, NOTIFICATION_TYPES } from '../models/notification.model.js';
-import { User, USER_ROLES } from '../models/user.model.js';
+import { User, USER_ROLES, VERIFICATION_STATUS } from '../models/user.model.js';
 import { defaultDispatcher } from './notification/notification.dispatcher.js';
 import { ApiError } from '../utils/ApiError.js';
 
@@ -409,7 +409,58 @@ export const notifyCustomerWishlistAvailability = async ({
 };
 
 // ==========================================
-// 3. INBOX QUERY & READ STATUS MANAGEMENT
+// 3. ADMIN & PLATFORM GOVERNANCE NOTIFICATIONS
+// ==========================================
+
+export const notifyAdminsOnSellerRegistration = async ({ seller, store }) => {
+  try {
+    const adminUsers = await User.find({ role: USER_ROLES.ADMIN, isActive: true })
+      .select('_id email name')
+      .lean();
+    if (!adminUsers || adminUsers.length === 0) return [];
+
+    const storeTitle =
+      store?.storeName || seller.sellerProfile?.storeName || `${seller.name}'s Store`;
+    const title = `New Seller Registration: ${storeTitle}`;
+    const message = `Merchant ${seller.name} (${seller.email}) registered store "${storeTitle}". Verification documents and store activation pending admin review.`;
+    const actionUrl = `/admin/sellers?sellerId=${seller._id}`;
+
+    const results = await Promise.allSettled(
+      adminUsers.map((admin) =>
+        defaultDispatcher.dispatch({
+          recipient: admin._id,
+          recipientEmail: admin.email,
+          recipientRole: USER_ROLES.ADMIN,
+          type: NOTIFICATION_TYPES.SYSTEM_ALERT,
+          title,
+          message,
+          actionText: 'Inspect Seller Dossier',
+          actionUrl,
+          data: {
+            sellerId: seller._id.toString(),
+            storeId: store?._id?.toString() || '',
+            storeName: storeTitle,
+            sellerName: seller.name,
+            sellerEmail: seller.email,
+            verificationStatus: seller.verificationStatus || VERIFICATION_STATUS.PENDING,
+          },
+          dedupKey: `SELLER_REGISTRATION:${seller._id}:${admin._id}`,
+        })
+      )
+    );
+
+    return results;
+  } catch (err) {
+    console.error(
+      `[Notification] Failed to notify admins on seller registration (${seller?.email}):`,
+      err.message
+    );
+    return [];
+  }
+};
+
+// ==========================================
+// 4. INBOX QUERY & READ STATUS MANAGEMENT
 // ==========================================
 
 export const getUserNotificationsService = async (userId, queryParams = {}) => {

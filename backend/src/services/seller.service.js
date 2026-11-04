@@ -1,6 +1,7 @@
 import { User, USER_ROLES } from '../models/user.model.js';
 import { Store } from '../models/store.model.js';
 import { Notification, NOTIFICATION_TYPES } from '../models/notification.model.js';
+import { defaultDispatcher } from './notification/notification.dispatcher.js';
 import { ApiError } from '../utils/ApiError.js';
 import { extractDocumentDossier } from '../utils/documentVerification.util.js';
 import { emitToAdmin } from '../config/socket.js';
@@ -103,22 +104,36 @@ export const updateSellerProfileService = async (sellerUserId, payload) => {
 
   if (documentsSubmitted) {
     const storeName = store?.storeName || seller.sellerProfile?.storeName || 'Merchant Store';
-    const adminUser = await User.findOne({ role: USER_ROLES.ADMIN, isActive: true });
-    if (adminUser) {
-      await Notification.create({
-        recipient: adminUser._id,
-        recipientEmail: adminUser.email,
-        recipientRole: 'ADMIN',
-        type: NOTIFICATION_TYPES.SYSTEM_ALERT,
-        title: `[Documents Submitted] ${storeName} submitted business & tax credentials`,
-        message: `Store "${storeName}" (Seller: ${seller.name}, ${seller.email}) has submitted legal credentials (PAN / GSTIN / FSSAI) for review and verification.`,
-        channel: 'IN_APP',
-        entityId: seller._id,
-        entityModel: 'User',
-        actionUrl: `/admin/sellers?sellerId=${seller._id}`,
-      }).catch((err) =>
-        console.warn('[SellerService] Failed to notify admin for document submission:', err.message)
-      );
+    try {
+      const adminUsers = await User.find({ role: USER_ROLES.ADMIN, isActive: true })
+        .select('_id email name')
+        .lean();
+      if (adminUsers && adminUsers.length > 0) {
+        await Promise.allSettled(
+          adminUsers.map((admin) =>
+            defaultDispatcher.dispatch({
+              recipient: admin._id,
+              recipientEmail: admin.email,
+              recipientRole: USER_ROLES.ADMIN,
+              type: NOTIFICATION_TYPES.SYSTEM_ALERT,
+              title: `[Documents Submitted] ${storeName} submitted business & tax credentials`,
+              message: `Store "${storeName}" (Seller: ${seller.name}, ${seller.email}) has submitted legal credentials (PAN / GSTIN / FSSAI) for review and verification.`,
+              actionText: 'Inspect Seller Dossier',
+              actionUrl: `/admin/sellers?sellerId=${seller._id}`,
+              data: {
+                sellerId: seller._id.toString(),
+                storeId: store?._id?.toString() || '',
+                storeName,
+                sellerName: seller.name,
+                sellerEmail: seller.email,
+              },
+              dedupKey: `DOCS_SUBMITTED:${seller._id}:${admin._id}:${Date.now()}`,
+            })
+          )
+        );
+      }
+    } catch (err) {
+      console.warn('[SellerService] Failed to notify admin for document submission:', err.message);
     }
   }
 
