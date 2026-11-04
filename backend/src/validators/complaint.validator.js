@@ -84,6 +84,10 @@ export const customerReplySchema = z.object({
       .max(5, 'Maximum 5 attachments allowed')
       .optional()
       .default([]),
+    channel: z
+      .enum(['CUSTOMER_SELLER', 'ADMIN_SELLER'])
+      .optional()
+      .default('CUSTOMER_SELLER'),
   }),
 });
 
@@ -156,6 +160,10 @@ export const adminMessageSchema = z.object({
       .optional()
       .default([]),
     isInternalNote: z.boolean().optional().default(false),
+    channel: z
+      .enum(['CUSTOMER_SELLER', 'ADMIN_SELLER', 'INTERNAL_NOTES'])
+      .optional()
+      .default('ADMIN_SELLER'),
   }),
 });
 
@@ -218,6 +226,10 @@ export const sellerReplySchema = z.object({
       .max(5, 'Maximum 5 attachments allowed')
       .optional()
       .default([]),
+    channel: z
+      .enum(['CUSTOMER_SELLER', 'ADMIN_SELLER'])
+      .optional()
+      .default('CUSTOMER_SELLER'),
   }),
 });
 

@@ -64,7 +64,9 @@ export const SellerComplaintsPage = () => {
   // Active Dispute Modal / Drawer
   const [selectedComplaint, setSelectedComplaint] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [activeChatTab, setActiveChatTab] = useState('CUSTOMER'); // 'CUSTOMER' | 'ADMIN'
   const [replyMessage, setReplyMessage] = useState('');
+  const [adminReplyMessage, setAdminReplyMessage] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
   const [replyError, setReplyError] = useState(null);
 
@@ -123,23 +125,29 @@ export const SellerComplaintsPage = () => {
     }
   }, [deepLinkComplaintId]);
 
-  const handleSendReply = async (e) => {
+  const handleSendReply = async (e, channel = 'CUSTOMER_SELLER') => {
     e.preventDefault();
-    if (!replyMessage.trim() || !selectedComplaint) return;
+    const textToSend = channel === 'ADMIN_SELLER' ? adminReplyMessage.trim() : replyMessage.trim();
+    if (!textToSend || !selectedComplaint) return;
 
     try {
       setSendingReply(true);
       setReplyError(null);
       const res = await complaintService.sendSellerComplaintMessage(selectedComplaint._id, {
-        message: replyMessage.trim(),
+        message: textToSend,
+        channel,
       });
       const updated = res?.data || res;
       setSelectedComplaint(updated);
-      setReplyMessage('');
+      if (channel === 'ADMIN_SELLER') {
+        setAdminReplyMessage('');
+      } else {
+        setReplyMessage('');
+      }
       fetchComplaints();
     } catch (err) {
       console.error('Failed to send merchant response:', err);
-      setReplyError(err?.response?.data?.message || 'Failed to deliver message to customer.');
+      setReplyError(err?.response?.data?.message || 'Failed to deliver message.');
     } finally {
       setSendingReply(false);
     }
@@ -459,55 +467,178 @@ export const SellerComplaintsPage = () => {
                 </div>
               )}
 
-              {/* Messages Thread */}
-              <div className="space-y-3">
-                {selectedComplaint.messages?.map((msg, idx) => {
-                  const isSeller = msg.senderRole === 'SELLER';
-                  const isAdmin = msg.senderRole === 'ADMIN';
-                  const isCustomer = msg.senderRole === 'CUSTOMER';
+              {/* Communication Channel Tabs */}
+              {(() => {
+                const customerMessages = (selectedComplaint.messages || []).filter(
+                  (m) =>
+                    m.channel === 'CUSTOMER_SELLER' ||
+                    (!m.channel &&
+                      m.senderRole !== 'ADMIN' &&
+                      m.recipientRole !== 'SELLER' &&
+                      m.recipientRole !== 'ADMIN')
+                );
 
-                  return (
-                    <div
-                      key={idx}
-                      className={`flex flex-col ${isSeller ? 'items-end' : 'items-start'}`}
-                    >
-                      <div className="flex items-center gap-1.5 mb-1 px-1 text-[10px] text-gray-400 font-bold">
-                        {isSeller && (
-                          <span className="text-emerald-700 font-bold">You (Merchant)</span>
-                        )}
-                        {isAdmin && (
-                          <span className="text-purple-700 font-bold flex items-center gap-1">
-                            <ShieldAlert className="w-3 h-3 text-purple-600" />
-                            <span>Platform Admin Directive (Private to Merchant — Hidden from Customer)</span>
-                          </span>
-                        )}
-                        {isCustomer && (
-                          <span className="text-blue-700 font-bold">Customer ({msg.senderName || 'Customer'})</span>
-                        )}
-                        <span>•</span>
-                        <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                      </div>
+                const adminMessages = (selectedComplaint.messages || []).filter(
+                  (m) =>
+                    m.channel === 'ADMIN_SELLER' ||
+                    (!m.channel &&
+                      (m.senderRole === 'ADMIN' ||
+                        m.recipientRole === 'SELLER' ||
+                        m.recipientRole === 'ADMIN'))
+                );
 
-                      <div
-                        className={`max-w-[85%] p-3.5 rounded-2xl text-xs leading-relaxed whitespace-pre-wrap shadow-xs ${
-                          isSeller
-                            ? 'bg-emerald-600 text-white rounded-br-xs'
-                            : isAdmin
-                            ? 'bg-purple-50 text-purple-950 border border-purple-200 rounded-bl-xs font-medium'
-                            : 'bg-gray-100 text-gray-900 rounded-bl-xs border border-gray-200'
+                return (
+                  <>
+                    <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
+                      <button
+                        type="button"
+                        onClick={() => setActiveChatTab('CUSTOMER')}
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                          activeChatTab === 'CUSTOMER'
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                         }`}
                       >
-                        {msg.message}
-                      </div>
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <span>Customer Chat ({customerMessages.length})</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setActiveChatTab('ADMIN')}
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                          activeChatTab === 'ADMIN'
+                            ? 'bg-purple-700 text-white shadow-xs'
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        }`}
+                      >
+                        <ShieldAlert className="w-3.5 h-3.5" />
+                        <span>Admin Chat ({adminMessages.length})</span>
+                        {adminMessages.length > 0 && activeChatTab !== 'ADMIN' && (
+                          <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+                        )}
+                      </button>
                     </div>
-                  );
-                })}
-              </div>
+
+                    {/* SECTION 1: Customer Chat */}
+                    {activeChatTab === 'CUSTOMER' && (
+                      <div className="space-y-3">
+                        <div className="space-y-3 min-h-[160px] max-h-[300px] overflow-y-auto pr-1">
+                          {customerMessages.length === 0 ? (
+                            <div className="text-center py-8 text-gray-400 italic text-xs">
+                              No customer dialogue exchanged yet.
+                            </div>
+                          ) : (
+                            customerMessages.map((msg, idx) => {
+                              const isSeller = msg.senderRole === 'SELLER';
+                              return (
+                                <div
+                                  key={idx}
+                                  className={`flex flex-col ${isSeller ? 'items-end' : 'items-start'}`}
+                                >
+                                  <div className="flex items-center gap-1.5 mb-1 px-1 text-[10px] text-gray-400 font-bold">
+                                    <span className={isSeller ? 'text-emerald-700' : 'text-blue-700'}>
+                                      {isSeller
+                                        ? 'You (Merchant)'
+                                        : `Customer (${msg.senderName || 'Customer'})`}
+                                    </span>
+                                    <span>•</span>
+                                    <span>
+                                      {new Date(msg.createdAt).toLocaleTimeString([], {
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                      })}
+                                    </span>
+                                  </div>
+
+                                  <div
+                                    className={`max-w-[85%] p-3.5 rounded-2xl text-xs leading-relaxed whitespace-pre-wrap shadow-xs ${
+                                      isSeller
+                                        ? 'bg-emerald-600 text-white rounded-br-xs'
+                                        : 'bg-gray-100 text-gray-900 rounded-bl-xs border border-gray-200'
+                                    }`}
+                                  >
+                                    {msg.message}
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* SECTION 2: Admin Chat */}
+                    {activeChatTab === 'ADMIN' && (
+                      <div className="space-y-3">
+                        <div className="p-3 bg-purple-50/70 rounded-xl border border-purple-200 text-xs text-purple-950 flex items-start gap-2">
+                          <ShieldAlert className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
+                          <div className="space-y-0.5">
+                            <p className="font-bold">Private Platform Support & Admin Channel</p>
+                            <p className="text-[11px] text-purple-800 leading-relaxed">
+                              This conversation is strictly private between your store and NearExpiry
+                              Administrators. <strong>Customers cannot see this chat.</strong>
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3 min-h-[160px] max-h-[300px] overflow-y-auto pr-1">
+                          {adminMessages.length === 0 ? (
+                            <div className="text-center py-8 text-gray-400 italic text-xs">
+                              No private messages with Platform Admin yet.
+                            </div>
+                          ) : (
+                            adminMessages.map((msg, idx) => {
+                              const isSeller = msg.senderRole === 'SELLER';
+                              return (
+                                <div
+                                  key={idx}
+                                  className={`flex flex-col ${isSeller ? 'items-end' : 'items-start'}`}
+                                >
+                                  <div className="flex items-center gap-1.5 mb-1 px-1 text-[10px] text-gray-400 font-bold">
+                                    <span className={isSeller ? 'text-emerald-700' : 'text-purple-700'}>
+                                      {isSeller
+                                        ? 'You (Merchant)'
+                                        : `🛡️ Platform Support Admin (${msg.senderName || 'Admin'})`}
+                                    </span>
+                                    <span>•</span>
+                                    <span>
+                                      {new Date(msg.createdAt).toLocaleTimeString([], {
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                      })}
+                                    </span>
+                                  </div>
+
+                                  <div
+                                    className={`max-w-[85%] p-3.5 rounded-2xl text-xs leading-relaxed whitespace-pre-wrap shadow-xs ${
+                                      isSeller
+                                        ? 'bg-emerald-600 text-white rounded-br-xs'
+                                        : 'bg-purple-50 text-purple-950 border border-purple-200 rounded-bl-xs font-medium'
+                                    }`}
+                                  >
+                                    {msg.message}
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
 
             {/* Reply Composer */}
             {selectedComplaint.status !== 'CLOSED' && selectedComplaint.status !== 'REJECTED' && (
-              <form onSubmit={handleSendReply} className="p-4 border-t border-gray-100 bg-gray-50/50 space-y-2">
+              <form
+                onSubmit={(e) =>
+                  handleSendReply(e, activeChatTab === 'ADMIN' ? 'ADMIN_SELLER' : 'CUSTOMER_SELLER')
+                }
+                className="p-4 border-t border-gray-100 bg-gray-50/50 space-y-2"
+              >
                 {replyError && (
                   <div className="p-2 bg-red-50 text-red-700 text-xs rounded-xl flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 shrink-0" />
@@ -517,19 +648,40 @@ export const SellerComplaintsPage = () => {
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
-                    value={replyMessage}
-                    onChange={(e) => setReplyMessage(e.target.value)}
-                    placeholder="Write a clear and courteous response to the customer..."
+                    value={activeChatTab === 'ADMIN' ? adminReplyMessage : replyMessage}
+                    onChange={(e) =>
+                      activeChatTab === 'ADMIN'
+                        ? setAdminReplyMessage(e.target.value)
+                        : setReplyMessage(e.target.value)
+                    }
+                    placeholder={
+                      activeChatTab === 'ADMIN'
+                        ? 'Write a private message or update to Platform Admin...'
+                        : 'Write a response to the customer regarding their dispute...'
+                    }
                     disabled={sendingReply}
                     className="flex-1 px-4 py-2.5 bg-white border border-gray-200 focus:border-brand-500 rounded-xl text-xs outline-none transition"
                   />
                   <button
                     type="submit"
-                    disabled={sendingReply || !replyMessage.trim()}
-                    className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-xl transition shadow-xs disabled:opacity-50"
+                    disabled={
+                      sendingReply ||
+                      (activeChatTab === 'ADMIN' ? !adminReplyMessage.trim() : !replyMessage.trim())
+                    }
+                    className={`inline-flex items-center gap-1.5 px-4 py-2.5 text-white text-xs font-bold rounded-xl transition shadow-xs disabled:opacity-50 ${
+                      activeChatTab === 'ADMIN'
+                        ? 'bg-purple-700 hover:bg-purple-800'
+                        : 'bg-emerald-600 hover:bg-emerald-700'
+                    }`}
                   >
                     <Send className="w-3.5 h-3.5" />
-                    <span>{sendingReply ? 'Sending...' : 'Send'}</span>
+                    <span>
+                      {sendingReply
+                        ? 'Sending...'
+                        : activeChatTab === 'ADMIN'
+                        ? 'Send to Admin'
+                        : 'Send to Customer'}
+                    </span>
                   </button>
                 </div>
               </form>

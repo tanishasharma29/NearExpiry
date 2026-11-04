@@ -77,12 +77,18 @@ const messageSchema = new mongoose.Schema(
     },
     recipientRole: {
       type: String,
-      enum: ['ALL', 'SELLER', 'CUSTOMER', 'INTERNAL'],
+      enum: ['ALL', 'SELLER', 'CUSTOMER', 'ADMIN', 'INTERNAL'],
       default: 'ALL',
     },
     visibleToCustomer: {
       type: Boolean,
       default: true,
+      index: true,
+    },
+    channel: {
+      type: String,
+      enum: ['CUSTOMER_SELLER', 'ADMIN_SELLER', 'INTERNAL_NOTES'],
+      default: 'CUSTOMER_SELLER',
       index: true,
     },
     message: {

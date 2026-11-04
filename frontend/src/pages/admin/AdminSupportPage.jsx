@@ -444,6 +444,7 @@ export const AdminSupportPage = () => {
         message: customerMessage.trim(),
         attachments: [],
         isInternalNote: false,
+        channel: 'ADMIN_SELLER',
       });
       setCustomerMessage('');
       await reloadCurrentDossier();
@@ -616,9 +617,30 @@ export const AdminSupportPage = () => {
     ? VALID_STATUS_TRANSITIONS[activeComplaint.status] || []
     : [];
 
-  // Filter messages into public dialogue and confidential internal notes
-  const publicMessages = (activeComplaint?.messages || []).filter((m) => !m.isInternalNote);
-  const internalNotesList = (activeComplaint?.messages || []).filter((m) => m.isInternalNote);
+  // Filter messages into customer-merchant dialogue, admin-merchant private chat, and internal notes
+  const customerSellerMessages = (activeComplaint?.messages || []).filter(
+    (m) =>
+      !m.isInternalNote &&
+      (m.channel === 'CUSTOMER_SELLER' ||
+        (!m.channel &&
+          m.senderRole !== 'ADMIN' &&
+          m.recipientRole !== 'SELLER' &&
+          m.recipientRole !== 'ADMIN'))
+  );
+
+  const adminSellerMessages = (activeComplaint?.messages || []).filter(
+    (m) =>
+      !m.isInternalNote &&
+      (m.channel === 'ADMIN_SELLER' ||
+        (!m.channel &&
+          (m.senderRole === 'ADMIN' ||
+            m.recipientRole === 'SELLER' ||
+            m.recipientRole === 'ADMIN')))
+  );
+
+  const internalNotesList = (activeComplaint?.messages || []).filter(
+    (m) => m.isInternalNote || m.channel === 'INTERNAL_NOTES'
+  );
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -1302,9 +1324,14 @@ export const AdminSupportPage = () => {
               {[
                 { id: 'overview', label: 'Case & Telemetry', icon: Eye },
                 {
-                  id: 'messages',
-                  label: `Dispute Conversation (${publicMessages.length})`,
-                  icon: MessageCircle,
+                  id: 'customer_chat',
+                  label: `Customer ↔ Merchant (${customerSellerMessages.length})`,
+                  icon: MessageSquare,
+                },
+                {
+                  id: 'admin_chat',
+                  label: `Admin ↔ Merchant (${adminSellerMessages.length})`,
+                  icon: ShieldAlert,
                 },
                 {
                   id: 'notes',
@@ -1664,29 +1691,80 @@ export const AdminSupportPage = () => {
               </div>
             )}
 
-            {/* SUB-PANEL 2: Dispute Dialogue Oversight & Admin Directives */}
-            {dossierTab === 'messages' && (
+            {/* SUB-PANEL 2A: Customer ↔ Merchant Dialogue (Read-Only Oversight) */}
+            {dossierTab === 'customer_chat' && (
+              <div className="space-y-4">
+                <div className="bg-blue-50/70 p-3.5 rounded-xl border border-blue-200 text-xs text-blue-900 flex items-start gap-2.5">
+                  <Eye className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-bold">Customer ↔ Merchant Dialogue (Read-Only Oversight)</p>
+                    <p className="text-blue-800 leading-relaxed text-[11px]">
+                      You are observing the direct conversation between the Customer and the Merchant regarding this dispute.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Message Thread */}
+                <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+                  {customerSellerMessages.length === 0 ? (
+                    <div className="text-center py-8 text-gray-400 italic text-xs">
+                      No customer-merchant dialogue exchanged yet.
+                    </div>
+                  ) : (
+                    customerSellerMessages.map((msg, idx) => {
+                      const isSeller = msg.senderRole === 'SELLER';
+                      return (
+                        <div
+                          key={idx}
+                          className={`flex flex-col ${isSeller ? 'items-end' : 'items-start'}`}
+                        >
+                          <div
+                            className={`max-w-[85%] p-3 rounded-2xl text-xs space-y-1 ${
+                              isSeller
+                                ? 'bg-emerald-50 text-emerald-950 border border-emerald-200 rounded-tr-xs'
+                                : 'bg-gray-100 text-gray-900 border border-gray-200 rounded-tl-xs'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-3 text-[10px] font-bold opacity-90">
+                              <span className={isSeller ? 'text-emerald-800' : 'text-blue-800'}>
+                                {isSeller
+                                  ? `🏪 Merchant (${msg.senderName || 'Store'})`
+                                  : `👤 Customer (${msg.senderName || 'Customer'})`}
+                              </span>
+                              <span>{formatDate(msg.createdAt)}</span>
+                            </div>
+                            <p className="leading-relaxed whitespace-pre-wrap">{msg.message}</p>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* SUB-PANEL 2B: Admin ↔ Merchant Private Communication Channel */}
+            {dossierTab === 'admin_chat' && (
               <div className="space-y-4">
                 <div className="bg-purple-50/70 p-3.5 rounded-xl border border-purple-200 text-xs text-purple-900 flex items-start gap-2.5">
                   <ShieldAlert className="w-4 h-4 text-purple-600 flex-shrink-0 mt-0.5" />
                   <div className="space-y-1">
-                    <p className="font-bold">Dispute Oversight & Merchant Directives</p>
+                    <p className="font-bold">Admin ↔ Merchant Private Communication</p>
                     <p className="text-purple-800 leading-relaxed text-[11px]">
-                      You are monitoring the dispute dialogue between Customer and Merchant. If the merchant is unresponsive or failing to resolve the problem, issue a Platform Directive/Warning below. <strong>Directives are sent directly to the merchant and are strictly hidden from the customer.</strong>
+                      Private 2-way conversation channel between NearExpiry Administrators and the Store Merchant. <strong>This channel is strictly hidden from the customer.</strong>
                     </p>
                   </div>
                 </div>
 
                 {/* Message Thread */}
                 <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
-                  {publicMessages.length === 0 ? (
+                  {adminSellerMessages.length === 0 ? (
                     <div className="text-center py-8 text-gray-400 italic text-xs">
-                      No dialogue messages exchanged yet.
+                      No private messages exchanged with the merchant yet.
                     </div>
                   ) : (
-                    publicMessages.map((msg, idx) => {
+                    adminSellerMessages.map((msg, idx) => {
                       const isAdmin = msg.senderRole === 'ADMIN';
-                      const isSeller = msg.senderRole === 'SELLER';
                       return (
                         <div
                           key={idx}
@@ -1696,26 +1774,14 @@ export const AdminSupportPage = () => {
                             className={`max-w-[85%] p-3 rounded-2xl text-xs space-y-1 ${
                               isAdmin
                                 ? 'bg-purple-800 text-white rounded-tr-xs shadow-xs'
-                                : isSeller
-                                ? 'bg-amber-50 text-amber-950 border border-amber-200 rounded-tl-xs'
-                                : 'bg-gray-100 text-gray-900 border border-gray-200 rounded-tl-xs'
+                                : 'bg-emerald-50 text-emerald-950 border border-emerald-200 rounded-tl-xs'
                             }`}
                           >
                             <div className="flex items-center justify-between gap-3 text-[10px] font-bold opacity-90">
-                              <span
-                                className={
-                                  isAdmin
-                                    ? 'text-purple-200'
-                                    : isSeller
-                                    ? 'text-amber-800'
-                                    : 'text-gray-600'
-                                }
-                              >
+                              <span className={isAdmin ? 'text-purple-200' : 'text-emerald-800'}>
                                 {isAdmin
-                                  ? `🛡️ Admin Directive to Merchant (Hidden from Customer)`
-                                  : isSeller
-                                  ? `🏪 Merchant (${msg.senderName || 'Store'})`
-                                  : `👤 Customer (${msg.senderName || 'Customer'})`}
+                                  ? `🛡️ Platform Support Admin (${msg.senderName || 'Admin'})`
+                                  : `🏪 Merchant (${msg.senderName || 'Store'})`}
                               </span>
                               <span>{formatDate(msg.createdAt)}</span>
                             </div>
@@ -1733,7 +1799,7 @@ export const AdminSupportPage = () => {
                     rows={3}
                     value={customerMessage}
                     onChange={(e) => setCustomerMessage(e.target.value)}
-                    placeholder="Send private warning or directive to merchant (not visible to customer)..."
+                    placeholder="Send private warning, directive, or reply to merchant (hidden from customer)..."
                     className="w-full p-3 bg-gray-50 focus:bg-white border border-gray-200 focus:border-purple-600 rounded-xl text-xs outline-none transition focus:ring-2 focus:ring-purple-100"
                   />
                   <div className="flex justify-end">
@@ -1743,7 +1809,7 @@ export const AdminSupportPage = () => {
                       className="inline-flex items-center gap-1.5 px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs rounded-xl transition shadow disabled:opacity-50"
                     >
                       <Send className="w-3.5 h-3.5" />
-                      <span>{sendingCustomerMessage ? 'Sending Directive...' : 'Send Directive to Merchant'}</span>
+                      <span>{sendingCustomerMessage ? 'Sending Directive...' : 'Send to Merchant'}</span>
                     </button>
                   </div>
                 </form>

@@ -414,6 +414,32 @@ describe('Customer-Seller Complaint Resolution & Administrative Oversight Suite'
     const sellerVisibleMsgs = sellerViewData.data?.messages || [];
     const sellerHasAdminDirective = sellerVisibleMsgs.some((m) => m.senderRole === 'ADMIN' && m.message.includes('ADMIN DIRECTIVE'));
     assert.equal(sellerHasAdminDirective, true, 'Seller must be able to see the admin directive');
+
+    // Test Seller replying back to Admin in dedicated ADMIN_SELLER channel
+    const sellerToAdminRes = await fetch(`${baseUrl}/complaints/seller/${testComplaint._id}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${seller1Token}`,
+      },
+      body: JSON.stringify({
+        message: 'Understood Support Admin, we contacted customer and arranged hand-off.',
+        channel: 'ADMIN_SELLER',
+      }),
+    });
+    assert.equal(sellerToAdminRes.status, 200);
+    const sellerToAdminData = await sellerToAdminRes.json();
+    assert.equal(sellerToAdminData.success, true);
+
+    // Verify Customer still does NOT see this seller-to-admin message
+    const custCheckRes = await fetch(`${baseUrl}/complaints/${testComplaint._id}`, {
+      headers: { Authorization: `Bearer ${customer1Token}` },
+    });
+    const custCheckData = await custCheckRes.json();
+    const hasAdminSellerMsg = (custCheckData.data?.messages || []).some(
+      (m) => m.channel === 'ADMIN_SELLER' || m.message.includes('Understood Support Admin')
+    );
+    assert.equal(hasAdminSellerMsg, false, 'Customer must NOT see messages from the ADMIN_SELLER channel');
   });
 
   // -------------------------------------------------------------------------

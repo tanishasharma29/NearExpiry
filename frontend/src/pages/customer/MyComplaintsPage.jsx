@@ -681,8 +681,11 @@ export const MyComplaintsPage = () => {
                   (msg) =>
                     !msg.isInternalNote &&
                     msg.visibleToCustomer !== false &&
+                    msg.channel !== 'ADMIN_SELLER' &&
+                    msg.channel !== 'INTERNAL_NOTES' &&
                     msg.senderRole !== 'ADMIN' &&
                     msg.recipientRole !== 'SELLER' &&
+                    msg.recipientRole !== 'ADMIN' &&
                     msg.recipientRole !== 'INTERNAL'
                 );
 

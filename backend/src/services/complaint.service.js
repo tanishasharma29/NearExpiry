@@ -72,7 +72,10 @@ const filterCustomerVisibleMessages = (messages = []) =>
     (m) =>
       !m.isInternalNote &&
       m.visibleToCustomer !== false &&
+      m.channel !== 'ADMIN_SELLER' &&
+      m.channel !== 'INTERNAL_NOTES' &&
       m.recipientRole !== 'SELLER' &&
+      m.recipientRole !== 'ADMIN' &&
       m.recipientRole !== 'INTERNAL' &&
       m.senderRole !== 'ADMIN'
   );
@@ -86,7 +89,7 @@ const filterCustomerVisibleTimeline = (timeline = []) =>
     (t) =>
       !t.isInternal &&
       t.performerRole !== 'ADMIN' &&
-      !['ADMIN_MESSAGE', 'ADMIN_SELLER_DIRECTIVE', 'INTERNAL_NOTE_ADDED'].includes(t.action)
+      !['ADMIN_MESSAGE', 'ADMIN_SELLER_DIRECTIVE', 'SELLER_ADMIN_MESSAGE', 'INTERNAL_NOTE_ADDED'].includes(t.action)
   );
 
 /**
@@ -98,6 +101,7 @@ const filterSellerVisibleMessages = (messages = []) =>
   messages.filter(
     (m) =>
       !m.isInternalNote &&
+      m.channel !== 'INTERNAL_NOTES' &&
       m.recipientRole !== 'INTERNAL'
   );
 
@@ -108,7 +112,10 @@ const filterSellerVisibleTimeline = (timeline = []) =>
   timeline.filter(
     (t) =>
       t.action !== 'INTERNAL_NOTE_ADDED' &&
-      (!t.isInternal || t.action === 'ADMIN_SELLER_DIRECTIVE' || t.performerRole === 'SELLER')
+      (!t.isInternal ||
+        t.action === 'ADMIN_SELLER_DIRECTIVE' ||
+        t.action === 'SELLER_ADMIN_MESSAGE' ||
+        t.performerRole === 'SELLER')
   );
 
 /**
@@ -317,6 +324,7 @@ export const createCustomerComplaintService = async (userActor, data) => {
     senderName: userActor.name || 'Customer',
     recipientRole: 'ALL',
     visibleToCustomer: true,
+    channel: 'CUSTOMER_SELLER',
     message: description,
     attachments: evidenceUrls || [],
     isInternalNote: false,
@@ -517,6 +525,7 @@ export const replyCustomerComplaintService = async (complaintId, userActor, { me
     senderName: userActor.name || 'Customer',
     recipientRole: 'ALL',
     visibleToCustomer: true,
+    channel: 'CUSTOMER_SELLER',
     message,
     attachments: attachments || [],
     isInternalNote: false,
@@ -894,7 +903,7 @@ export const assignAdminComplaintService = async (complaintId, userActor, { admi
 export const sendAdminMessageService = async (
   complaintId,
   userActor,
-  { message, attachments = [], isInternalNote = false }
+  { message, attachments = [], isInternalNote = false, channel = 'ADMIN_SELLER' }
 ) => {
   if (!mongoose.Types.ObjectId.isValid(complaintId)) {
     throw new ApiError(400, 'Invalid Complaint ID format.', 'INVALID_COMPLAINT_ID');
@@ -905,12 +914,15 @@ export const sendAdminMessageService = async (
     throw new ApiError(404, 'Complaint not found.', 'COMPLAINT_NOT_FOUND');
   }
 
+  const selectedChannel = isInternalNote ? 'INTERNAL_NOTES' : (channel || 'ADMIN_SELLER');
+
   complaint.messages.push({
     senderId: userActor._id,
     senderRole: 'ADMIN',
     senderName: userActor.name || 'Support Agent',
     recipientRole: isInternalNote ? 'INTERNAL' : 'SELLER',
     visibleToCustomer: false,
+    channel: selectedChannel,
     message,
     attachments: attachments || [],
     isInternalNote: Boolean(isInternalNote),
@@ -924,7 +936,7 @@ export const sendAdminMessageService = async (
     performerName: userActor.name || 'Support Agent',
     notes: isInternalNote
       ? 'Internal operational note recorded (hidden from customer and merchant).'
-      : 'Admin directive/warning issued to merchant (hidden from customer).',
+      : 'Admin sent a message in Admin-Merchant private chat (hidden from customer).',
     isInternal: true,
     timestamp: new Date(),
   });
@@ -1333,7 +1345,7 @@ export const getSellerComplaintByIdService = async (complaintId, userActor) => {
 export const replySellerComplaintService = async (
   complaintId,
   userActor,
-  { message, attachments = [] }
+  { message, attachments = [], channel = 'CUSTOMER_SELLER' }
 ) => {
   if (!mongoose.Types.ObjectId.isValid(complaintId)) {
     throw new ApiError(400, 'Invalid Complaint ID format.', 'INVALID_COMPLAINT_ID');
@@ -1366,50 +1378,110 @@ export const replySellerComplaintService = async (
   }
 
   const senderName = store.storeName || userActor.name || 'Merchant';
+  const isAdminChannel = channel === 'ADMIN_SELLER';
 
-  complaint.messages.push({
-    senderId: userActor._id,
-    senderRole: 'SELLER',
-    senderName,
-    recipientRole: 'CUSTOMER',
-    visibleToCustomer: true,
-    message,
-    attachments: attachments || [],
-    isInternalNote: false,
-    createdAt: new Date(),
-  });
+  if (isAdminChannel) {
+    // -------------------------------------------------------------
+    // Seller communicating with Platform Admin (Admin-Seller Chat)
+    // -------------------------------------------------------------
+    complaint.messages.push({
+      senderId: userActor._id,
+      senderRole: 'SELLER',
+      senderName,
+      recipientRole: 'ADMIN',
+      visibleToCustomer: false,
+      channel: 'ADMIN_SELLER',
+      message,
+      attachments: attachments || [],
+      isInternalNote: false,
+      createdAt: new Date(),
+    });
 
-  complaint.timeline.push({
-    action: 'SELLER_REPLIED',
-    performedBy: userActor._id,
-    performerRole: 'SELLER',
-    performerName: senderName,
-    notes: 'Merchant communicated with customer regarding dispute resolution.',
-    timestamp: new Date(),
-  });
+    complaint.timeline.push({
+      action: 'SELLER_ADMIN_MESSAGE',
+      performedBy: userActor._id,
+      performerRole: 'SELLER',
+      performerName: senderName,
+      notes: 'Merchant sent a message in private Admin-Merchant chat (hidden from customer).',
+      isInternal: true,
+      timestamp: new Date(),
+    });
 
-  await complaint.save();
+    await complaint.save();
 
-  // 1. Notify Customer of merchant reply
-  await notifyCustomer({
-    customerId: complaint.customerId,
-    type: 'SELLER_RESPONSE',
-    title: `Merchant Replied: ${complaint.complaintNumber}`,
-    message: `${senderName} responded: "${message.slice(0, 100)}${message.length > 100 ? '...' : ''}"`,
-    complaint,
-    dedupSuffix: `SELLER_MSG_${Date.now()}`,
-  });
+    // Notify Admins of merchant message
+    await notifyAdminsOnComplaint({
+      complaint,
+      order: { orderNumber: complaint.orderNumber, storeId: complaint.storeId },
+      customer: { name: senderName },
+      category: complaint.category,
+      subject: complaint.subject,
+      isReply: true,
+      replyMessage: `[Private Admin-Seller Chat] ${senderName}: ${message}`,
+    });
 
-  // 2. Notify Admins of merchant reply
-  await notifyAdminsOnComplaint({
-    complaint,
-    order: { orderNumber: complaint.orderNumber, storeId: complaint.storeId },
-    customer: { name: senderName },
-    category: complaint.category,
-    subject: complaint.subject,
-    isReply: true,
-    replyMessage: `Merchant (${senderName}): ${message}`,
-  });
+    try {
+      emitToAdmin(SOCKET_EVENTS.ADMIN_ALERT, {
+        alertType: 'SELLER_ADMIN_DIRECT_MESSAGE',
+        title: `Merchant Message: ${complaint.complaintNumber}`,
+        message: `${senderName} replied in Admin-Merchant chat for dispute #${complaint.complaintNumber}.`,
+        severity: 'INFO',
+        entityId: complaint._id,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (sockErr) {
+      console.error('[Socket.IO] Error emitting seller admin alert:', sockErr);
+    }
+  } else {
+    // -------------------------------------------------------------
+    // Seller communicating with Customer (Customer-Seller Chat)
+    // -------------------------------------------------------------
+    complaint.messages.push({
+      senderId: userActor._id,
+      senderRole: 'SELLER',
+      senderName,
+      recipientRole: 'CUSTOMER',
+      visibleToCustomer: true,
+      channel: 'CUSTOMER_SELLER',
+      message,
+      attachments: attachments || [],
+      isInternalNote: false,
+      createdAt: new Date(),
+    });
+
+    complaint.timeline.push({
+      action: 'SELLER_REPLIED',
+      performedBy: userActor._id,
+      performerRole: 'SELLER',
+      performerName: senderName,
+      notes: 'Merchant communicated with customer regarding dispute resolution.',
+      isInternal: false,
+      timestamp: new Date(),
+    });
+
+    await complaint.save();
+
+    // 1. Notify Customer of merchant reply
+    await notifyCustomer({
+      customerId: complaint.customerId,
+      type: 'SELLER_RESPONSE',
+      title: `Merchant Replied: ${complaint.complaintNumber}`,
+      message: `${senderName} responded: "${message.slice(0, 100)}${message.length > 100 ? '...' : ''}"`,
+      complaint,
+      dedupSuffix: `SELLER_MSG_${Date.now()}`,
+    });
+
+    // 2. Notify Admins of merchant reply
+    await notifyAdminsOnComplaint({
+      complaint,
+      order: { orderNumber: complaint.orderNumber, storeId: complaint.storeId },
+      customer: { name: senderName },
+      category: complaint.category,
+      subject: complaint.subject,
+      isReply: true,
+      replyMessage: `Merchant (${senderName}): ${message}`,
+    });
+  }
 
   // Return sanitized complaint
   const updatedDoc = complaint.toObject();
