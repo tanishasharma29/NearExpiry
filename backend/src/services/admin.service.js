@@ -17,6 +17,7 @@ import { runExpiryProcessingJob } from './expiryScheduler.service.js';
 import {
   notifySellerStoreApproved,
   notifySellerStoreRejected,
+  notifySellerStoreSuspended,
 } from './notification.service.js';
 import { invalidateProductCache } from '../utils/cache.util.js';
 import { emitToAdmin, emitToUser, emitToStore } from '../config/socket.js';
@@ -631,7 +632,7 @@ export const getStoreDetailsAdminService = async (storeId) => {
   };
 };
 
-export const updateStoreStatusAdminService = async (storeId, payload) => {
+export const updateStoreStatusAdminService = async (storeId, payload, adminUser = null) => {
   if (!mongoose.Types.ObjectId.isValid(storeId)) {
     throw new ApiError(400, 'Invalid store ID format.', 'INVALID_STORE_ID');
   }
@@ -641,6 +642,9 @@ export const updateStoreStatusAdminService = async (storeId, payload) => {
     throw new ApiError(404, 'Store not found.', 'STORE_NOT_FOUND');
   }
 
+  const prevActive = store.isActive;
+  const prevVerification = store.verificationStatus;
+
   if (payload.isActive !== undefined) {
     store.isActive = payload.isActive;
   }
@@ -648,7 +652,53 @@ export const updateStoreStatusAdminService = async (storeId, payload) => {
     store.verificationStatus = payload.verificationStatus;
   }
 
+  const reason = payload.reason || payload.rejectionReason || null;
+  if (reason || payload.verificationStatus === VERIFICATION_STATUS.SUSPENDED) {
+    store.verificationAudit = {
+      ...(store.verificationAudit || {}),
+      reviewedBy: adminUser?._id || store.verificationAudit?.reviewedBy || null,
+      reviewedAt: new Date(),
+      rejectionReason: reason || store.verificationAudit?.rejectionReason || null,
+    };
+  }
+
   await store.save();
+
+  // Synchronize owning seller account status
+  if (payload.verificationStatus) {
+    await User.findByIdAndUpdate(store.ownerId, {
+      verificationStatus: payload.verificationStatus,
+    });
+  }
+
+  // Record security audit event
+  await recordSecurityEvent({
+    eventType: SECURITY_EVENT_TYPES.SELLER_STORE_APPROVAL,
+    userId: adminUser?._id,
+    email: adminUser?.email,
+    role: adminUser?.role,
+    details: {
+      action: 'UPDATE_STORE_STATUS',
+      storeId: store._id,
+      prevActive,
+      newActive: store.isActive,
+      prevVerification,
+      newVerification: store.verificationStatus,
+      reason,
+    },
+  });
+
+  // Notify seller if suspended
+  if (store.verificationStatus === VERIFICATION_STATUS.SUSPENDED || (prevActive && !store.isActive)) {
+    await notifySellerStoreSuspended({
+      sellerId: store.ownerId,
+      storeName: store.storeName,
+      reason,
+    }).catch((err) => {
+      console.error('[AdminService] Store suspension notification failed:', err.message);
+    });
+  }
+
   return store;
 };
 

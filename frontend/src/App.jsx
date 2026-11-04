@@ -41,6 +41,7 @@ import { SellerOrdersPage } from './pages/seller/SellerOrdersPage';
 import { SellerBillingPage } from './pages/seller/SellerBillingPage';
 import { SellerAnalyticsPage } from './pages/seller/SellerAnalyticsPage';
 import { SellerNotificationsPage } from './pages/seller/SellerNotificationsPage';
+import { SellerComplaintsPage } from './pages/seller/SellerComplaintsPage';
 
 // Admin Pages
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
@@ -155,6 +156,7 @@ export default function App() {
                 <Route path="alerts" element={<SellerExpiryAlertsPage />} />
                 <Route path="orders" element={<SellerOrdersPage />} />
                 <Route path="billing" element={<SellerBillingPage />} />
+                <Route path="complaints" element={<SellerComplaintsPage />} />
                 <Route path="analytics" element={<SellerAnalyticsPage />} />
                 <Route path="notifications" element={<SellerNotificationsPage />} />
               </Route>

@@ -224,6 +224,36 @@ export const notifySellerStoreRejected = async ({ sellerId, storeName, rejection
   });
 };
 
+export const notifySellerStoreSuspended = async ({ sellerId, storeName, reason }) => {
+  const seller = await User.findById(sellerId).lean();
+  if (!seller) return null;
+
+  const safeReason = reason ? reason.trim() : null;
+  const dedupKey = `STORE_SUSPENDED:${seller._id}:${Date.now()}`;
+
+  const message = safeReason
+    ? `Your store [${storeName}] has been suspended by administration: ${safeReason}. Please contact platform support or resolve any open disputes.`
+    : `Your store [${storeName}] has been suspended by administration. Please contact platform support or resolve open disputes.`;
+
+  return defaultDispatcher.dispatch({
+    recipient: seller._id,
+    recipientEmail: seller.email,
+    recipientRole: USER_ROLES.SELLER,
+    type: NOTIFICATION_TYPES.SYSTEM_ALERT,
+    title: 'Store Suspended by Administration',
+    message,
+    data: {
+      sellerId: seller._id,
+      storeName: storeName || 'Your Store',
+      status: 'SUSPENDED',
+      reason: safeReason,
+    },
+    dedupKey,
+    actionText: 'View Store Status',
+    actionUrl: '/seller/dashboard',
+  });
+};
+
 // ==========================================
 // 2. CUSTOMER NOTIFICATIONS
 // ==========================================

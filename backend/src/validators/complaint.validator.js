@@ -201,3 +201,42 @@ export const adminResolveComplaintSchema = z.object({
   }),
 });
 
+export const sellerReplySchema = z.object({
+  params: z.object({
+    complaintId: z
+      .string({ required_error: 'Complaint ID is required' })
+      .regex(objectIdRegex, 'Invalid Complaint ID format'),
+  }),
+  body: z.object({
+    message: z
+      .string({ required_error: 'Message is required' })
+      .trim()
+      .min(1, 'Message cannot be empty')
+      .max(3000, 'Message cannot exceed 3000 characters'),
+    attachments: z
+      .array(httpAttachmentUrlSchema)
+      .max(5, 'Maximum 5 attachments allowed')
+      .optional()
+      .default([]),
+  }),
+});
+
+export const sellerResolveSchema = z.object({
+  params: z.object({
+    complaintId: z
+      .string({ required_error: 'Complaint ID is required' })
+      .regex(objectIdRegex, 'Invalid Complaint ID format'),
+  }),
+  body: z.object({
+    decision: z
+      .enum(Object.values(RESOLUTION_DECISION))
+      .optional()
+      .default(RESOLUTION_DECISION.RESOLVED_WITH_EXPLANATION),
+    notes: z
+      .string({ required_error: 'Resolution notes are required' })
+      .trim()
+      .min(5, 'Resolution notes must be at least 5 characters')
+      .max(2000, 'Resolution notes cannot exceed 2000 characters'),
+  }),
+});
+

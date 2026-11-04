@@ -27,6 +27,7 @@ import {
   AlertTriangle,
   ArrowRight,
   MapPin,
+  MessageSquare,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
@@ -54,6 +55,7 @@ const NAVIGATION_SECTIONS = [
     items: [
       { label: 'Expiry Alerts', path: '/seller/alerts', icon: BellRing, requiresApproval: true },
       { label: 'Store Orders', path: '/seller/orders', icon: ShoppingBag, requiresApproval: true },
+      { label: 'Customer Disputes', path: '/seller/complaints', icon: MessageSquare, requiresApproval: false },
       { label: 'Billing & Receipts', path: '/seller/billing', icon: Receipt, requiresApproval: true },
     ],
   },
@@ -229,8 +231,11 @@ export const SellerLayout = () => {
         setUnreadCount((c) => Math.max(0, c - 1));
       }
       setNotificationsOpen(false);
-      if (notif.actionUrl) {
-        navigate(notif.actionUrl);
+      const targetUrl =
+        notif.actionUrl ||
+        (notif.data?.complaintId ? `/seller/complaints?complaintId=${notif.data.complaintId}` : null);
+      if (targetUrl) {
+        navigate(targetUrl);
       }
     } catch (err) {
       console.error('Failed to handle notification click:', err);

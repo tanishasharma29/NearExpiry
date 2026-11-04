@@ -166,6 +166,7 @@ export const AdminSupportPage = () => {
   const [statusNote, setStatusNote] = useState('');
   const [priorityUpdating, setPriorityUpdating] = useState(false);
   const [assigningAdmin, setAssigningAdmin] = useState(false);
+  const [suspendingStore, setSuspendingStore] = useState(false);
 
   // Customer Response & Internal Notes Composer
   const [customerMessage, setCustomerMessage] = useState('');
@@ -467,6 +468,56 @@ export const AdminSupportPage = () => {
       alert(`Failed to add internal note: ${err?.message}`);
     } finally {
       setAddingInternalNote(false);
+    }
+  };
+
+  const handleToggleStoreSuspension = async () => {
+    const storeId =
+      activeComplaint?.storeId?._id ||
+      activeComplaint?.storeId ||
+      activeOrder?.storeId?._id ||
+      activeOrder?.storeId;
+    if (!storeId) {
+      alert('Store reference not found for this complaint.');
+      return;
+    }
+
+    const isCurrentlySuspended =
+      activeOrder?.storeId?.verificationStatus === 'SUSPENDED' ||
+      activeOrder?.storeId?.isActive === false;
+    const actionText = isCurrentlySuspended ? 'reactivate' : 'suspend / block';
+
+    const confirmPrompt = window.prompt(
+      `Are you sure you want to ${actionText} this merchant store (${activeComplaint.storeName || 'Merchant'})?\n\nPlease enter the reason:`,
+      isCurrentlySuspended
+        ? 'Reactivated after compliance review'
+        : `Neglected customer dispute #${activeComplaint.complaintNumber}`
+    );
+    if (confirmPrompt === null) return;
+
+    try {
+      setSuspendingStore(true);
+      await adminService.updateStoreStatus(storeId, {
+        isActive: isCurrentlySuspended,
+        verificationStatus: isCurrentlySuspended ? 'APPROVED' : 'SUSPENDED',
+        reason: confirmPrompt.trim() || undefined,
+      });
+
+      // Also record directive in complaint thread
+      await complaintService.sendAdminMessage(activeComplaint._id, {
+        message: isCurrentlySuspended
+          ? `[ADMIN DIRECTIVE] Merchant store has been REACTIVATED by platform administration. Reason: ${confirmPrompt.trim()}`
+          : `[ADMIN DIRECTIVE] Merchant store has been SUSPENDED by platform administration due to dispute inaction. Reason: ${confirmPrompt.trim()}`,
+        isInternalNote: false,
+      });
+
+      await reloadCurrentDossier();
+      fetchComplaints();
+    } catch (err) {
+      console.error('Failed to update store status:', err);
+      alert(err?.response?.data?.message || 'Failed to update store status.');
+    } finally {
+      setSuspendingStore(false);
     }
   };
 
@@ -1451,6 +1502,44 @@ export const AdminSupportPage = () => {
                       </div>
                     </div>
                   )}
+
+                  {/* Merchant Store Status & Intervention Action */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2.5 border-t border-gray-100">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-gray-400 font-bold uppercase">Store Status:</span>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          activeOrder?.storeId?.verificationStatus === 'SUSPENDED' || activeOrder?.storeId?.isActive === false
+                            ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                            : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        }`}
+                      >
+                        {activeOrder?.storeId?.verificationStatus === 'SUSPENDED' || activeOrder?.storeId?.isActive === false
+                          ? 'SUSPENDED / BLOCKED'
+                          : 'ACTIVE STORE'}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleToggleStoreSuspension}
+                      disabled={suspendingStore}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition shadow-xs disabled:opacity-50 ${
+                        activeOrder?.storeId?.verificationStatus === 'SUSPENDED' || activeOrder?.storeId?.isActive === false
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                          : 'bg-rose-600 hover:bg-rose-700 text-white'
+                      }`}
+                    >
+                      <ShieldAlert className="w-3.5 h-3.5" />
+                      <span>
+                        {suspendingStore
+                          ? 'Updating...'
+                          : activeOrder?.storeId?.verificationStatus === 'SUSPENDED' || activeOrder?.storeId?.isActive === false
+                          ? 'Reactivate Store'
+                          : 'Suspend / Block Store'}
+                      </span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Affected Product & Batch Telemetry */}
@@ -1594,6 +1683,7 @@ export const AdminSupportPage = () => {
                   ) : (
                     publicMessages.map((msg, idx) => {
                       const isAdmin = msg.senderRole === 'ADMIN';
+                      const isSeller = msg.senderRole === 'SELLER';
                       return (
                         <div
                           key={idx}
@@ -1603,11 +1693,27 @@ export const AdminSupportPage = () => {
                             className={`max-w-[85%] p-3 rounded-2xl text-xs space-y-1 ${
                               isAdmin
                                 ? 'bg-purple-700 text-white rounded-tr-xs'
-                                : 'bg-gray-100 text-gray-900 rounded-tl-xs'
+                                : isSeller
+                                ? 'bg-amber-50 text-amber-950 border border-amber-200 rounded-tl-xs'
+                                : 'bg-gray-100 text-gray-900 border border-gray-200 rounded-tl-xs'
                             }`}
                           >
-                            <div className="flex items-center justify-between gap-3 text-[10px] font-bold opacity-80">
-                              <span>{msg.senderName || msg.senderRole}</span>
+                            <div className="flex items-center justify-between gap-3 text-[10px] font-bold opacity-90">
+                              <span
+                                className={
+                                  isAdmin
+                                    ? 'text-purple-200'
+                                    : isSeller
+                                    ? 'text-amber-800'
+                                    : 'text-gray-600'
+                                }
+                              >
+                                {isAdmin
+                                  ? `🛡️ Platform Admin (${msg.senderName || 'Admin'})`
+                                  : isSeller
+                                  ? `🏪 Merchant (${msg.senderName || 'Store'})`
+                                  : `👤 Customer (${msg.senderName || 'Customer'})`}
+                              </span>
                               <span>{formatDate(msg.createdAt)}</span>
                             </div>
                             <p className="leading-relaxed whitespace-pre-wrap">{msg.message}</p>
@@ -1618,13 +1724,13 @@ export const AdminSupportPage = () => {
                   )}
                 </div>
 
-                {/* Customer Response Composer */}
+                {/* Customer / Merchant Response Composer */}
                 <form onSubmit={handleSendCustomerMessage} className="pt-2 border-t border-gray-100 space-y-2">
                   <textarea
                     rows={3}
                     value={customerMessage}
                     onChange={(e) => setCustomerMessage(e.target.value)}
-                    placeholder="Write a clear response to the customer..."
+                    placeholder="Write a message or directive (visible to customer and merchant)..."
                     className="w-full p-3 bg-gray-50 focus:bg-white border border-gray-200 focus:border-purple-600 rounded-xl text-xs outline-none transition focus:ring-2 focus:ring-purple-100"
                   />
                   <div className="flex justify-end">
@@ -1634,7 +1740,7 @@ export const AdminSupportPage = () => {
                       className="inline-flex items-center gap-1.5 px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs rounded-xl transition shadow disabled:opacity-50"
                     >
                       <Send className="w-3.5 h-3.5" />
-                      <span>{sendingCustomerMessage ? 'Sending...' : 'Send to Customer'}</span>
+                      <span>{sendingCustomerMessage ? 'Sending...' : 'Send Message / Directive'}</span>
                     </button>
                   </div>
                 </form>

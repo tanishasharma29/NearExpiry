@@ -99,6 +99,7 @@ export class NotificationDispatcher {
           type,
           title,
           message,
+          actionUrl,
           data,
           dedupKey,
           channels,

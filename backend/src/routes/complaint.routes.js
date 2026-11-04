@@ -7,6 +7,8 @@ import {
   createComplaintSchema,
   complaintIdParamSchema,
   customerReplySchema,
+  sellerReplySchema,
+  sellerResolveSchema,
 } from '../validators/complaint.validator.js';
 import {
   createCustomerComplaint,
@@ -15,30 +17,98 @@ import {
   replyCustomerComplaint,
   closeCustomerComplaint,
   uploadComplaintEvidence,
+  listSellerComplaints,
+  getSellerComplaintDetails,
+  replySellerComplaint,
+  resolveSellerComplaint,
 } from '../controllers/complaint.controller.js';
 
 const router = Router();
 
-// All customer complaint endpoints require valid customer authentication
-router.use(authenticate, authorizeRoles(USER_ROLES.CUSTOMER));
+// -------------------------------------------------------------------------
+// EVIDENCE UPLOAD (Customers & Sellers)
+// -------------------------------------------------------------------------
+router.post(
+  '/upload-evidence',
+  authenticate,
+  authorizeRoles(USER_ROLES.CUSTOMER, USER_ROLES.SELLER),
+  uploadComplaintEvidence
+);
 
-// 1. Create a new complaint against an order
-router.post('/', validateRequest(createComplaintSchema), createCustomerComplaint);
+// -------------------------------------------------------------------------
+// SELLER DISPUTE MANAGEMENT
+// -------------------------------------------------------------------------
+router.get(
+  '/seller',
+  authenticate,
+  authorizeRoles(USER_ROLES.SELLER),
+  listSellerComplaints
+);
 
-// 2. List all complaints filed by the customer
-router.get('/', listCustomerComplaints);
+router.get(
+  '/seller/:complaintId',
+  authenticate,
+  authorizeRoles(USER_ROLES.SELLER),
+  validateRequest(complaintIdParamSchema),
+  getSellerComplaintDetails
+);
 
-// 3. View details of a specific complaint (sanitized for customer)
-router.get('/:complaintId', validateRequest(complaintIdParamSchema), getCustomerComplaintDetails);
+router.post(
+  '/seller/:complaintId/messages',
+  authenticate,
+  authorizeRoles(USER_ROLES.SELLER),
+  validateRequest(sellerReplySchema),
+  replySellerComplaint
+);
 
-// 4. Send reply / communication in the complaint thread
-router.post('/:complaintId/messages', validateRequest(customerReplySchema), replyCustomerComplaint);
+router.patch(
+  '/seller/:complaintId/resolve',
+  authenticate,
+  authorizeRoles(USER_ROLES.SELLER),
+  validateRequest(sellerResolveSchema),
+  resolveSellerComplaint
+);
 
-// 5. Customer acknowledges resolution and closes complaint
-router.patch('/:complaintId/close', validateRequest(complaintIdParamSchema), closeCustomerComplaint);
+// -------------------------------------------------------------------------
+// CUSTOMER COMPLAINTS (Strict Customer Role)
+// -------------------------------------------------------------------------
+router.post(
+  '/',
+  authenticate,
+  authorizeRoles(USER_ROLES.CUSTOMER),
+  validateRequest(createComplaintSchema),
+  createCustomerComplaint
+);
 
-// 6. Upload customer evidence image from device
-router.post('/upload-evidence', uploadComplaintEvidence);
+router.get(
+  '/',
+  authenticate,
+  authorizeRoles(USER_ROLES.CUSTOMER),
+  listCustomerComplaints
+);
+
+router.get(
+  '/:complaintId',
+  authenticate,
+  authorizeRoles(USER_ROLES.CUSTOMER),
+  validateRequest(complaintIdParamSchema),
+  getCustomerComplaintDetails
+);
+
+router.post(
+  '/:complaintId/messages',
+  authenticate,
+  authorizeRoles(USER_ROLES.CUSTOMER),
+  validateRequest(customerReplySchema),
+  replyCustomerComplaint
+);
+
+router.patch(
+  '/:complaintId/close',
+  authenticate,
+  authorizeRoles(USER_ROLES.CUSTOMER),
+  validateRequest(complaintIdParamSchema),
+  closeCustomerComplaint
+);
 
 export default router;
-

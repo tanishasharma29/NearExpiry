@@ -66,6 +66,8 @@ export const storeStatusSchema = z.object({
         VERIFICATION_STATUS.SUSPENDED,
       ])
       .optional(),
+    reason: z.string().trim().max(500).optional(),
+    rejectionReason: z.string().trim().max(500).optional(),
   }),
 });
 

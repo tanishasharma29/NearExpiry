@@ -78,9 +78,9 @@ const notifyCustomer = async ({ customerId, type, title, message, complaint, ded
       title,
       message,
       data: {
-        complaintId: complaint._id,
+        complaintId: complaint._id.toString(),
         complaintNumber: complaint.complaintNumber,
-        orderId: complaint.orderId,
+        orderId: complaint.orderId?.toString(),
         orderNumber: complaint.orderNumber,
         status: complaint.status,
       },
@@ -125,16 +125,16 @@ const notifyAdminsOnComplaint = async ({ complaint, order, customer, category, s
           actionText: 'Review Dispute',
           actionUrl,
           data: {
-            complaintId: complaint._id,
+            complaintId: complaint._id.toString(),
             complaintNumber: complaint.complaintNumber,
-            orderId: order?._id || complaint.orderId,
+            orderId: (order?._id || complaint.orderId)?.toString(),
             orderNumber: orderNum,
             category: complaint.category,
             status: complaint.status,
             priority: complaint.priority,
-            customerId: customer?._id || complaint.customerId,
+            customerId: (customer?._id || complaint.customerId)?.toString(),
             customerName: customer?.name || 'Customer',
-            storeId: complaint.storeId,
+            storeId: complaint.storeId?.toString(),
             storeName: complaint.storeName || '',
           },
           dedupKey: `COMPLAINT_ADMIN:${complaint._id}:${admin._id}:${isReply ? `REPLY_${Date.now()}` : 'CREATED'}`,
@@ -144,6 +144,76 @@ const notifyAdminsOnComplaint = async ({ complaint, order, customer, category, s
   } catch (err) {
     console.error(
       `[Notification] Failed to dispatch admin complaint alerts for ${complaint.complaintNumber}:`,
+      err.message
+    );
+  }
+};
+
+/**
+ * Helper to dispatch complaint notifications to the owning seller of the store
+ */
+const notifySellerOnComplaint = async ({
+  complaint,
+  order,
+  customer,
+  category,
+  subject,
+  isReply = false,
+  replyMessage = '',
+  fromAdmin = false,
+  adminMessage = '',
+}) => {
+  try {
+    const store = await Store.findById(complaint.storeId).select('ownerId storeName').lean();
+    if (!store || !store.ownerId) return;
+
+    const seller = await User.findById(store.ownerId).select('_id email name').lean();
+    if (!seller) return;
+
+    const orderNum = order?.orderNumber || complaint.orderNumber || '';
+    let title = '';
+    let message = '';
+    let dedupSuffix = '';
+
+    if (fromAdmin) {
+      title = `Admin Directive: Dispute ${complaint.complaintNumber}`;
+      message = `Support Admin issued a notice regarding dispute #${complaint.complaintNumber} (Order #${orderNum}): "${adminMessage.slice(0, 100)}${adminMessage.length > 100 ? '...' : ''}"`;
+      dedupSuffix = `ADMIN_MSG_${Date.now()}`;
+    } else if (isReply) {
+      title = `Customer Replied: Dispute ${complaint.complaintNumber}`;
+      message = `Customer ${customer?.name || 'Customer'} replied on dispute #${complaint.complaintNumber} (Order #${orderNum}): "${replyMessage.slice(0, 100)}${replyMessage.length > 100 ? '...' : ''}"`;
+      dedupSuffix = `REPLY_${Date.now()}`;
+    } else {
+      title = `New Customer Dispute: ${complaint.complaintNumber}`;
+      message = `Customer ${customer?.name || 'Customer'} filed a dispute for Order #${orderNum} under category [${category}]: "${subject}". Please review and resolve.`;
+      dedupSuffix = 'CREATED';
+    }
+
+    const actionUrl = `/seller/complaints?complaintId=${complaint._id}`;
+
+    await defaultDispatcher.dispatch({
+      recipient: seller._id,
+      recipientEmail: seller.email,
+      recipientRole: USER_ROLES.SELLER,
+      type: NOTIFICATION_TYPES.SYSTEM_ALERT,
+      title,
+      message,
+      actionText: 'View Dispute',
+      actionUrl,
+      data: {
+        complaintId: complaint._id.toString(),
+        complaintNumber: complaint.complaintNumber,
+        orderId: (order?._id || complaint.orderId)?.toString(),
+        orderNumber: orderNum,
+        category: complaint.category,
+        status: complaint.status,
+        priority: complaint.priority,
+      },
+      dedupKey: `COMPLAINT_SELLER:${complaint._id}:${seller._id}:${dedupSuffix}`,
+    });
+  } catch (err) {
+    console.error(
+      `[Notification] Failed to dispatch seller complaint alert for ${complaint?.complaintNumber}:`,
       err.message
     );
   }
@@ -241,6 +311,16 @@ export const createCustomerComplaintService = async (userActor, data) => {
 
   // 5.1 In-App Notification to all active Administrators
   await notifyAdminsOnComplaint({
+    complaint,
+    order,
+    customer: userActor,
+    category,
+    subject,
+    isReply: false,
+  });
+
+  // 5.2 In-App Notification to Store Seller
+  await notifySellerOnComplaint({
     complaint,
     order,
     customer: userActor,
@@ -412,6 +492,17 @@ export const replyCustomerComplaintService = async (complaintId, userActor, { me
     replyMessage: message,
   });
 
+  // Notify Store Seller of customer reply
+  await notifySellerOnComplaint({
+    complaint,
+    order: { orderNumber: complaint.orderNumber, storeId: complaint.storeId },
+    customer: userActor,
+    category: complaint.category,
+    subject: complaint.subject,
+    isReply: true,
+    replyMessage: message,
+  });
+
   // Real-Time Socket.IO Alert to Admins
   try {
     emitToAdmin(SOCKET_EVENTS.ADMIN_ALERT, {
@@ -571,9 +662,9 @@ export const getAdminComplaintDossierService = async (complaintId) => {
     throw new ApiError(404, 'Complaint not found.', 'COMPLAINT_NOT_FOUND');
   }
 
-  // Load associated Order with deep batch allocations and pricing
+  // Load associated Order with deep batch allocations, store telemetry, and pricing
   const order = await Order.findById(complaint.orderId)
-    .populate('storeId', 'storeName address contactPhone')
+    .populate('storeId', 'storeName address contactPhone isActive verificationStatus ownerId')
     .populate('paymentId', 'transactionReference amount status method refundDetails')
     .lean();
 
@@ -783,7 +874,7 @@ export const sendAdminMessageService = async (
 
   await complaint.save();
 
-  // If customer-visible message, notify customer
+  // If public message / directive, notify both customer and seller
   if (!isInternalNote) {
     await notifyCustomer({
       customerId: complaint.customerId,
@@ -792,6 +883,12 @@ export const sendAdminMessageService = async (
       message: `Support team sent a response: "${message.slice(0, 120)}${message.length > 120 ? '...' : ''}"`,
       complaint,
       dedupSuffix: `MSG_${Date.now()}`,
+    });
+
+    await notifySellerOnComplaint({
+      complaint,
+      fromAdmin: true,
+      adminMessage: message,
     });
   }
 
@@ -1051,5 +1148,307 @@ export const resolveAdminComplaintService = async (
   });
 
   return complaint;
+};
+
+// =========================================================================
+// SELLER COMPLAINT SERVICES
+// =========================================================================
+
+/**
+ * Helper to retrieve authenticated seller's store with strict validation
+ */
+const getAuthenticatedSellerStore = async (sellerId) => {
+  const store = await Store.findOne({ ownerId: sellerId });
+  if (!store) {
+    throw new ApiError(404, 'No store associated with this merchant account.', 'STORE_NOT_FOUND');
+  }
+  return store;
+};
+
+/**
+ * 1. List complaints filed against orders belonging to the seller's store
+ */
+export const listSellerComplaintsService = async (userActor, queryParams = {}) => {
+  const store = await getAuthenticatedSellerStore(userActor._id);
+
+  const page = Math.max(1, parseInt(queryParams.page || '1', 10));
+  const limit = Math.min(50, Math.max(1, parseInt(queryParams.limit || '10', 10)));
+  const skip = (page - 1) * limit;
+
+  // Strict store ownership filter
+  const filter = { storeId: store._id };
+
+  if (queryParams.status && Object.values(COMPLAINT_STATUS).includes(queryParams.status)) {
+    filter.status = queryParams.status;
+  }
+
+  if (queryParams.priority && Object.values(COMPLAINT_PRIORITY).includes(queryParams.priority)) {
+    filter.priority = queryParams.priority;
+  }
+
+  if (queryParams.category && Object.values(COMPLAINT_CATEGORY).includes(queryParams.category)) {
+    filter.category = queryParams.category;
+  }
+
+  if (queryParams.search) {
+    const searchRegex = new RegExp(queryParams.search.trim(), 'i');
+    filter.$or = [
+      { complaintNumber: searchRegex },
+      { orderNumber: searchRegex },
+      { subject: searchRegex },
+    ];
+  }
+
+  const [complaints, total] = await Promise.all([
+    Complaint.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate('customerId', 'name email phone')
+      .lean(),
+    Complaint.countDocuments(filter),
+  ]);
+
+  // Sanitize internal admin notes and internal timeline entries from seller view
+  const sanitized = complaints.map((c) => ({
+    ...c,
+    messages: (c.messages || []).filter((m) => !m.isInternalNote),
+    timeline: (c.timeline || []).filter((t) => !t.isInternal),
+  }));
+
+  return {
+    complaints: sanitized,
+    storeDetails: {
+      storeId: store._id,
+      storeName: store.storeName,
+      isActive: store.isActive,
+      verificationStatus: store.verificationStatus,
+    },
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit) || 1,
+    },
+  };
+};
+
+/**
+ * 2. Get specific complaint details for seller (with strict store ownership verification)
+ */
+export const getSellerComplaintByIdService = async (complaintId, userActor) => {
+  if (!mongoose.Types.ObjectId.isValid(complaintId)) {
+    throw new ApiError(400, 'Invalid Complaint ID format.', 'INVALID_COMPLAINT_ID');
+  }
+
+  const store = await getAuthenticatedSellerStore(userActor._id);
+
+  const complaint = await Complaint.findById(complaintId)
+    .populate('customerId', 'name email phone avatar')
+    .lean();
+
+  if (!complaint) {
+    throw new ApiError(404, 'Complaint not found.', 'COMPLAINT_NOT_FOUND');
+  }
+
+  // Strict store ownership validation
+  if (complaint.storeId.toString() !== store._id.toString()) {
+    throw new ApiError(403, 'Forbidden: You do not have access to complaints for another store.', 'FORBIDDEN');
+  }
+
+  // Load related order telemetry
+  const order = await Order.findById(complaint.orderId)
+    .populate('paymentId', 'transactionReference amount status method')
+    .lean();
+
+  // Filter out internal admin notes & internal audit actions
+  const sanitizedMessages = (complaint.messages || []).filter((m) => !m.isInternalNote);
+  const sanitizedTimeline = (complaint.timeline || []).filter((t) => !t.isInternal);
+
+  return {
+    ...complaint,
+    messages: sanitizedMessages,
+    timeline: sanitizedTimeline,
+    orderDetails: order,
+    storeDetails: {
+      storeId: store._id,
+      storeName: store.storeName,
+      isActive: store.isActive,
+      verificationStatus: store.verificationStatus,
+    },
+  };
+};
+
+/**
+ * 3. Seller responds to customer dispute thread
+ */
+export const replySellerComplaintService = async (
+  complaintId,
+  userActor,
+  { message, attachments = [] }
+) => {
+  if (!mongoose.Types.ObjectId.isValid(complaintId)) {
+    throw new ApiError(400, 'Invalid Complaint ID format.', 'INVALID_COMPLAINT_ID');
+  }
+
+  const store = await getAuthenticatedSellerStore(userActor._id);
+
+  const complaint = await Complaint.findById(complaintId);
+  if (!complaint) {
+    throw new ApiError(404, 'Complaint not found.', 'COMPLAINT_NOT_FOUND');
+  }
+
+  // Strict ownership check
+  if (complaint.storeId.toString() !== store._id.toString()) {
+    throw new ApiError(403, 'Forbidden: You do not have access to this dispute.', 'FORBIDDEN');
+  }
+
+  // Communication window check
+  if ([COMPLAINT_STATUS.CLOSED, COMPLAINT_STATUS.REJECTED].includes(complaint.status)) {
+    throw new ApiError(
+      400,
+      `Cannot reply to a dispute in status [${complaint.status}]. Communication is closed.`,
+      'COMPLAINT_COMMUNICATION_CLOSED'
+    );
+  }
+
+  // Transition status to UNDER_REVIEW if it was OPEN or WAITING_FOR_SELLER
+  if ([COMPLAINT_STATUS.OPEN, COMPLAINT_STATUS.WAITING_FOR_SELLER].includes(complaint.status)) {
+    complaint.status = COMPLAINT_STATUS.UNDER_REVIEW;
+  }
+
+  const senderName = store.storeName || userActor.name || 'Merchant';
+
+  complaint.messages.push({
+    senderId: userActor._id,
+    senderRole: 'SELLER',
+    senderName,
+    message,
+    attachments: attachments || [],
+    isInternalNote: false,
+    createdAt: new Date(),
+  });
+
+  complaint.timeline.push({
+    action: 'SELLER_REPLIED',
+    performedBy: userActor._id,
+    performerRole: 'SELLER',
+    performerName: senderName,
+    notes: 'Merchant communicated with customer regarding dispute resolution.',
+    timestamp: new Date(),
+  });
+
+  await complaint.save();
+
+  // 1. Notify Customer of merchant reply
+  await notifyCustomer({
+    customerId: complaint.customerId,
+    type: 'SELLER_RESPONSE',
+    title: `Merchant Replied: ${complaint.complaintNumber}`,
+    message: `${senderName} responded: "${message.slice(0, 100)}${message.length > 100 ? '...' : ''}"`,
+    complaint,
+    dedupSuffix: `SELLER_MSG_${Date.now()}`,
+  });
+
+  // 2. Notify Admins of merchant reply
+  await notifyAdminsOnComplaint({
+    complaint,
+    order: { orderNumber: complaint.orderNumber, storeId: complaint.storeId },
+    customer: { name: senderName },
+    category: complaint.category,
+    subject: complaint.subject,
+    isReply: true,
+    replyMessage: `Merchant (${senderName}): ${message}`,
+  });
+
+  // Return sanitized complaint
+  const updatedDoc = complaint.toObject();
+  updatedDoc.messages = updatedDoc.messages.filter((m) => !m.isInternalNote);
+  updatedDoc.timeline = updatedDoc.timeline.filter((t) => !t.isInternal);
+
+  return updatedDoc;
+};
+
+/**
+ * 4. Seller marks dispute as resolved with customer explanation
+ */
+export const resolveSellerComplaintService = async (
+  complaintId,
+  userActor,
+  { decision = RESOLUTION_DECISION.RESOLVED_WITH_EXPLANATION, notes }
+) => {
+  if (!mongoose.Types.ObjectId.isValid(complaintId)) {
+    throw new ApiError(400, 'Invalid Complaint ID format.', 'INVALID_COMPLAINT_ID');
+  }
+
+  const store = await getAuthenticatedSellerStore(userActor._id);
+
+  const complaint = await Complaint.findById(complaintId);
+  if (!complaint) {
+    throw new ApiError(404, 'Complaint not found.', 'COMPLAINT_NOT_FOUND');
+  }
+
+  // Strict ownership check
+  if (complaint.storeId.toString() !== store._id.toString()) {
+    throw new ApiError(403, 'Forbidden: You do not have access to this dispute.', 'FORBIDDEN');
+  }
+
+  if ([COMPLAINT_STATUS.RESOLVED, COMPLAINT_STATUS.CLOSED, COMPLAINT_STATUS.REJECTED].includes(complaint.status)) {
+    throw new ApiError(400, `Complaint is already in ${complaint.status} status.`, 'COMPLAINT_ALREADY_FINALIZED');
+  }
+
+  const senderName = store.storeName || userActor.name || 'Merchant';
+
+  complaint.status = COMPLAINT_STATUS.RESOLVED;
+  complaint.resolution = {
+    decision: decision || RESOLUTION_DECISION.RESOLVED_WITH_EXPLANATION,
+    notes,
+    resolvedBy: userActor._id,
+    resolvedByName: senderName,
+    resolvedAt: new Date(),
+    refundAmount: 0,
+    actionRequested: RESOLUTION_ACTION_TYPE.NONE,
+    actionExecutionStatus: RESOLUTION_ACTION_EXECUTION_STATUS.NONE,
+  };
+
+  complaint.timeline.push({
+    action: 'SELLER_RESOLVED',
+    performedBy: userActor._id,
+    performerRole: 'SELLER',
+    performerName: senderName,
+    notes: notes || 'Merchant resolved customer dispute directly.',
+    metadata: { decision },
+    timestamp: new Date(),
+  });
+
+  await complaint.save();
+
+  // Notify customer of resolution
+  await notifyCustomer({
+    customerId: complaint.customerId,
+    type: 'COMPLAINT_RESOLVED',
+    title: `Dispute Resolved by Merchant: ${complaint.complaintNumber}`,
+    message: `${senderName} has resolved your complaint with note: "${notes.slice(0, 100)}${notes.length > 100 ? '...' : ''}"`,
+    complaint,
+    dedupSuffix: `RESOLVED_${Date.now()}`,
+  });
+
+  // Notify admins of seller resolution
+  await notifyAdminsOnComplaint({
+    complaint,
+    order: { orderNumber: complaint.orderNumber, storeId: complaint.storeId },
+    customer: { name: senderName },
+    category: complaint.category,
+    subject: complaint.subject,
+    isReply: true,
+    replyMessage: `Merchant resolved dispute #${complaint.complaintNumber}: ${notes}`,
+  });
+
+  // Return sanitized complaint
+  const updatedDoc = complaint.toObject();
+  updatedDoc.messages = updatedDoc.messages.filter((m) => !m.isInternalNote);
+  updatedDoc.timeline = updatedDoc.timeline.filter((t) => !t.isInternal);
+
+  return updatedDoc;
 };
 

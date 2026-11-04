@@ -679,6 +679,8 @@ export const MyComplaintsPage = () => {
                 <div className="space-y-3 max-h-96 overflow-y-auto p-1">
                   {selectedComplaint.messages?.map((msg, idx) => {
                     const isUser = msg.senderRole === 'CUSTOMER';
+                    const isSeller = msg.senderRole === 'SELLER';
+                    const isAdmin = msg.senderRole === 'ADMIN';
 
                     return (
                       <div
@@ -686,8 +688,20 @@ export const MyComplaintsPage = () => {
                         className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}
                       >
                         <div className="flex items-center gap-1.5 mb-1 px-1 text-[11px] text-gray-400">
-                          <span className="font-bold text-gray-700">
-                            {isUser ? 'You' : 'NearExpiry Support Team'}
+                          <span
+                            className={`font-bold ${
+                              isUser
+                                ? 'text-brand-700'
+                                : isSeller
+                                ? 'text-emerald-700'
+                                : 'text-purple-700'
+                            }`}
+                          >
+                            {isUser
+                              ? 'You'
+                              : isSeller
+                              ? `Merchant (${msg.senderName || 'Store'})`
+                              : 'NearExpiry Platform Admin'}
                           </span>
                           <span>•</span>
                           <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -697,7 +711,9 @@ export const MyComplaintsPage = () => {
                           className={`max-w-[85%] p-3.5 rounded-2xl text-xs leading-relaxed whitespace-pre-line shadow-xs ${
                             isUser
                               ? 'bg-brand-600 text-white rounded-br-xs'
-                              : 'bg-gray-100 text-gray-900 rounded-bl-xs border border-gray-200'
+                              : isSeller
+                              ? 'bg-emerald-50 text-emerald-950 rounded-bl-xs border border-emerald-200'
+                              : 'bg-purple-50 text-purple-950 rounded-bl-xs border border-purple-200'
                           }`}
                         >
                           {msg.message}

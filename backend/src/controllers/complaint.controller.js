@@ -10,6 +10,10 @@ import {
   getCustomerComplaintByIdService,
   replyCustomerComplaintService,
   closeCustomerComplaintService,
+  listSellerComplaintsService,
+  getSellerComplaintByIdService,
+  replySellerComplaintService,
+  resolveSellerComplaintService,
   listAdminComplaintsService,
   getAdminComplaintDossierService,
   updateAdminComplaintStatusService,
@@ -102,6 +106,39 @@ export const uploadComplaintEvidence = asyncHandler(async (req, res) => {
       mimeType: `image/${mimeType}`,
     })
   );
+});
+
+// =========================================================================
+// SELLER CONTROLLERS
+// =========================================================================
+
+export const listSellerComplaints = asyncHandler(async (req, res) => {
+  const result = await listSellerComplaintsService(req.user, req.query);
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        'Seller complaints retrieved successfully',
+        { complaints: result.complaints, storeDetails: result.storeDetails },
+        result.pagination
+      )
+    );
+});
+
+export const getSellerComplaintDetails = asyncHandler(async (req, res) => {
+  const complaint = await getSellerComplaintByIdService(req.params.complaintId, req.user);
+  return res.status(200).json(new ApiResponse(200, 'Dispute details retrieved successfully', complaint));
+});
+
+export const replySellerComplaint = asyncHandler(async (req, res) => {
+  const complaint = await replySellerComplaintService(req.params.complaintId, req.user, req.body);
+  return res.status(200).json(new ApiResponse(200, 'Merchant reply sent successfully', complaint));
+});
+
+export const resolveSellerComplaint = asyncHandler(async (req, res) => {
+  const complaint = await resolveSellerComplaintService(req.params.complaintId, req.user, req.body);
+  return res.status(200).json(new ApiResponse(200, 'Dispute resolved successfully', complaint));
 });
 
 // =========================================================================

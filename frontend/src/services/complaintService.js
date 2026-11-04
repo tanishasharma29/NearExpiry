@@ -66,6 +66,48 @@ export const complaintService = {
   },
 
   // ==========================================
+  // SELLER DISPUTE APIS
+  // ==========================================
+
+  /**
+   * Seller lists complaints filed against their store
+   * @param {Object} params { page, limit, status, priority, category, search }
+   */
+  getSellerComplaints: async (params = {}) => {
+    const res = await api.get('/complaints/seller', { params });
+    return res.data;
+  },
+
+  /**
+   * Seller retrieves detailed dispute dossier
+   * @param {string} complaintId
+   */
+  getSellerComplaintById: async (complaintId) => {
+    const res = await api.get(`/complaints/seller/${complaintId}`);
+    return res.data;
+  },
+
+  /**
+   * Seller sends reply message in complaint thread to talk with customer
+   * @param {string} complaintId
+   * @param {Object} payload { message, attachments }
+   */
+  sendSellerComplaintMessage: async (complaintId, payload) => {
+    const res = await api.post(`/complaints/seller/${complaintId}/messages`, payload);
+    return res.data;
+  },
+
+  /**
+   * Seller marks dispute as resolved with operational explanation
+   * @param {string} complaintId
+   * @param {Object} payload { decision, notes }
+   */
+  resolveSellerComplaint: async (complaintId, payload) => {
+    const res = await api.patch(`/complaints/seller/${complaintId}/resolve`, payload);
+    return res.data;
+  },
+
+  // ==========================================
   // ADMIN RESOLUTION APIS
   // ==========================================
 

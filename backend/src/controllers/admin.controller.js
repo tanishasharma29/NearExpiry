@@ -102,7 +102,7 @@ export const getStoreDetails = asyncHandler(async (req, res) => {
 });
 
 export const updateStoreStatus = asyncHandler(async (req, res) => {
-  const result = await updateStoreStatusAdminService(req.params.id, req.body);
+  const result = await updateStoreStatusAdminService(req.params.id, req.body, req.user);
   return res.status(200).json(
     new ApiResponse(200, 'Store status updated successfully', result)
   );

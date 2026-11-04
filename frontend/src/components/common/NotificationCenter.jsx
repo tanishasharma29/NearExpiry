@@ -192,12 +192,23 @@ export const NotificationCenter = ({
     }
   };
 
+  const resolveTargetUrl = (notif) => {
+    if (notif?.actionUrl) return notif.actionUrl;
+    if (notif?.data?.complaintId) {
+      if (role === 'SELLER') return `/seller/complaints?complaintId=${notif.data.complaintId}`;
+      if (role === 'ADMIN') return `/admin/complaints/${notif.data.complaintId}`;
+      return `/complaints`;
+    }
+    return null;
+  };
+
   const handleNotificationClick = async (notif) => {
     if (!notif.isRead) {
       await handleMarkAsRead(notif._id);
     }
-    if (notif.actionUrl) {
-      navigate(notif.actionUrl);
+    const target = resolveTargetUrl(notif);
+    if (target) {
+      navigate(target);
     }
   };
 
@@ -300,7 +311,7 @@ export const NotificationCenter = ({
                     {/* Action Bar */}
                     <div className="flex items-center justify-between pt-3 mt-2 border-t border-gray-100/80">
                       <div>
-                        {notif.actionUrl ? (
+                        {resolveTargetUrl(notif) ? (
                           <button
                             type="button"
                             onClick={(e) => {
@@ -309,7 +320,11 @@ export const NotificationCenter = ({
                             }}
                             className={`inline-flex items-center gap-1.5 text-xs font-bold ${theme.primaryText} hover:underline`}
                           >
-                            <span>Open Details</span>
+                            <span>
+                              {notif.data?.complaintId && role === 'SELLER'
+                                ? 'Talk with Customer & Resolve'
+                                : 'Open Details'}
+                            </span>
                             <ArrowRight className="w-3.5 h-3.5" />
                           </button>
                         ) : (
