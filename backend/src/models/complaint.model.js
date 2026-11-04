@@ -75,6 +75,16 @@ const messageSchema = new mongoose.Schema(
       default: '',
       trim: true,
     },
+    recipientRole: {
+      type: String,
+      enum: ['ALL', 'SELLER', 'CUSTOMER', 'INTERNAL'],
+      default: 'ALL',
+    },
+    visibleToCustomer: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
     message: {
       type: String,
       required: true,

@@ -637,7 +637,12 @@ export const MyComplaintsPage = () => {
               )}
 
               {/* 3. Investigation Timeline */}
-              {selectedComplaint.timeline?.length > 0 && (
+              {selectedComplaint.timeline?.filter(
+                (evt) =>
+                  !evt.isInternal &&
+                  evt.performerRole !== 'ADMIN' &&
+                  !['ADMIN_MESSAGE', 'ADMIN_SELLER_DIRECTIVE', 'INTERNAL_NOTE_ADDED'].includes(evt.action)
+              ).length > 0 && (
                 <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-4">
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-brand-600" />
@@ -645,132 +650,144 @@ export const MyComplaintsPage = () => {
                   </div>
 
                   <div className="relative pl-6 space-y-4 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-200">
-                    {selectedComplaint.timeline.map((evt, idx) => (
-                      <div key={idx} className="relative text-xs space-y-0.5">
-                        <div className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-brand-500 ring-4 ring-white" />
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-gray-900">
-                            {evt.action.replace(/_/g, ' ')}
-                          </span>
-                          <span className="text-[10px] text-gray-400">
-                            {new Date(evt.timestamp).toLocaleString()}
-                          </span>
+                    {selectedComplaint.timeline
+                      ?.filter(
+                        (evt) =>
+                          !evt.isInternal &&
+                          evt.performerRole !== 'ADMIN' &&
+                          !['ADMIN_MESSAGE', 'ADMIN_SELLER_DIRECTIVE', 'INTERNAL_NOTE_ADDED'].includes(evt.action)
+                      )
+                      .map((evt, idx) => (
+                        <div key={idx} className="relative text-xs space-y-0.5">
+                          <div className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-brand-500 ring-4 ring-white" />
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-gray-900">
+                              {evt.action.replace(/_/g, ' ')}
+                            </span>
+                            <span className="text-[10px] text-gray-400">
+                              {new Date(evt.timestamp).toLocaleString()}
+                            </span>
+                          </div>
+                          {evt.notes && <p className="text-gray-600 text-[11px] leading-relaxed">{evt.notes}</p>}
                         </div>
-                        {evt.notes && <p className="text-gray-600 text-[11px] leading-relaxed">{evt.notes}</p>}
-                      </div>
-                    ))}
+                      ))}
                   </div>
                 </div>
               )}
 
               {/* 4. Support Conversation Thread */}
-              <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="w-4 h-4 text-brand-600" />
-                    <h3 className="text-sm font-bold text-gray-900">Support Conversation</h3>
-                  </div>
-                  <span className="text-[11px] text-gray-400">
-                    {selectedComplaint.messages?.length || 0} message(s)
-                  </span>
-                </div>
+              {(() => {
+                const customerVisibleMessages = (selectedComplaint.messages || []).filter(
+                  (msg) =>
+                    !msg.isInternalNote &&
+                    msg.visibleToCustomer !== false &&
+                    msg.senderRole !== 'ADMIN' &&
+                    msg.recipientRole !== 'SELLER' &&
+                    msg.recipientRole !== 'INTERNAL'
+                );
 
-                {/* Message Bubbles */}
-                <div className="space-y-3 max-h-96 overflow-y-auto p-1">
-                  {selectedComplaint.messages?.map((msg, idx) => {
-                    const isUser = msg.senderRole === 'CUSTOMER';
-                    const isSeller = msg.senderRole === 'SELLER';
-                    const isAdmin = msg.senderRole === 'ADMIN';
-
-                    return (
-                      <div
-                        key={idx}
-                        className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}
-                      >
-                        <div className="flex items-center gap-1.5 mb-1 px-1 text-[11px] text-gray-400">
-                          <span
-                            className={`font-bold ${
-                              isUser
-                                ? 'text-brand-700'
-                                : isSeller
-                                ? 'text-emerald-700'
-                                : 'text-purple-700'
-                            }`}
-                          >
-                            {isUser
-                              ? 'You'
-                              : isSeller
-                              ? `Merchant (${msg.senderName || 'Store'})`
-                              : 'NearExpiry Platform Admin'}
-                          </span>
-                          <span>•</span>
-                          <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                        </div>
-
-                        <div
-                          className={`max-w-[85%] p-3.5 rounded-2xl text-xs leading-relaxed whitespace-pre-line shadow-xs ${
-                            isUser
-                              ? 'bg-brand-600 text-white rounded-br-xs'
-                              : isSeller
-                              ? 'bg-emerald-50 text-emerald-950 rounded-bl-xs border border-emerald-200'
-                              : 'bg-purple-50 text-purple-950 rounded-bl-xs border border-purple-200'
-                          }`}
-                        >
-                          {msg.message}
-                        </div>
+                return (
+                  <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                      <div className="flex items-center gap-2">
+                        <MessageSquare className="w-4 h-4 text-brand-600" />
+                        <h3 className="text-sm font-bold text-gray-900">Merchant Dispute Resolution</h3>
                       </div>
-                    );
-                  })}
-                </div>
+                      <span className="text-[11px] text-gray-400">
+                        {customerVisibleMessages.length} message(s)
+                      </span>
+                    </div>
 
-                {/* Reply Form */}
-                {canReply ? (
-                  <form onSubmit={handleSendReply} className="pt-3 border-t border-gray-100 space-y-2">
-                    {replyError && (
-                      <div className="p-2.5 bg-red-50 text-red-700 text-xs rounded-xl flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
-                        <span>{replyError}</span>
+                    {/* Message Bubbles */}
+                    <div className="space-y-3 max-h-96 overflow-y-auto p-1">
+                      {customerVisibleMessages.map((msg, idx) => {
+                        const isUser = msg.senderRole === 'CUSTOMER';
+
+                        return (
+                          <div
+                            key={idx}
+                            className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}
+                          >
+                            <div className="flex items-center gap-1.5 mb-1 px-1 text-[11px] text-gray-400">
+                              <span
+                                className={`font-bold ${
+                                  isUser
+                                    ? 'text-brand-700'
+                                    : 'text-emerald-700'
+                                }`}
+                              >
+                                {isUser
+                                  ? 'You'
+                                  : `Merchant (${msg.senderName || selectedComplaint.storeName || 'Store'})`}
+                              </span>
+                              <span>•</span>
+                              <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+
+                            <div
+                              className={`max-w-[85%] p-3.5 rounded-2xl text-xs leading-relaxed whitespace-pre-line shadow-xs ${
+                                isUser
+                                  ? 'bg-brand-600 text-white rounded-br-xs'
+                                  : 'bg-emerald-50 text-emerald-950 rounded-bl-xs border border-emerald-200'
+                              }`}
+                            >
+                              {msg.message}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Reply Form */}
+                    {canReply ? (
+                      <form onSubmit={handleSendReply} className="pt-3 border-t border-gray-100 space-y-2">
+                        {replyError && (
+                          <div className="p-2.5 bg-red-50 text-red-700 text-xs rounded-xl flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+                            <span>{replyError}</span>
+                          </div>
+                        )}
+                        <div className="relative">
+                          <textarea
+                            rows={3}
+                            maxLength={2000}
+                            value={replyText}
+                            onChange={(e) => setReplyText(e.target.value)}
+                            placeholder="Reply to the merchant regarding this issue..."
+                            className="w-full text-xs p-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-brand-500 outline-none leading-relaxed"
+                          />
+                          <div className="absolute right-2.5 bottom-2.5 text-[10px] text-gray-400">
+                            {replyText.length}/2000
+                          </div>
+                        </div>
+                        <div className="flex justify-end">
+                          <button
+                            type="submit"
+                            disabled={replying || !replyText.trim()}
+                            className="px-4 py-2 bg-brand-600 hover:bg-brand-700 disabled:bg-gray-300 text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center gap-1.5 active:scale-95"
+                          >
+                            {replying ? (
+                              <>
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                <span>Sending...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Send className="w-3.5 h-3.5" />
+                                <span>Send to Merchant</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </form>
+                    ) : (
+                      <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-center text-xs text-gray-500">
+                        This case is {selectedComplaint.status.toLowerCase()}. Conversation thread is closed.
                       </div>
                     )}
-                    <div className="relative">
-                      <textarea
-                        rows={3}
-                        maxLength={2000}
-                        value={replyText}
-                        onChange={(e) => setReplyText(e.target.value)}
-                        placeholder="Reply to the support team..."
-                        className="w-full text-xs p-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-brand-500 outline-none leading-relaxed"
-                      />
-                      <div className="absolute right-2.5 bottom-2.5 text-[10px] text-gray-400">
-                        {replyText.length}/2000
-                      </div>
-                    </div>
-                    <div className="flex justify-end">
-                      <button
-                        type="submit"
-                        disabled={replying || !replyText.trim()}
-                        className="px-4 py-2 bg-brand-600 hover:bg-brand-700 disabled:bg-gray-300 text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center gap-1.5 active:scale-95"
-                      >
-                        {replying ? (
-                          <>
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            <span>Sending...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Send className="w-3.5 h-3.5" />
-                            <span>Send Message</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </form>
-                ) : (
-                  <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-center text-xs text-gray-500">
-                    This case is {selectedComplaint.status.toLowerCase()}. Conversation thread is closed.
                   </div>
-                )}
-              </div>
+                );
+              })()}
             </div>
           ) : null}
         </div>

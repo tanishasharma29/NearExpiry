@@ -63,6 +63,55 @@ const VALID_STATUS_TRANSITIONS = {
 };
 
 /**
+ * Customer-visible message sanitization filter.
+ * Ensures the customer only sees direct customer-merchant dialogue.
+ * Platform admin directives to the seller and internal staff notes are strictly hidden.
+ */
+const filterCustomerVisibleMessages = (messages = []) =>
+  messages.filter(
+    (m) =>
+      !m.isInternalNote &&
+      m.visibleToCustomer !== false &&
+      m.recipientRole !== 'SELLER' &&
+      m.recipientRole !== 'INTERNAL' &&
+      m.senderRole !== 'ADMIN'
+  );
+
+/**
+ * Customer-visible timeline sanitization filter.
+ * Hides internal administrative actions, directives, and operational notes.
+ */
+const filterCustomerVisibleTimeline = (timeline = []) =>
+  timeline.filter(
+    (t) =>
+      !t.isInternal &&
+      t.performerRole !== 'ADMIN' &&
+      !['ADMIN_MESSAGE', 'ADMIN_SELLER_DIRECTIVE', 'INTERNAL_NOTE_ADDED'].includes(t.action)
+  );
+
+/**
+ * Seller-visible message sanitization filter.
+ * Allows seller to see customer messages, seller's own messages, and admin directives.
+ * Strictly hides internal administrative staff notes.
+ */
+const filterSellerVisibleMessages = (messages = []) =>
+  messages.filter(
+    (m) =>
+      !m.isInternalNote &&
+      m.recipientRole !== 'INTERNAL'
+  );
+
+/**
+ * Seller-visible timeline sanitization filter.
+ */
+const filterSellerVisibleTimeline = (timeline = []) =>
+  timeline.filter(
+    (t) =>
+      t.action !== 'INTERNAL_NOTE_ADDED' &&
+      (!t.isInternal || t.action === 'ADMIN_SELLER_DIRECTIVE' || t.performerRole === 'SELLER')
+  );
+
+/**
  * Helper to dispatch customer complaint notifications via existing notification dispatcher
  */
 const notifyCustomer = async ({ customerId, type, title, message, complaint, dedupSuffix = '' }) => {
@@ -266,6 +315,8 @@ export const createCustomerComplaintService = async (userActor, data) => {
     senderId: userActor._id,
     senderRole: 'CUSTOMER',
     senderName: userActor.name || 'Customer',
+    recipientRole: 'ALL',
+    visibleToCustomer: true,
     message: description,
     attachments: evidenceUrls || [],
     isInternalNote: false,
@@ -375,11 +426,11 @@ export const listCustomerComplaintsService = async (userActor, queryParams = {})
     Complaint.countDocuments(filter),
   ]);
 
-  // Sanitize messages and timeline (remove internal admin items)
+  // Sanitize messages and timeline (strictly isolate to direct customer-merchant dialogue)
   const sanitized = complaints.map((c) => ({
     ...c,
-    messages: (c.messages || []).filter((m) => !m.isInternalNote),
-    timeline: (c.timeline || []).filter((t) => !t.isInternal),
+    messages: filterCustomerVisibleMessages(c.messages),
+    timeline: filterCustomerVisibleTimeline(c.timeline),
   }));
 
   return {
@@ -416,9 +467,9 @@ export const getCustomerComplaintByIdService = async (complaintId, userActor) =>
     .select('orderNumber status paymentStatus pricingSummary fulfillmentType items')
     .lean();
 
-  // Strictly filter out internal messages and internal timeline events
-  const customerMessages = (complaint.messages || []).filter((m) => !m.isInternalNote);
-  const customerTimeline = (complaint.timeline || []).filter((t) => !t.isInternal);
+  // Strictly filter out admin directives, staff notes, and internal timeline actions
+  const customerMessages = filterCustomerVisibleMessages(complaint.messages);
+  const customerTimeline = filterCustomerVisibleTimeline(complaint.timeline);
 
   return {
     ...complaint,
@@ -464,6 +515,8 @@ export const replyCustomerComplaintService = async (complaintId, userActor, { me
     senderId: userActor._id,
     senderRole: 'CUSTOMER',
     senderName: userActor.name || 'Customer',
+    recipientRole: 'ALL',
+    visibleToCustomer: true,
     message,
     attachments: attachments || [],
     isInternalNote: false,
@@ -519,8 +572,8 @@ export const replyCustomerComplaintService = async (complaintId, userActor, { me
 
   // Return sanitized complaint for customer
   const updatedDoc = complaint.toObject();
-  updatedDoc.messages = updatedDoc.messages.filter((m) => !m.isInternalNote);
-  updatedDoc.timeline = updatedDoc.timeline.filter((t) => !t.isInternal);
+  updatedDoc.messages = filterCustomerVisibleMessages(updatedDoc.messages);
+  updatedDoc.timeline = filterCustomerVisibleTimeline(updatedDoc.timeline);
 
   return updatedDoc;
 };
@@ -572,8 +625,8 @@ export const closeCustomerComplaintService = async (complaintId, userActor, reas
   });
 
   const updatedDoc = complaint.toObject();
-  updatedDoc.messages = updatedDoc.messages.filter((m) => !m.isInternalNote);
-  updatedDoc.timeline = updatedDoc.timeline.filter((t) => !t.isInternal);
+  updatedDoc.messages = filterCustomerVisibleMessages(updatedDoc.messages);
+  updatedDoc.timeline = filterCustomerVisibleTimeline(updatedDoc.timeline);
 
   return updatedDoc;
 };
@@ -856,6 +909,8 @@ export const sendAdminMessageService = async (
     senderId: userActor._id,
     senderRole: 'ADMIN',
     senderName: userActor.name || 'Support Agent',
+    recipientRole: isInternalNote ? 'INTERNAL' : 'SELLER',
+    visibleToCustomer: false,
     message,
     attachments: attachments || [],
     isInternalNote: Boolean(isInternalNote),
@@ -863,28 +918,21 @@ export const sendAdminMessageService = async (
   });
 
   complaint.timeline.push({
-    action: isInternalNote ? 'INTERNAL_NOTE_ADDED' : 'ADMIN_MESSAGE',
+    action: isInternalNote ? 'INTERNAL_NOTE_ADDED' : 'ADMIN_SELLER_DIRECTIVE',
     performedBy: userActor._id,
     performerRole: 'ADMIN',
     performerName: userActor.name || 'Support Agent',
-    notes: isInternalNote ? 'Internal operational note added (hidden from customer).' : 'Public response sent to customer.',
-    isInternal: Boolean(isInternalNote),
+    notes: isInternalNote
+      ? 'Internal operational note recorded (hidden from customer and merchant).'
+      : 'Admin directive/warning issued to merchant (hidden from customer).',
+    isInternal: true,
     timestamp: new Date(),
   });
 
   await complaint.save();
 
-  // If public message / directive, notify both customer and seller
+  // If directive to seller, notify ONLY the merchant (hidden from customer)
   if (!isInternalNote) {
-    await notifyCustomer({
-      customerId: complaint.customerId,
-      type: 'ADMIN_RESPONSE',
-      title: `Response on Case: ${complaint.complaintNumber}`,
-      message: `Support team sent a response: "${message.slice(0, 120)}${message.length > 120 ? '...' : ''}"`,
-      complaint,
-      dedupSuffix: `MSG_${Date.now()}`,
-    });
-
     await notifySellerOnComplaint({
       complaint,
       fromAdmin: true,
@@ -1209,11 +1257,11 @@ export const listSellerComplaintsService = async (userActor, queryParams = {}) =
     Complaint.countDocuments(filter),
   ]);
 
-  // Sanitize internal admin notes and internal timeline entries from seller view
+  // Sanitize internal staff notes from seller view (keep customer dialogue and admin directives)
   const sanitized = complaints.map((c) => ({
     ...c,
-    messages: (c.messages || []).filter((m) => !m.isInternalNote),
-    timeline: (c.timeline || []).filter((t) => !t.isInternal),
+    messages: filterSellerVisibleMessages(c.messages),
+    timeline: filterSellerVisibleTimeline(c.timeline),
   }));
 
   return {
@@ -1261,9 +1309,9 @@ export const getSellerComplaintByIdService = async (complaintId, userActor) => {
     .populate('paymentId', 'transactionReference amount status method')
     .lean();
 
-  // Filter out internal admin notes & internal audit actions
-  const sanitizedMessages = (complaint.messages || []).filter((m) => !m.isInternalNote);
-  const sanitizedTimeline = (complaint.timeline || []).filter((t) => !t.isInternal);
+  // Filter out internal admin staff notes from seller view
+  const sanitizedMessages = filterSellerVisibleMessages(complaint.messages);
+  const sanitizedTimeline = filterSellerVisibleTimeline(complaint.timeline);
 
   return {
     ...complaint,
@@ -1323,6 +1371,8 @@ export const replySellerComplaintService = async (
     senderId: userActor._id,
     senderRole: 'SELLER',
     senderName,
+    recipientRole: 'CUSTOMER',
+    visibleToCustomer: true,
     message,
     attachments: attachments || [],
     isInternalNote: false,
@@ -1363,8 +1413,8 @@ export const replySellerComplaintService = async (
 
   // Return sanitized complaint
   const updatedDoc = complaint.toObject();
-  updatedDoc.messages = updatedDoc.messages.filter((m) => !m.isInternalNote);
-  updatedDoc.timeline = updatedDoc.timeline.filter((t) => !t.isInternal);
+  updatedDoc.messages = filterSellerVisibleMessages(updatedDoc.messages);
+  updatedDoc.timeline = filterSellerVisibleTimeline(updatedDoc.timeline);
 
   return updatedDoc;
 };
@@ -1446,8 +1496,8 @@ export const resolveSellerComplaintService = async (
 
   // Return sanitized complaint
   const updatedDoc = complaint.toObject();
-  updatedDoc.messages = updatedDoc.messages.filter((m) => !m.isInternalNote);
-  updatedDoc.timeline = updatedDoc.timeline.filter((t) => !t.isInternal);
+  updatedDoc.messages = filterSellerVisibleMessages(updatedDoc.messages);
+  updatedDoc.timeline = filterSellerVisibleTimeline(updatedDoc.timeline);
 
   return updatedDoc;
 };

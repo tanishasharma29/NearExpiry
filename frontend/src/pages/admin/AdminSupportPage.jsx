@@ -1303,7 +1303,7 @@ export const AdminSupportPage = () => {
                 { id: 'overview', label: 'Case & Telemetry', icon: Eye },
                 {
                   id: 'messages',
-                  label: `Customer Dialogue (${publicMessages.length})`,
+                  label: `Dispute Conversation (${publicMessages.length})`,
                   icon: MessageCircle,
                 },
                 {
@@ -1664,21 +1664,24 @@ export const AdminSupportPage = () => {
               </div>
             )}
 
-            {/* SUB-PANEL 2: Public Customer Dialogue */}
+            {/* SUB-PANEL 2: Dispute Dialogue Oversight & Admin Directives */}
             {dossierTab === 'messages' && (
               <div className="space-y-4">
-                <div className="bg-blue-50/60 p-3 rounded-xl border border-blue-100 text-xs text-blue-900 flex items-start gap-2">
-                  <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-                  <span>
-                    Messages in this tab are <strong>visible to the customer</strong> in their NearExpiry account. Use this to request photos, clarification, or notify them of updates.
-                  </span>
+                <div className="bg-purple-50/70 p-3.5 rounded-xl border border-purple-200 text-xs text-purple-900 flex items-start gap-2.5">
+                  <ShieldAlert className="w-4 h-4 text-purple-600 flex-shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-bold">Dispute Oversight & Merchant Directives</p>
+                    <p className="text-purple-800 leading-relaxed text-[11px]">
+                      You are monitoring the dispute dialogue between Customer and Merchant. If the merchant is unresponsive or failing to resolve the problem, issue a Platform Directive/Warning below. <strong>Directives are sent directly to the merchant and are strictly hidden from the customer.</strong>
+                    </p>
+                  </div>
                 </div>
 
                 {/* Message Thread */}
                 <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
                   {publicMessages.length === 0 ? (
                     <div className="text-center py-8 text-gray-400 italic text-xs">
-                      No public messages exchanged yet.
+                      No dialogue messages exchanged yet.
                     </div>
                   ) : (
                     publicMessages.map((msg, idx) => {
@@ -1692,7 +1695,7 @@ export const AdminSupportPage = () => {
                           <div
                             className={`max-w-[85%] p-3 rounded-2xl text-xs space-y-1 ${
                               isAdmin
-                                ? 'bg-purple-700 text-white rounded-tr-xs'
+                                ? 'bg-purple-800 text-white rounded-tr-xs shadow-xs'
                                 : isSeller
                                 ? 'bg-amber-50 text-amber-950 border border-amber-200 rounded-tl-xs'
                                 : 'bg-gray-100 text-gray-900 border border-gray-200 rounded-tl-xs'
@@ -1709,7 +1712,7 @@ export const AdminSupportPage = () => {
                                 }
                               >
                                 {isAdmin
-                                  ? `🛡️ Platform Admin (${msg.senderName || 'Admin'})`
+                                  ? `🛡️ Admin Directive to Merchant (Hidden from Customer)`
                                   : isSeller
                                   ? `🏪 Merchant (${msg.senderName || 'Store'})`
                                   : `👤 Customer (${msg.senderName || 'Customer'})`}
@@ -1724,13 +1727,13 @@ export const AdminSupportPage = () => {
                   )}
                 </div>
 
-                {/* Customer / Merchant Response Composer */}
+                {/* Merchant Warning / Directive Composer */}
                 <form onSubmit={handleSendCustomerMessage} className="pt-2 border-t border-gray-100 space-y-2">
                   <textarea
                     rows={3}
                     value={customerMessage}
                     onChange={(e) => setCustomerMessage(e.target.value)}
-                    placeholder="Write a message or directive (visible to customer and merchant)..."
+                    placeholder="Send private warning or directive to merchant (not visible to customer)..."
                     className="w-full p-3 bg-gray-50 focus:bg-white border border-gray-200 focus:border-purple-600 rounded-xl text-xs outline-none transition focus:ring-2 focus:ring-purple-100"
                   />
                   <div className="flex justify-end">
@@ -1740,7 +1743,7 @@ export const AdminSupportPage = () => {
                       className="inline-flex items-center gap-1.5 px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs rounded-xl transition shadow disabled:opacity-50"
                     >
                       <Send className="w-3.5 h-3.5" />
-                      <span>{sendingCustomerMessage ? 'Sending...' : 'Send Message / Directive'}</span>
+                      <span>{sendingCustomerMessage ? 'Sending Directive...' : 'Send Directive to Merchant'}</span>
                     </button>
                   </div>
                 </form>

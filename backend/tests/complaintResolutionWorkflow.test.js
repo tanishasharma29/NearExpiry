@@ -373,6 +373,8 @@ describe('Customer-Seller Complaint Resolution & Administrative Oversight Suite'
     const updatedComplaint = await Complaint.findById(testComplaint._id);
     const lastMsg = updatedComplaint.messages[updatedComplaint.messages.length - 1];
     assert.equal(lastMsg.senderRole, 'ADMIN');
+    assert.equal(lastMsg.visibleToCustomer, false);
+    assert.equal(lastMsg.recipientRole, 'SELLER');
     assert.match(lastMsg.message, /ADMIN DIRECTIVE/i);
 
     // Verify Seller received in-app directive notification
@@ -381,6 +383,37 @@ describe('Customer-Seller Complaint Resolution & Administrative Oversight Suite'
       title: { $regex: /Admin Directive/i },
     });
     assert.ok(sellerDirectiveNotif, 'Seller must receive in-app notification when admin sends directive');
+
+    // Verify Customer DID NOT receive any notification for the admin directive
+    const customerDirectiveNotif = await Notification.findOne({
+      recipient: customer1User._id || customer1User.id,
+      title: { $regex: /Admin Directive/i },
+    });
+    assert.equal(customerDirectiveNotif, null, 'Customer must NOT receive notification for admin-seller directives');
+
+    // Verify Customer view of complaint STRICTLY hides the admin directive message and timeline action
+    const custViewRes = await fetch(`${baseUrl}/complaints/${testComplaint._id}`, {
+      headers: { Authorization: `Bearer ${customer1Token}` },
+    });
+    assert.equal(custViewRes.status, 200);
+    const custViewData = await custViewRes.json();
+    const customerVisibleMsgs = custViewData.data?.messages || [];
+    const hasAdminMsg = customerVisibleMsgs.some((m) => m.senderRole === 'ADMIN' || m.message.includes('ADMIN DIRECTIVE'));
+    assert.equal(hasAdminMsg, false, 'Customer must NOT see admin directives to merchant');
+
+    const customerVisibleTimeline = custViewData.data?.timeline || [];
+    const hasAdminTimeline = customerVisibleTimeline.some((t) => t.performerRole === 'ADMIN' || t.action === 'ADMIN_SELLER_DIRECTIVE');
+    assert.equal(hasAdminTimeline, false, 'Customer must NOT see admin directive timeline entries');
+
+    // Verify Seller view of complaint DOES include the admin directive message
+    const sellerViewRes = await fetch(`${baseUrl}/complaints/seller/${testComplaint._id}`, {
+      headers: { Authorization: `Bearer ${seller1Token}` },
+    });
+    assert.equal(sellerViewRes.status, 200);
+    const sellerViewData = await sellerViewRes.json();
+    const sellerVisibleMsgs = sellerViewData.data?.messages || [];
+    const sellerHasAdminDirective = sellerVisibleMsgs.some((m) => m.senderRole === 'ADMIN' && m.message.includes('ADMIN DIRECTIVE'));
+    assert.equal(sellerHasAdminDirective, true, 'Seller must be able to see the admin directive');
   });
 
   // -------------------------------------------------------------------------

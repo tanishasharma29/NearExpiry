@@ -477,8 +477,8 @@ export const SellerComplaintsPage = () => {
                         )}
                         {isAdmin && (
                           <span className="text-purple-700 font-bold flex items-center gap-1">
-                            <ShieldAlert className="w-3 h-3" />
-                            <span>NearExpiry Support Admin (Directive)</span>
+                            <ShieldAlert className="w-3 h-3 text-purple-600" />
+                            <span>Platform Admin Directive (Private to Merchant — Hidden from Customer)</span>
                           </span>
                         )}
                         {isCustomer && (

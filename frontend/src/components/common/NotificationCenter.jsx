@@ -194,10 +194,24 @@ export const NotificationCenter = ({
 
   const resolveTargetUrl = (notif) => {
     if (notif?.actionUrl) return notif.actionUrl;
-    if (notif?.data?.complaintId) {
-      if (role === 'SELLER') return `/seller/complaints?complaintId=${notif.data.complaintId}`;
-      if (role === 'ADMIN') return `/admin/complaints/${notif.data.complaintId}`;
-      return `/complaints`;
+    const cid = notif?.data?.complaintId || notif?.metadata?.complaintId;
+    if (cid) {
+      if (role === 'SELLER') return `/seller/complaints?complaintId=${cid}`;
+      if (role === 'ADMIN') return `/admin/complaints/${cid}`;
+      return `/customer/complaints`;
+    }
+    const isDisputeNotice =
+      notif?.title?.includes('Dispute') ||
+      notif?.title?.includes('Complaint') ||
+      notif?.message?.includes('dispute') ||
+      notif?.message?.includes('complaint') ||
+      notif?.title?.includes('NE-CMP-') ||
+      notif?.message?.includes('NE-CMP-');
+
+    if (isDisputeNotice) {
+      if (role === 'SELLER') return '/seller/complaints';
+      if (role === 'ADMIN') return '/admin/support';
+      return '/customer/complaints';
     }
     return null;
   };
@@ -321,7 +335,11 @@ export const NotificationCenter = ({
                             className={`inline-flex items-center gap-1.5 text-xs font-bold ${theme.primaryText} hover:underline`}
                           >
                             <span>
-                              {notif.data?.complaintId && role === 'SELLER'
+                              {role === 'SELLER' &&
+                              (notif.data?.complaintId ||
+                                notif.title?.includes('Dispute') ||
+                                notif.title?.includes('NE-CMP-') ||
+                                notif.message?.includes('dispute'))
                                 ? 'Talk with Customer & Resolve'
                                 : 'Open Details'}
                             </span>
