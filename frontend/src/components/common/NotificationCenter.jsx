@@ -193,6 +193,11 @@ export const NotificationCenter = ({
   };
 
   const resolveTargetUrl = (notif) => {
+    // Clean any legacy absolute domain prefixes (e.g. https://nearexpiry.app/seller/orders/...)
+    const rawActionUrl = notif?.actionUrl
+      ? notif.actionUrl.replace(/^https?:\/\/[^\/]+/, '')
+      : null;
+
     // 1. Complaint / Dispute notifications
     const cid =
       notif?.data?.complaintId ||
@@ -202,8 +207,8 @@ export const NotificationCenter = ({
 
     const isComplaintNotice =
       Boolean(cid) ||
-      notif?.actionUrl?.includes('/complaints') ||
-      notif?.actionUrl?.includes('/support') ||
+      rawActionUrl?.includes('/complaints') ||
+      rawActionUrl?.includes('/support') ||
       notif?.title?.includes('Dispute') ||
       notif?.title?.includes('Complaint') ||
       notif?.message?.includes('dispute') ||
@@ -214,14 +219,14 @@ export const NotificationCenter = ({
     if (isComplaintNotice) {
       const complaintIdToUse =
         cid ||
-        (notif?.actionUrl?.includes('/admin/complaints/')
-          ? notif.actionUrl.split('/').pop()
+        (rawActionUrl?.includes('/admin/complaints/')
+          ? rawActionUrl.split('/').pop()
           : null) ||
-        (notif?.actionUrl?.includes('complaintId=')
-          ? new URLSearchParams(notif.actionUrl.split('?')[1]).get('complaintId')
+        (rawActionUrl?.includes('complaintId=')
+          ? new URLSearchParams(rawActionUrl.split('?')[1]).get('complaintId')
           : null) ||
-        (notif?.actionUrl?.includes('id=')
-          ? new URLSearchParams(notif.actionUrl.split('?')[1]).get('id')
+        (rawActionUrl?.includes('id=')
+          ? new URLSearchParams(rawActionUrl.split('?')[1]).get('id')
           : null);
 
       if (role === 'ADMIN') {
@@ -237,18 +242,79 @@ export const NotificationCenter = ({
       return '/customer/complaints';
     }
 
-    // 2. Seller Verification / Onboarding / Credentials
+    // 2. Order Notifications (New Order, Confirmed, Status Update, Pickup Readiness)
+    const oid =
+      notif?.data?.orderId ||
+      notif?.metadata?.orderId ||
+      (notif?.entityModel === 'Order' ? notif?.entityId : null);
+
+    const isOrderNotice =
+      Boolean(oid) ||
+      notif?.type === 'NEW_ORDER' ||
+      notif?.type === 'ORDER_CONFIRMED' ||
+      notif?.type === 'ORDER_STATUS_UPDATE' ||
+      notif?.type === 'PICKUP_READINESS' ||
+      rawActionUrl?.includes('/orders') ||
+      notif?.title?.includes('New Order') ||
+      notif?.title?.includes('Order Received') ||
+      notif?.title?.startsWith('Order ') ||
+      notif?.message?.includes('new order') ||
+      notif?.message?.includes('order #') ||
+      notif?.title?.includes('NE-ORD-') ||
+      notif?.message?.includes('NE-ORD-') ||
+      notif?.title?.includes('NE-202') ||
+      notif?.message?.includes('NE-202');
+
+    if (isOrderNotice) {
+      let orderIdToUse = oid;
+      if (!orderIdToUse && rawActionUrl) {
+        if (rawActionUrl.includes('/orders/')) {
+          orderIdToUse = rawActionUrl.split('/orders/')[1]?.split(/[?#]/)[0];
+        } else if (rawActionUrl.includes('orderId=')) {
+          orderIdToUse = new URLSearchParams(rawActionUrl.split('?')[1]).get('orderId');
+        }
+      }
+
+      const orderNum =
+        notif?.data?.orderNumber ||
+        notif?.title?.match(/NE-(?:ORD-)?\d+-\d+/)?.[0] ||
+        notif?.message?.match(/NE-(?:ORD-)?\d+-\d+/)?.[0];
+
+      if (role === 'SELLER') {
+        if (orderIdToUse && orderIdToUse !== 'undefined') {
+          return `/seller/orders?orderId=${orderIdToUse}`;
+        }
+        if (orderNum) {
+          return `/seller/orders?orderNumber=${encodeURIComponent(orderNum)}`;
+        }
+        return '/seller/orders';
+      }
+
+      if (role === 'ADMIN') {
+        if (orderIdToUse && orderIdToUse !== 'undefined') {
+          return `/admin/orders?orderId=${orderIdToUse}`;
+        }
+        if (orderNum) {
+          return `/admin/orders?orderNumber=${encodeURIComponent(orderNum)}`;
+        }
+        return '/admin/orders';
+      }
+
+      return orderIdToUse ? `/orders/${orderIdToUse}` : '/orders';
+    }
+
+    // 3. Seller Verification / Onboarding / Credentials
     const sid =
       notif?.data?.sellerId ||
       notif?.metadata?.sellerId ||
       (notif?.entityModel === 'User' ? notif?.entityId : null) ||
-      (notif?.actionUrl?.includes('sellerId=')
-        ? new URLSearchParams(notif.actionUrl.split('?')[1]).get('sellerId')
+      (rawActionUrl?.includes('sellerId=')
+        ? new URLSearchParams(rawActionUrl.split('?')[1]).get('sellerId')
         : null);
 
     const isSellerNotice =
       Boolean(sid) ||
-      notif?.actionUrl?.includes('/admin/sellers') ||
+      rawActionUrl?.includes('/admin/sellers') ||
       notif?.title?.includes('Document') ||
       notif?.title?.includes('Seller') ||
       notif?.title?.includes('Legal') ||
@@ -270,13 +336,13 @@ export const NotificationCenter = ({
       if (role === 'SELLER') return '/seller/dashboard';
     }
 
-    // 3. Fallback to generic actionUrl if provided and safe
-    if (notif?.actionUrl) {
-      if (notif.actionUrl.startsWith('/admin/complaints/')) {
-        const id = notif.actionUrl.split('/').pop();
+    // 4. Fallback to generic actionUrl if provided and safe
+    if (rawActionUrl) {
+      if (rawActionUrl.startsWith('/admin/complaints/')) {
+        const id = rawActionUrl.split('/').pop();
         return `/admin/support?id=${id}`;
       }
-      return notif.actionUrl;
+      return rawActionUrl;
     }
 
     return null;
@@ -421,6 +487,16 @@ export const NotificationCenter = ({
                                     notif.message?.includes('credential') ||
                                     notif.message?.includes('verification'))
                                 ? 'Inspect Seller Dossier'
+                                : role === 'SELLER' &&
+                                  (notif.data?.orderId ||
+                                    notif.type === 'NEW_ORDER' ||
+                                    notif.title?.includes('Order') ||
+                                    notif.message?.includes('new order') ||
+                                    notif.title?.includes('NE-202') ||
+                                    notif.message?.includes('NE-202') ||
+                                    notif.title?.includes('NE-ORD-') ||
+                                    notif.message?.includes('NE-ORD-'))
+                                ? 'Inspect Order Details'
                                 : 'Open Details'}
                             </span>
                             <ArrowRight className="w-3.5 h-3.5" />

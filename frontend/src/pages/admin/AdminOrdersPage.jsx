@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { useSearchParams, useParams } from 'react-router-dom';
 import {
   ShoppingBag,
   Store,
@@ -61,6 +62,12 @@ export const AdminOrdersPage = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
 
+  // URL Deep-Linking for Notification Navigation
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { id: paramOrderId } = useParams();
+  const targetOrderId = paramOrderId || searchParams.get('orderId') || searchParams.get('id');
+  const targetOrderNumber = searchParams.get('orderNumber');
+
   // Fetch Platform Orders
   const fetchOrders = useCallback(async (isRefresh = false) => {
     try {
@@ -109,6 +116,43 @@ export const AdminOrdersPage = () => {
   useEffect(() => {
     fetchOrders();
   }, []);
+
+  // Auto-open deep-linked order when navigated from notification
+  useEffect(() => {
+    if (!targetOrderId && !targetOrderNumber) return;
+
+    if (orders.length > 0) {
+      const match = orders.find(
+        (o) =>
+          (targetOrderId && (o._id === targetOrderId || o.orderNumber === targetOrderId)) ||
+          (targetOrderNumber && o.orderNumber === targetOrderNumber)
+      );
+      if (match) {
+        setSelectedOrder(match);
+        setDrawerOpen(true);
+        return;
+      }
+    }
+
+    if (targetOrderId && !selectedOrder) {
+      let isSubscribed = true;
+      adminService
+        .getOrderDetails(targetOrderId)
+        .then((res) => {
+          if (!isSubscribed) return;
+          const ord = res?.order || res?.data?.order || res?.data || res;
+          if (ord && (ord._id || ord.orderNumber)) {
+            setSelectedOrder(ord);
+            setDrawerOpen(true);
+          }
+        })
+        .catch(() => {});
+
+      return () => {
+        isSubscribed = false;
+      };
+    }
+  }, [orders, targetOrderId, targetOrderNumber]);
 
   // Copy helper
   const handleCopyId = (id) => {
@@ -556,7 +600,16 @@ export const AdminOrdersPage = () => {
       {/* 5. Order Transaction Dossier (Slide-in Drawer) */}
       <AdminDetailDrawer
         isOpen={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
+        onClose={() => {
+          setDrawerOpen(false);
+          if (targetOrderId || targetOrderNumber) {
+            const next = new URLSearchParams(searchParams);
+            next.delete('orderId');
+            next.delete('orderNumber');
+            next.delete('id');
+            setSearchParams(next, { replace: true });
+          }
+        }}
         eyebrow="TRANSACTION DOSSIER"
         title={selectedOrder?.orderNumber || 'Order Details'}
         subtitle={`System Document ID: ${selectedOrder?._id || 'N/A'}`}

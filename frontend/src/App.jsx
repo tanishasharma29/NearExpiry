@@ -155,6 +155,7 @@ export default function App() {
                 <Route path="branches" element={<SellerBranchesPage />} />
                 <Route path="alerts" element={<SellerExpiryAlertsPage />} />
                 <Route path="orders" element={<SellerOrdersPage />} />
+                <Route path="orders/:id" element={<SellerOrdersPage />} />
                 <Route path="billing" element={<SellerBillingPage />} />
                 <Route path="complaints" element={<SellerComplaintsPage />} />
                 <Route path="analytics" element={<SellerAnalyticsPage />} />
@@ -180,6 +181,7 @@ export default function App() {
                 <Route path="pricing" element={<AdminPricingPage />} />
                 <Route path="inventory" element={<AdminInventoryPage />} />
                 <Route path="orders" element={<AdminOrdersPage />} />
+                <Route path="orders/:id" element={<AdminOrdersPage />} />
                 <Route path="support" element={<AdminSupportPage />} />
                 <Route path="support/:id" element={<AdminSupportPage />} />
                 <Route path="complaints" element={<Navigate to="/admin/support" replace />} />

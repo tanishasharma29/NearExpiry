@@ -165,7 +165,7 @@ export const notifySellerNewOrder = async ({ sellerId, order, store }) => {
     },
     dedupKey,
     actionText: 'View Order',
-    actionUrl: `https://nearexpiry.app/seller/orders/${order._id}`,
+    actionUrl: `/seller/orders?orderId=${order._id}`,
   });
 };
 
@@ -190,7 +190,7 @@ export const notifySellerStoreApproved = async ({ sellerId, storeName }) => {
     },
     dedupKey,
     actionText: 'Access Store Dashboard',
-    actionUrl: 'https://nearexpiry.app/seller/dashboard',
+    actionUrl: '/seller/dashboard',
   });
 };
 
@@ -220,7 +220,7 @@ export const notifySellerStoreRejected = async ({ sellerId, storeName, rejection
     },
     dedupKey,
     actionText: 'Review Application',
-    actionUrl: 'https://nearexpiry.app/seller/dashboard',
+    actionUrl: '/seller/dashboard',
   });
 };
 
@@ -282,7 +282,7 @@ export const notifyCustomerOrderConfirmed = async ({ customerId, order, store })
     },
     dedupKey,
     actionText: 'Track Order',
-    actionUrl: `https://nearexpiry.app/orders/${order._id}/track`,
+    actionUrl: `/orders/${order._id}`,
   });
 };
 
@@ -308,7 +308,7 @@ export const notifyCustomerOrderStatus = async ({ customerId, order, newStatus, 
     },
     dedupKey,
     actionText: 'View Status',
-    actionUrl: `https://nearexpiry.app/orders/${order._id}/track`,
+    actionUrl: `/orders/${order._id}`,
   });
 };
 
@@ -338,7 +338,7 @@ export const notifyCustomerPickupReady = async ({ customerId, order, store }) =>
     },
     dedupKey,
     actionText: 'Get Pickup Directions',
-    actionUrl: `https://nearexpiry.app/orders/${order._id}/pickup`,
+    actionUrl: `/orders/${order._id}`,
   });
 };
 
