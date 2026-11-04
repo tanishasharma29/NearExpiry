@@ -321,3 +321,4 @@ NearExpiry is open-source software built for educational, community, and commerc
 ```text
 Designed with ❤️ for zero food waste and greener local communities.
 ```
+
