@@ -215,58 +215,74 @@ export const AboutUsPage = () => {
         {/* ========================================================
             SECTION 2 — IMPACT / VALUE CARDS (4 Horizontal Cards)
             ======================================================== */}
-        <section className="pt-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        <section className="pt-2 sm:pt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 lg:gap-5">
             {/* Card 1: Multiple Categories */}
-            <div className="group bg-white p-6 rounded-2xl border border-gray-100/90 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
-                <Store className="w-6 h-6" />
+            <div className="group bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 px-3.5 py-2.5 sm:p-5 shadow-xs sm:shadow-sm border-l-4 border-l-emerald-500 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-1 sm:mb-2">
+                  <h3 className="font-bold text-xs sm:text-base text-gray-900 group-hover:text-emerald-700 transition-colors leading-tight">
+                    Multiple Categories
+                  </h3>
+                  <div className="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 flex-shrink-0">
+                    <Store className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5" />
+                  </div>
+                </div>
+                <p className="text-[11px] sm:text-xs text-gray-500 leading-relaxed font-normal">
+                  Groceries, personal care, medicine, daily essentials and more.
+                </p>
               </div>
-              <h3 className="font-bold text-base text-gray-900 mb-1.5 group-hover:text-emerald-700 transition-colors">
-                Multiple Categories
-              </h3>
-              <p className="text-xs text-gray-500 leading-relaxed font-normal">
-                Groceries, personal care, medicine, daily essentials and more.
-              </p>
             </div>
 
             {/* Card 2: Less Product Waste */}
-            <div className="group bg-white p-6 rounded-2xl border border-gray-100/90 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300">
-              <div className="w-12 h-12 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
-                <RefreshCw className="w-6 h-6" />
+            <div className="group bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 px-3.5 py-2.5 sm:p-5 shadow-xs sm:shadow-sm border-l-4 border-l-green-500 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-1 sm:mb-2">
+                  <h3 className="font-bold text-xs sm:text-base text-gray-900 group-hover:text-green-700 transition-colors leading-tight">
+                    Less Product Waste
+                  </h3>
+                  <div className="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-green-50 text-green-600 border border-green-100 flex-shrink-0">
+                    <RefreshCw className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5" />
+                  </div>
+                </div>
+                <p className="text-[11px] sm:text-xs text-gray-500 leading-relaxed font-normal">
+                  Giving good products a second chance before disposal.
+                </p>
               </div>
-              <h3 className="font-bold text-base text-gray-900 mb-1.5 group-hover:text-green-700 transition-colors">
-                Less Product Waste
-              </h3>
-              <p className="text-xs text-gray-500 leading-relaxed font-normal">
-                Giving good products a second chance before disposal.
-              </p>
             </div>
 
             {/* Card 3: Better Deals */}
-            <div className="group bg-white p-6 rounded-2xl border border-gray-100/90 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300">
-              <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
-                <Tag className="w-6 h-6" />
+            <div className="group bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 px-3.5 py-2.5 sm:p-5 shadow-xs sm:shadow-sm border-l-4 border-l-amber-500 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-1 sm:mb-2">
+                  <h3 className="font-bold text-xs sm:text-base text-gray-900 group-hover:text-amber-700 transition-colors leading-tight">
+                    Better Deals
+                  </h3>
+                  <div className="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-amber-50 text-amber-600 border border-amber-100 flex-shrink-0">
+                    <Tag className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5" />
+                  </div>
+                </div>
+                <p className="text-[11px] sm:text-xs text-gray-500 leading-relaxed font-normal">
+                  Quality products at dynamically discounted affordable prices.
+                </p>
               </div>
-              <h3 className="font-bold text-base text-gray-900 mb-1.5 group-hover:text-amber-700 transition-colors">
-                Better Deals
-              </h3>
-              <p className="text-xs text-gray-500 leading-relaxed font-normal">
-                Quality products at dynamically discounted affordable prices.
-              </p>
             </div>
 
             {/* Card 4: Support Local Sellers */}
-            <div className="group bg-white p-6 rounded-2xl border border-gray-100/90 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300">
-              <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
-                <Users className="w-6 h-6" />
+            <div className="group bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 px-3.5 py-2.5 sm:p-5 shadow-xs sm:shadow-sm border-l-4 border-l-blue-500 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-1 sm:mb-2">
+                  <h3 className="font-bold text-xs sm:text-base text-gray-900 group-hover:text-blue-700 transition-colors leading-tight">
+                    Support Local Sellers
+                  </h3>
+                  <div className="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-blue-50 text-blue-600 border border-blue-100 flex-shrink-0">
+                    <Users className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5" />
+                  </div>
+                </div>
+                <p className="text-[11px] sm:text-xs text-gray-500 leading-relaxed font-normal">
+                  Helping businesses recover value from surplus stock and inventory.
+                </p>
               </div>
-              <h3 className="font-bold text-base text-gray-900 mb-1.5 group-hover:text-blue-700 transition-colors">
-                Support Local Sellers
-              </h3>
-              <p className="text-xs text-gray-500 leading-relaxed font-normal">
-                Helping businesses recover value from surplus stock and inventory.
-              </p>
             </div>
           </div>
         </section>
@@ -372,47 +388,47 @@ export const AboutUsPage = () => {
           </div>
 
           {/* 4 Impact Cards Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
             {/* Card 1: Core Categories */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 text-center space-y-2">
-              <div className="w-10 h-10 mx-auto rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-                <Package className="w-5 h-5" />
+            <div className="bg-white p-3.5 sm:p-6 rounded-xl sm:rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 text-center space-y-1.5 sm:space-y-2">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 mx-auto rounded-lg sm:rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                <Package className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
-              <div className="text-3xl sm:text-4xl font-black text-gray-900 tracking-tight">3+</div>
-              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <div className="text-2xl sm:text-4xl font-black text-gray-900 tracking-tight">3+</div>
+              <div className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Core Categories
               </div>
             </div>
 
             {/* Card 2: Sellers & Distributors */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 text-center space-y-2">
-              <div className="w-10 h-10 mx-auto rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                <Users className="w-5 h-5" />
+            <div className="bg-white p-3.5 sm:p-6 rounded-xl sm:rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 text-center space-y-1.5 sm:space-y-2">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 mx-auto rounded-lg sm:rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <Users className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
-              <div className="text-3xl sm:text-4xl font-black text-emerald-700 tracking-tight">B2B+</div>
-              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <div className="text-2xl sm:text-4xl font-black text-emerald-700 tracking-tight">B2B+</div>
+              <div className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Sellers & Distributors
               </div>
             </div>
 
             {/* Card 3: Less Preventable Waste */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 text-center space-y-2">
-              <div className="w-10 h-10 mx-auto rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center">
-                <RefreshCw className="w-5 h-5" />
+            <div className="bg-white p-3.5 sm:p-6 rounded-xl sm:rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 text-center space-y-1.5 sm:space-y-2">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 mx-auto rounded-lg sm:rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center">
+                <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
-              <div className="text-3xl sm:text-4xl font-black text-teal-700 tracking-tight">Less</div>
-              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <div className="text-2xl sm:text-4xl font-black text-teal-700 tracking-tight">Less</div>
+              <div className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Preventable Waste
               </div>
             </div>
 
             {/* Card 4: Dates Shown Upfront */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 text-center space-y-2">
-              <div className="w-10 h-10 mx-auto rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
-                <Calendar className="w-5 h-5" />
+            <div className="bg-white p-3.5 sm:p-6 rounded-xl sm:rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 text-center space-y-1.5 sm:space-y-2">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 mx-auto rounded-lg sm:rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+                <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
-              <div className="text-3xl sm:text-4xl font-black text-rose-700 tracking-tight">Dates</div>
-              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <div className="text-2xl sm:text-4xl font-black text-rose-700 tracking-tight">Dates</div>
+              <div className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Shown Upfront
               </div>
             </div>
