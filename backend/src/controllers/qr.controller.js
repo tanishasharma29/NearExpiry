@@ -111,6 +111,7 @@ export const verifyPickupQr = asyncHandler(async (req, res) => {
   const auditContext = {
     ipAddress: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
     userAgent: req.headers['user-agent'] || 'unknown',
+    branchId: req.body.branchId || null,
   };
 
   const result = await verifyPickupQrService(req.body.token, req.user, auditContext);

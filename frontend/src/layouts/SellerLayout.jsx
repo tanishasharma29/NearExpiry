@@ -26,6 +26,7 @@ import {
   Sparkles,
   AlertTriangle,
   ArrowRight,
+  MapPin,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
@@ -45,6 +46,7 @@ const NAVIGATION_SECTIONS = [
       { label: 'Catalog Products', path: '/seller/products', icon: Package, requiresApproval: true },
       { label: 'FEFO Batches', path: '/seller/batches', icon: Layers, requiresApproval: true },
       { label: 'Inventory & Stock', path: '/seller/inventory', icon: Boxes, requiresApproval: true },
+      { label: 'Store Branches', path: '/seller/branches', icon: MapPin, requiresApproval: true },
     ],
   },
   {

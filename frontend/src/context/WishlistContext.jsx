@@ -5,12 +5,37 @@ import { useAuth } from './AuthContext';
 const WishlistContext = createContext(null);
 const GUEST_WISHLIST_KEY = 'nearexpiry_wishlist';
 
+const normalizeWishlistItem = (item) => {
+  if (!item) return null;
+  const productObj =
+    (item.product && typeof item.product === 'object' ? item.product : null) ||
+    (item.productId && typeof item.productId === 'object' ? item.productId : null) ||
+    (typeof item === 'object' && item.name ? item : null);
+
+  const prodId =
+    productObj?._id ||
+    (typeof item.productId === 'string' ? item.productId : null) ||
+    (typeof item.product === 'string' ? item.product : null) ||
+    item._id;
+
+  return {
+    ...item,
+    _id: item._id || prodId,
+    productId: productObj || prodId,
+    product: productObj || prodId,
+    targetDiscountPercentage: item.targetDiscountPercentage,
+    livePricingSummary: item.livePricingSummary,
+  };
+};
+
 export const WishlistProvider = ({ children }) => {
-  const { isAuthenticated, isCustomer } = useAuth();
+  const { user, isAuthenticated, isCustomer } = useAuth();
   const [wishlist, setWishlist] = useState(() => {
     try {
+      if (isAuthenticated && !isCustomer) return [];
       const saved = localStorage.getItem(GUEST_WISHLIST_KEY);
-      return saved ? JSON.parse(saved) : [];
+      const list = saved ? JSON.parse(saved) : [];
+      return Array.isArray(list) ? list.map(normalizeWishlistItem).filter(Boolean) : [];
     } catch {
       return [];
     }
@@ -18,29 +43,43 @@ export const WishlistProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
 
   const fetchWishlist = useCallback(async () => {
+    // 1. Non-customer authenticated accounts (SELLER, ADMIN) do not have a customer wishlist
+    if (isAuthenticated && !isCustomer) {
+      setWishlist([]);
+      return;
+    }
+
+    // 2. Authenticated Customer: fetch isolated server wishlist for this customer
     if (isAuthenticated && isCustomer) {
       try {
         setLoading(true);
         const data = await cartService.getWishlist();
-        const serverItems = data?.items || (Array.isArray(data) ? data : []);
+        const rawList = Array.isArray(data?.wishlist)
+          ? data.wishlist
+          : Array.isArray(data?.items)
+          ? data.items
+          : Array.isArray(data)
+          ? data
+          : [];
+        const serverItems = rawList.map(normalizeWishlistItem).filter(Boolean);
         setWishlist(serverItems);
-        try {
-          localStorage.setItem(GUEST_WISHLIST_KEY, JSON.stringify(serverItems));
-        } catch {}
       } catch (err) {
-        // Fallback to local items if offline
+        setWishlist([]);
       } finally {
         setLoading(false);
       }
-    } else {
-      try {
-        const saved = localStorage.getItem(GUEST_WISHLIST_KEY);
-        setWishlist(saved ? JSON.parse(saved) : []);
-      } catch {
-        setWishlist([]);
-      }
+      return;
     }
-  }, [isAuthenticated, isCustomer]);
+
+    // 3. Unauthenticated GUEST: load guest wishlist from localStorage
+    try {
+      const saved = localStorage.getItem(GUEST_WISHLIST_KEY);
+      const list = saved ? JSON.parse(saved) : [];
+      setWishlist(Array.isArray(list) ? list.map(normalizeWishlistItem).filter(Boolean) : []);
+    } catch {
+      setWishlist([]);
+    }
+  }, [user?._id, isAuthenticated, isCustomer]);
 
   useEffect(() => {
     fetchWishlist();
@@ -49,29 +88,31 @@ export const WishlistProvider = ({ children }) => {
   const addToWishlist = async (productOrId) => {
     const productId = typeof productOrId === 'string' ? productOrId : productOrId?._id;
     if (!productId) return;
+    const targetId = String(productId);
 
-    const itemObj =
-      typeof productOrId === 'object'
-        ? {
-            productId: productOrId,
-            _id: productId,
-            addedAt: new Date().toISOString(),
-          }
-        : {
-            productId: { _id: productId },
-            _id: productId,
-            addedAt: new Date().toISOString(),
-          };
+    const productObj = typeof productOrId === 'object' ? productOrId : { _id: productId };
+    const itemObj = normalizeWishlistItem({
+      _id: productId,
+      productId: productObj,
+      product: productObj,
+      addedAt: new Date().toISOString(),
+    });
 
     setWishlist((prev) => {
-      const exists = prev.some(
-        (it) => (it.productId?._id || it.productId || it._id) === productId
-      );
+      const exists = prev.some((it) => {
+        const pId =
+          (it.productId && typeof it.productId === 'object' ? it.productId._id : it.productId) ||
+          (it.product && typeof it.product === 'object' ? it.product._id : it.product) ||
+          it._id;
+        return String(pId) === targetId;
+      });
       if (exists) return prev;
       const updated = [itemObj, ...prev];
-      try {
-        localStorage.setItem(GUEST_WISHLIST_KEY, JSON.stringify(updated));
-      } catch {}
+      if (!isAuthenticated) {
+        try {
+          localStorage.setItem(GUEST_WISHLIST_KEY, JSON.stringify(updated));
+        } catch {}
+      }
       return updated;
     });
 
@@ -85,13 +126,22 @@ export const WishlistProvider = ({ children }) => {
   };
 
   const removeFromWishlist = async (productId) => {
+    if (!productId) return;
+    const targetId = String(productId);
+
     setWishlist((prev) => {
-      const updated = prev.filter(
-        (it) => (it.productId?._id || it.productId || it._id) !== productId
-      );
-      try {
-        localStorage.setItem(GUEST_WISHLIST_KEY, JSON.stringify(updated));
-      } catch {}
+      const updated = prev.filter((item) => {
+        const pId =
+          (item.productId && typeof item.productId === 'object' ? item.productId._id : item.productId) ||
+          (item.product && typeof item.product === 'object' ? item.product._id : item.product) ||
+          item._id;
+        return String(pId) !== targetId;
+      });
+      if (!isAuthenticated) {
+        try {
+          localStorage.setItem(GUEST_WISHLIST_KEY, JSON.stringify(updated));
+        } catch {}
+      }
       return updated;
     });
 
@@ -105,9 +155,15 @@ export const WishlistProvider = ({ children }) => {
   };
 
   const isInWishlist = (productId) => {
-    return wishlist.some(
-      (item) => (item.productId?._id || item.productId || item._id) === productId
-    );
+    if (!productId) return false;
+    const targetId = String(productId);
+    return wishlist.some((item) => {
+      const pId =
+        (item.productId && typeof item.productId === 'object' ? item.productId._id : item.productId) ||
+        (item.product && typeof item.product === 'object' ? item.product._id : item.product) ||
+        item._id;
+      return String(pId) === targetId;
+    });
   };
 
   const value = {

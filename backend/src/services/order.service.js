@@ -4,6 +4,8 @@ import { Order, ORDER_STATUS, FULFILLMENT_TYPES } from '../models/order.model.js
 import { Cart } from '../models/cart.model.js';
 import { Batch, BATCH_STATUS } from '../models/batch.model.js';
 import { Store } from '../models/store.model.js';
+import { Branch } from '../models/branch.model.js';
+import { ensureDefaultBranchForStore } from './branch.service.js';
 import { User, USER_ROLES } from '../models/user.model.js';
 import { InventoryAudit, INVENTORY_ACTION_TYPES } from '../models/inventory.model.js';
 import { ApiError } from '../utils/ApiError.js';
@@ -62,8 +64,54 @@ const checkReplicaSetSupport = () => {
  * - Clears customer's cart upon order confirmation.
  */
 export const createOrderService = async (customerId, payload, userActor) => {
-  // Step 1: Pre-flight checkout validation (never trust frontend prices)
-  const checkoutData = await validateCartForCheckoutService(customerId);
+  // Step 0: Branch resolution & validation
+  let selectedBranch = null;
+
+  if (payload.branchId) {
+    if (!mongoose.Types.ObjectId.isValid(payload.branchId)) {
+      throw new ApiError(400, 'Invalid Branch ID format.', 'INVALID_BRANCH_ID');
+    }
+    selectedBranch = await Branch.findById(payload.branchId);
+    if (!selectedBranch) {
+      throw new ApiError(404, 'Selected branch could not be found.', 'BRANCH_NOT_FOUND');
+    }
+    if (!selectedBranch.isActive) {
+      throw new ApiError(
+        400,
+        'Selected pickup branch is currently inactive. Please choose an active branch.',
+        'BRANCH_INACTIVE'
+      );
+    }
+  }
+
+  // Step 1: Pre-flight checkout validation with branch context (never trust frontend prices)
+  const checkoutData = await validateCartForCheckoutService(customerId, {
+    branchId: selectedBranch?._id,
+  });
+
+  // Verify explicitly selected branch belongs to fulfilling store
+  if (selectedBranch && selectedBranch.storeId.toString() !== checkoutData.storeId.toString()) {
+    throw new ApiError(
+      400,
+      'Selected branch does not belong to the fulfilling store.',
+      'BRANCH_STORE_MISMATCH'
+    );
+  }
+
+  // If no branch was explicitly selected, establish one deterministic legacy inventory fallback (the active primary branch)
+  if (!selectedBranch && checkoutData.storeId) {
+    selectedBranch = await Branch.findOne({
+      storeId: checkoutData.storeId,
+      isPrimary: true,
+      isActive: true,
+    });
+    if (!selectedBranch) {
+      const storeDoc = await Store.findById(checkoutData.storeId);
+      if (storeDoc) {
+        selectedBranch = await ensureDefaultBranchForStore(storeDoc);
+      }
+    }
+  }
 
   if (payload.fulfillmentType === FULFILLMENT_TYPES.LOCAL_DELIVERY && !payload.deliveryAddress?.street) {
     throw new ApiError(400, 'Delivery address is required for local delivery.', 'DELIVERY_ADDRESS_REQUIRED');
@@ -85,7 +133,8 @@ export const createOrderService = async (customerId, payload, userActor) => {
     // Step 2: Atomic Inventory Deduction across all FEFO Batch Allocations
     for (const item of checkoutData.items) {
       for (const alloc of item.batchAllocations) {
-        // Atomic conditional check ensuring batch has sufficient stock and is not expired
+        // Atomic conditional check ensuring batch has sufficient stock, is not expired,
+        // and is strictly assigned to the checkout branch (or primary + legacy fallback)
         const query = {
           _id: alloc.batchId,
           quantity: { $gte: alloc.allocatedQuantity },
@@ -95,6 +144,17 @@ export const createOrderService = async (customerId, payload, userActor) => {
           },
         };
 
+        if (selectedBranch) {
+          if (selectedBranch.isPrimary) {
+            query.$or = [
+              { branchId: selectedBranch._id },
+              { branchId: null },
+            ];
+          } else {
+            query.branchId = selectedBranch._id;
+          }
+        }
+
         const currentBatch = await Batch.findById(alloc.batchId);
         if (!currentBatch || currentBatch.quantity < alloc.allocatedQuantity) {
           throw new ApiError(
@@ -102,6 +162,20 @@ export const createOrderService = async (customerId, payload, userActor) => {
             `Insufficient stock or lot expired on batch [${alloc.batchNumber}]. Available: ${currentBatch?.quantity || 0}, requested: ${alloc.allocatedQuantity}.`,
             'INSUFFICIENT_STOCK_OR_EXPIRED'
           );
+        }
+
+        if (selectedBranch) {
+          const isEligibleBranch = selectedBranch.isPrimary
+            ? !currentBatch.branchId || currentBatch.branchId.toString() === selectedBranch._id.toString()
+            : currentBatch.branchId && currentBatch.branchId.toString() === selectedBranch._id.toString();
+
+          if (!isEligibleBranch) {
+            throw new ApiError(
+              409,
+              `Stock conflict or batch reassignment detected on batch [${alloc.batchNumber}]. The batch is no longer available at this branch.`,
+              'CONCURRENT_CHECKOUT_CONFLICT'
+            );
+          }
         }
 
         const newQty = currentBatch.quantity - alloc.allocatedQuantity;
@@ -174,6 +248,40 @@ export const createOrderService = async (customerId, payload, userActor) => {
       orderNumber,
       customerId,
       storeId: checkoutData.storeId,
+      branchId: selectedBranch?._id || null,
+      pickupBranch: selectedBranch
+        ? {
+            name: selectedBranch.name,
+            address: {
+              street: selectedBranch.address?.street || '',
+              locality: selectedBranch.address?.locality || '',
+              city: selectedBranch.address?.city || '',
+              state: selectedBranch.address?.state || '',
+              pincode: selectedBranch.address?.pincode || '',
+              landmark: selectedBranch.address?.landmark || '',
+            },
+            contactPhone: selectedBranch.contactPhone || '',
+            contactEmail: selectedBranch.contactEmail || '',
+            operatingHours: selectedBranch.operatingHours || '09:00 AM - 09:00 PM',
+            latitude: selectedBranch.latitude || null,
+            longitude: selectedBranch.longitude || null,
+          }
+        : {
+            name: checkoutData.storeName || '',
+            address: {
+              street: '',
+              locality: '',
+              city: '',
+              state: '',
+              pincode: '',
+              landmark: '',
+            },
+            contactPhone: '',
+            contactEmail: '',
+            operatingHours: '09:00 AM - 09:00 PM',
+            latitude: null,
+            longitude: null,
+          },
       items: checkoutData.items.map((item) => ({
         productId: item.productId,
         productName: item.productName,
@@ -239,6 +347,7 @@ export const createOrderService = async (customerId, payload, userActor) => {
     // Step 4: Record Immutable Inventory Audit Entries for Every Allocated Batch
     const auditEntries = reservedDeductions.map((ded) => ({
       batchId: ded.batchId,
+      branchId: selectedBranch?._id || null,
       productId: ded.productId,
       storeId: ded.storeId,
       batchNumber: ded.batchNumber,
@@ -344,29 +453,71 @@ export const createOrderService = async (customerId, payload, userActor) => {
     if (session) {
       await session.abortTransaction();
     } else {
-      // Manual Compensation Rollback for standalone MongoDB
+      // Manual Compensation Rollback for standalone MongoDB with isolated per-deduction try-catch
+      const failedCompensations = [];
       for (const ded of reservedDeductions) {
-        const restored = await Batch.findByIdAndUpdate(
-          ded.batchId,
-          {
-            $inc: {
-              quantity: ded.quantity,
-              soldQuantity: -ded.quantity,
+        try {
+          const restored = await Batch.findByIdAndUpdate(
+            ded.batchId,
+            {
+              $inc: {
+                quantity: ded.quantity,
+                soldQuantity: -ded.quantity,
+              },
             },
-          },
-          { new: true }
-        );
-        if (restored && restored.quantity > 0 && restored.status === BATCH_STATUS.OUT_OF_STOCK) {
-          const restoredStatus = computeBatchStatus(restored.remainingDays, restored.quantity);
-          const restoredPurchasable = isBatchPurchasable(
-            restored.remainingDays,
-            restored.quantity,
-            restoredStatus
+            { new: true }
           );
-          await Batch.findByIdAndUpdate(ded.batchId, {
-            $set: { status: restoredStatus, isPurchasable: restoredPurchasable },
+          if (restored && restored.quantity > 0 && restored.status === BATCH_STATUS.OUT_OF_STOCK) {
+            const restoredStatus = computeBatchStatus(restored.remainingDays, restored.quantity);
+            const restoredPurchasable = isBatchPurchasable(
+              restored.remainingDays,
+              restored.quantity,
+              restoredStatus
+            );
+            await Batch.findByIdAndUpdate(ded.batchId, {
+              $set: { status: restoredStatus, isPurchasable: restoredPurchasable },
+            });
+          }
+        } catch (compErr) {
+          console.error(
+            `[Compensation Failure] Failed to restore batch deduction [${ded.batchNumber || ded.batchId}]:`,
+            compErr.message
+          );
+          failedCompensations.push({
+            batchId: ded.batchId,
+            batchNumber: ded.batchNumber,
+            quantity: ded.quantity,
+            error: compErr.message,
           });
+          // Record compensation failure in InventoryAudit for reconciliation
+          try {
+            await InventoryAudit.create({
+              batchId: ded.batchId,
+              branchId: selectedBranch?._id || null,
+              productId: ded.productId,
+              storeId: ded.storeId,
+              batchNumber: ded.batchNumber,
+              actionType: INVENTORY_ACTION_TYPES.STOCK_ADJUSTMENT,
+              quantityChange: 0,
+              previousQuantity: ded.newQuantity,
+              newQuantity: ded.newQuantity,
+              previousReserved: 0,
+              newReserved: 0,
+              batchStatusAfter: ded.batchStatusAfter,
+              referenceId: orderNumber,
+              reason: `CRITICAL: Compensation restoration failed during order rollback: ${compErr.message}. Quantity pending restore: ${ded.quantity}`,
+              performedBy: userActor?._id || customerId,
+              performedByRole: userActor?.role || 'CUSTOMER',
+            });
+          } catch (auditErr) {
+            console.error('[Compensation Failure] Could not write audit log for failed restoration:', auditErr);
+          }
         }
+      }
+      if (failedCompensations.length > 0) {
+        console.error(
+          `[Compensation Alert] Order [${orderNumber}] rollback completed with ${failedCompensations.length} failed restoration(s). Immediate manual reconciliation required.`
+        );
       }
     }
     throw error;
@@ -432,9 +583,38 @@ export const getSellerOrdersService = async (sellerUser, query = {}) => {
     filter.status = query.status;
   }
 
+  // Branch filtering
+  if (query.branchId && query.branchId !== 'ALL') {
+    if (query.branchId === 'LEGACY' || query.branchId === 'null') {
+      filter.branchId = null;
+    } else {
+      if (!mongoose.Types.ObjectId.isValid(query.branchId)) {
+        throw new ApiError(400, 'Invalid branch ID format.', 'INVALID_BRANCH_ID');
+      }
+      const branchDoc = await Branch.findById(query.branchId);
+      if (!branchDoc) {
+        throw new ApiError(404, 'Branch not found.', 'BRANCH_NOT_FOUND');
+      }
+      if (branchDoc.storeId.toString() !== store._id.toString()) {
+        throw new ApiError(
+          403,
+          'Forbidden: You can only view orders for your own store branches.',
+          'FORBIDDEN'
+        );
+      }
+      if (branchDoc.isPrimary) {
+        // Deterministic legacy fallback: primary branch includes both its assigned orders and unassigned legacy orders
+        filter.$or = [{ branchId: branchDoc._id }, { branchId: null }];
+      } else {
+        filter.branchId = branchDoc._id;
+      }
+    }
+  }
+
   const [orders, total] = await Promise.all([
     Order.find(filter)
       .populate('customerId', 'name email phone')
+      .populate('branchId', 'name address contactPhone operatingHours isPrimary')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -468,6 +648,7 @@ export const getOrderByIdService = async (orderId, requesterUser) => {
 
   const order = await Order.findById(orderId)
     .populate('storeId', 'storeName slug address contactPhone ownerId')
+    .populate('branchId', 'name address contactPhone operatingHours isPrimary')
     .populate('customerId', 'name email phone')
     .lean();
 
@@ -505,6 +686,8 @@ export const trackOrderService = async (orderId, requesterUser) => {
       address: order.storeId.address,
       contactPhone: order.storeId.contactPhone,
     },
+    branchId: order.branchId || null,
+    pickupBranch: order.pickupBranch || null,
     statusTimeline: order.statusTimeline,
     pricingSummary: order.pricingSummary,
     itemCount: order.items.length,
@@ -690,6 +873,7 @@ export const cancelOrderService = async (orderId, userActor, reason) => {
 
         await InventoryAudit.create({
           batchId: batch._id,
+          branchId: order.branchId || batch.branchId || null,
           productId: item.productId,
           storeId: order.storeId._id,
           batchNumber: batch.batchNumber,
@@ -727,6 +911,7 @@ export const cancelOrderService = async (orderId, userActor, reason) => {
 
         await InventoryAudit.create({
           batchId: batch._id,
+          branchId: order.branchId || batch.branchId || null,
           productId: item.productId,
           storeId: order.storeId._id,
           batchNumber: batch.batchNumber,

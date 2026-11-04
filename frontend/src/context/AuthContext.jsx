@@ -48,6 +48,8 @@ export const AuthProvider = ({ children }) => {
       setToken(null);
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      localStorage.removeItem('nearexpiry_cart');
+      localStorage.removeItem('nearexpiry_wishlist');
     };
     window.addEventListener('auth:unauthorized', handleUnauthorized);
     return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
@@ -60,6 +62,10 @@ export const AuthProvider = ({ children }) => {
     setUser(receivedUser);
     localStorage.setItem('token', receivedToken);
     localStorage.setItem('user', JSON.stringify(receivedUser));
+    if (receivedUser?.role !== 'CUSTOMER') {
+      localStorage.removeItem('nearexpiry_cart');
+      localStorage.removeItem('nearexpiry_wishlist');
+    }
     return receivedUser;
   };
 
@@ -90,6 +96,8 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('nearexpiry_cart');
+    localStorage.removeItem('nearexpiry_wishlist');
 
     // Fire and forget server logout only if token was present
     if (currentToken) {

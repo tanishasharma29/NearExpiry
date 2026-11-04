@@ -20,6 +20,7 @@ import adminRoutes from './admin.routes.js';
 import analyticsRoutes from './analytics.routes.js';
 import billingRoutes from './billing.routes.js';
 import complaintRoutes from './complaint.routes.js';
+import branchRoutes from './branch.routes.js';
 
 const router = Router();
 
@@ -44,5 +45,6 @@ router.use('/admin', adminRoutes);
 router.use('/analytics', analyticsRoutes);
 router.use('/billing', billingRoutes);
 router.use('/complaints', complaintRoutes);
+router.use('/branches', branchRoutes);
 
 export default router;

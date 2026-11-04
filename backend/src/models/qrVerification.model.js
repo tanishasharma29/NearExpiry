@@ -16,9 +16,10 @@ const scanHistorySchema = new mongoose.Schema(
   {
     scannedAt: { type: Date, default: Date.now },
     scannedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    branchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', default: null },
     ipAddress: { type: String, default: 'unknown' },
     userAgent: { type: String, default: 'unknown' },
-    result: { type: String, required: true }, // 'SUCCESS', 'REVOKED', 'INVALID', 'EXPIRED', 'ALREADY_USED', 'STORE_MISMATCH', 'NOT_READY'
+    result: { type: String, required: true }, // 'SUCCESS', 'REVOKED', 'INVALID', 'EXPIRED', 'ALREADY_USED', 'STORE_MISMATCH', 'NOT_READY', 'BRANCH_MISMATCH', 'ORDER_UPDATE_FAILED'
     verificationStatus: { type: String, default: null },
     notes: { type: String, default: '' },
   },
@@ -66,6 +67,12 @@ const qrVerificationSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Store',
       required: true,
+      index: true,
+    },
+    branchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Branch',
+      default: null,
       index: true,
     },
     tokenNonce: {

@@ -282,21 +282,24 @@ export const OrderDetailsPage = () => {
                 <h2 className="text-lg font-black text-gray-900">Self-Pickup Counter Order</h2>
                 <p className="text-xs text-gray-600 mt-0.5">
                   Pick up at {order.storeId?.storeName || 'Neighborhood Store'}
+                  {order.pickupBranch?.name ? ` — ${order.pickupBranch.name}` : ''}
                 </p>
-                {order.storeId?.address && (
+                {(order.pickupBranch?.address || order.storeId?.address) && (
                   <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-1">
                     <MapPin className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                     <span>
-                      {typeof order.storeId.address === 'object'
+                      {order.pickupBranch?.address?.street
+                        ? `${order.pickupBranch.address.street}, ${order.pickupBranch.address.locality ? `${order.pickupBranch.address.locality}, ` : ''}${order.pickupBranch.address.city || ''} ${order.pickupBranch.address.pincode ? `(${order.pickupBranch.address.pincode})` : ''}`
+                        : typeof order.storeId?.address === 'object'
                         ? `${order.storeId.address.street || ''}, ${order.storeId.address.city || ''}`
-                        : order.storeId.address}
+                        : order.storeId?.address}
                     </span>
                   </div>
                 )}
-                {order.storeId?.contactPhone && (
+                {(order.pickupBranch?.phone || order.storeId?.contactPhone) && (
                   <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5">
                     <Phone className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                    <span>{order.storeId.contactPhone}</span>
+                    <span>{order.pickupBranch?.phone || order.storeId.contactPhone}</span>
                   </div>
                 )}
               </div>
@@ -379,7 +382,7 @@ export const OrderDetailsPage = () => {
                 </div>
 
                 <h3 className="font-bold text-gray-900 text-sm">
-                  Show this QR at {order.storeId?.storeName || 'the store'} counter
+                  Show this QR at {order.pickupBranch?.name || order.storeId?.storeName || 'the store'} counter
                 </h3>
 
                 <p className="text-xs text-gray-600 leading-relaxed">

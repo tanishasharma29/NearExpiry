@@ -142,9 +142,12 @@ export const normalizeCartData = (cartData) => {
 };
 
 export const CartProvider = ({ children }) => {
-  const { isAuthenticated, isCustomer } = useAuth();
+  const { user, isAuthenticated, isCustomer } = useAuth();
   const [cart, setCart] = useState(() => {
     try {
+      if (isAuthenticated && !isCustomer) {
+        return { items: [], pricingSummary: { subtotal: 0, discounts: 0, finalTotal: 0 } };
+      }
       const saved = localStorage.getItem(GUEST_CART_KEY);
       return saved
         ? normalizeCartData(JSON.parse(saved))
@@ -157,30 +160,41 @@ export const CartProvider = ({ children }) => {
   const [error, setError] = useState(null);
 
   const fetchCart = useCallback(async () => {
+    // 1. Logged in as non-customer (SELLER, ADMIN): cart must always be empty
+    if (isAuthenticated && !isCustomer) {
+      setCart({ items: [], pricingSummary: { subtotal: 0, discounts: 0, finalTotal: 0 } });
+      setError(null);
+      return;
+    }
+
+    // 2. Logged in as CUSTOMER: fetch server cart for this customer
     if (isAuthenticated && isCustomer) {
       try {
         setLoading(true);
         const data = await cartService.getCart();
         const normalized = normalizeCartData(data);
         setCart(normalized);
-        try {
-          localStorage.setItem(GUEST_CART_KEY, JSON.stringify(normalized));
-        } catch {}
         setError(null);
       } catch (err) {
         setError(err?.message || 'Failed to fetch cart');
       } finally {
         setLoading(false);
       }
-    } else {
-      try {
-        const saved = localStorage.getItem(GUEST_CART_KEY);
-        if (saved) {
-          setCart(normalizeCartData(JSON.parse(saved)));
-        }
-      } catch {}
+      return;
     }
-  }, [isAuthenticated, isCustomer]);
+
+    // 3. Unauthenticated GUEST: load guest cart from localStorage
+    try {
+      const saved = localStorage.getItem(GUEST_CART_KEY);
+      if (saved) {
+        setCart(normalizeCartData(JSON.parse(saved)));
+      } else {
+        setCart({ items: [], pricingSummary: { subtotal: 0, discounts: 0, finalTotal: 0 } });
+      }
+    } catch {
+      setCart({ items: [], pricingSummary: { subtotal: 0, discounts: 0, finalTotal: 0 } });
+    }
+  }, [user?._id, isAuthenticated, isCustomer]);
 
   useEffect(() => {
     fetchCart();
@@ -254,9 +268,11 @@ export const CartProvider = ({ children }) => {
         items: updatedItems,
       });
 
-      try {
-        localStorage.setItem(GUEST_CART_KEY, JSON.stringify(newCart));
-      } catch {}
+      if (!isAuthenticated) {
+        try {
+          localStorage.setItem(GUEST_CART_KEY, JSON.stringify(newCart));
+        } catch {}
+      }
       return newCart;
     });
 
@@ -266,12 +282,9 @@ export const CartProvider = ({ children }) => {
         const data = await cartService.addItem(productId, quantity);
         const normalized = normalizeCartData(data);
         setCart(normalized);
-        try {
-          localStorage.setItem(GUEST_CART_KEY, JSON.stringify(normalized));
-        } catch {}
         return normalized;
       } catch (err) {
-        console.warn('Backend cart add error (preserved in local storage):', err);
+        console.warn('Backend cart add error:', err);
       }
     }
   };
@@ -302,9 +315,11 @@ export const CartProvider = ({ children }) => {
         items: updatedItems,
       });
 
-      try {
-        localStorage.setItem(GUEST_CART_KEY, JSON.stringify(newCart));
-      } catch {}
+      if (!isAuthenticated) {
+        try {
+          localStorage.setItem(GUEST_CART_KEY, JSON.stringify(newCart));
+        } catch {}
+      }
       return newCart;
     });
 
@@ -332,9 +347,11 @@ export const CartProvider = ({ children }) => {
         items: updatedItems,
       });
 
-      try {
-        localStorage.setItem(GUEST_CART_KEY, JSON.stringify(newCart));
-      } catch {}
+      if (!isAuthenticated) {
+        try {
+          localStorage.setItem(GUEST_CART_KEY, JSON.stringify(newCart));
+        } catch {}
+      }
       return newCart;
     });
 
@@ -357,7 +374,7 @@ export const CartProvider = ({ children }) => {
     };
     setCart(emptyCart);
     try {
-      localStorage.setItem(GUEST_CART_KEY, JSON.stringify(emptyCart));
+      localStorage.removeItem(GUEST_CART_KEY);
     } catch {}
 
     if (isAuthenticated && isCustomer) {

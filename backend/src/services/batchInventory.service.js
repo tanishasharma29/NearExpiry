@@ -7,6 +7,8 @@ import { Batch, BATCH_STATUS } from '../models/batch.model.js';
 import { InventoryAudit, INVENTORY_ACTION_TYPES } from '../models/inventory.model.js';
 import { Product } from '../models/product.model.js';
 import { Store } from '../models/store.model.js';
+import { Branch } from '../models/branch.model.js';
+import { Order, ORDER_STATUS } from '../models/order.model.js';
 import { USER_ROLES } from '../models/user.model.js';
 import { Wishlist } from '../models/wishlist.model.js';
 import { notifyCustomerWishlistAvailability } from './notification.service.js';
@@ -116,13 +118,57 @@ export const createBatchService = async (sellerUser, payload) => {
     );
   }
 
-  // Check duplicate batchNumber within business scope (storeId + productId + batchNumber)
+  // Verify & Resolve Target Branch (if specified or default to active primary branch)
+  let assignedBranchId = null;
+  if (payload.branchId) {
+    if (!mongoose.Types.ObjectId.isValid(payload.branchId)) {
+      throw new ApiError(400, 'Invalid branch ID format.', 'INVALID_BRANCH_ID');
+    }
+    const branch = await Branch.findById(payload.branchId);
+    if (!branch) {
+      throw new ApiError(404, 'Selected branch not found.', 'BRANCH_NOT_FOUND');
+    }
+    if (
+      branch.storeId.toString() !== store._id.toString() ||
+      branch.sellerId.toString() !== sellerUser._id.toString()
+    ) {
+      throw new ApiError(
+        403,
+        'Forbidden: You can only allocate inventory batches to branches belonging to your own store.',
+        'FORBIDDEN_BRANCH_OWNERSHIP'
+      );
+    }
+    if (!branch.isActive) {
+      throw new ApiError(
+        400,
+        'Cannot allocate batches to an inactive branch. Please activate the branch first.',
+        'BRANCH_INACTIVE'
+      );
+    }
+    assignedBranchId = branch._id;
+  } else {
+    // If no branch specified, assign to active primary branch if one exists
+    const primaryBranch = await Branch.findOne({
+      storeId: store._id,
+      isPrimary: true,
+      isActive: true,
+    });
+    if (primaryBranch) {
+      assignedBranchId = primaryBranch._id;
+    }
+  }
+
+  // Check duplicate batchNumber within business scope (storeId + productId + branchId + batchNumber)
   const normalizedBatchNum = payload.batchNumber.trim().toUpperCase();
-  const duplicateBatch = await Batch.findOne({
+  const duplicateQuery = {
     storeId: store._id,
     productId: product._id,
     batchNumber: normalizedBatchNum,
-  });
+  };
+  if (assignedBranchId) {
+    duplicateQuery.branchId = assignedBranchId;
+  }
+  const duplicateBatch = await Batch.findOne(duplicateQuery);
 
   if (duplicateBatch) {
     throw new ApiError(
@@ -149,6 +195,7 @@ export const createBatchService = async (sellerUser, payload) => {
     productId: product._id,
     storeId: store._id,
     sellerId: sellerUser._id,
+    branchId: assignedBranchId,
     batchNumber: normalizedBatchNum,
     manufacturingDate: payload.manufacturingDate,
     expiryDate: payload.expiryDate,
@@ -175,6 +222,7 @@ export const createBatchService = async (sellerUser, payload) => {
     batchId: batch._id,
     productId: product._id,
     storeId: store._id,
+    branchId: assignedBranchId,
     batchNumber: batch.batchNumber,
     actionType: INVENTORY_ACTION_TYPES.INITIAL_STOCK,
     quantityChange: payload.quantity,
@@ -227,6 +275,7 @@ export const createBatchService = async (sellerUser, payload) => {
   return batch.populate([
     { path: 'productId', select: 'name brand unit category image' },
     { path: 'storeId', select: 'storeName slug verificationStatus' },
+    { path: 'branchId', select: 'name address contactPhone isPrimary isActive' },
   ]);
 };
 
@@ -269,6 +318,20 @@ export const listBatchesService = async (query = {}, requesterUser = null, scope
     filter.productId = query.productId;
   }
 
+  if (query.branchId) {
+    if (query.branchId === 'LEGACY' || query.branchId === 'null') {
+      filter.branchId = null;
+    } else if (mongoose.Types.ObjectId.isValid(query.branchId)) {
+      const branchDoc = await Branch.findById(query.branchId);
+      if (branchDoc && branchDoc.isPrimary) {
+        // Deterministic legacy inventory policy: primary branch encompasses both its lots and unassigned lots
+        filter.$or = [{ branchId: branchDoc._id }, { branchId: null }];
+      } else {
+        filter.branchId = query.branchId;
+      }
+    }
+  }
+
   if (query.batchNumber) {
     filter.batchNumber = { $regex: query.batchNumber.trim(), $options: 'i' };
   }
@@ -282,6 +345,7 @@ export const listBatchesService = async (query = {}, requesterUser = null, scope
     Batch.find(filter)
       .populate('productId', 'name brand unit category image status')
       .populate('storeId', 'storeName slug address verificationStatus')
+      .populate('branchId', 'name address contactPhone isPrimary isActive')
       .sort({ [sortBy]: sortOrder, createdAt: 1 })
       .skip(skip)
       .limit(limit),
@@ -387,13 +451,169 @@ export const updateBatchService = async (batchId, requesterUser, payload) => {
   if (payload.originalPrice !== undefined) batch.originalPrice = payload.originalPrice;
   if (payload.currentPrice !== undefined) batch.currentPrice = payload.currentPrice;
 
+  // Safe branch reassignment validation
+  if (payload.branchId !== undefined) {
+    const prevBranchIdStr = batch.branchId ? batch.branchId.toString() : null;
+    const targetBranchIdStr = payload.branchId ? payload.branchId.toString() : null;
+    const isReassigningBranch = prevBranchIdStr !== targetBranchIdStr;
+
+    if (isReassigningBranch) {
+      if (batch.reservedQuantity > 0) {
+        throw new ApiError(
+          400,
+          'Cannot reassign branch while batch has active reserved stock.',
+          'BATCH_REASSIGNMENT_UNSAFE'
+        );
+      }
+
+      // Check for active unfulfilled orders referencing this batch
+      const activeOrder = await Order.findOne({
+        status: {
+          $in: [
+            ORDER_STATUS.PLACED,
+            ORDER_STATUS.CONFIRMED,
+            ORDER_STATUS.PACKED,
+            ORDER_STATUS.READY_FOR_PICKUP,
+            ORDER_STATUS.OUT_FOR_DELIVERY,
+          ],
+        },
+        'items.batchAllocations.batchId': batch._id,
+      })
+        .select('_id orderNumber status branchId')
+        .lean();
+
+      if (activeOrder) {
+        throw new ApiError(
+          400,
+          `Cannot reassign branch: Batch [${batch.batchNumber}] is allocated to active order [${activeOrder.orderNumber}] in status [${activeOrder.status}]. Fulfill or cancel the order first.`,
+          'BATCH_REASSIGNMENT_UNSAFE'
+        );
+      }
+    }
+
+    let targetBranch = null;
+    if (payload.branchId !== null) {
+      if (!mongoose.Types.ObjectId.isValid(payload.branchId)) {
+        throw new ApiError(400, 'Invalid branch ID format.', 'INVALID_BRANCH_ID');
+      }
+      targetBranch = await Branch.findById(payload.branchId);
+      if (!targetBranch) {
+        throw new ApiError(404, 'Target branch not found.', 'BRANCH_NOT_FOUND');
+      }
+      if (!targetBranch.isActive) {
+        throw new ApiError(
+          400,
+          'Cannot reassign batch to an inactive branch. Please activate the branch first.',
+          'BRANCH_INACTIVE'
+        );
+      }
+      if (targetBranch.storeId.toString() !== batch.storeId.toString()) {
+        throw new ApiError(
+          403,
+          'Cannot reassign batch to a branch of a different store.',
+          'BRANCH_STORE_MISMATCH'
+        );
+      }
+    }
+
+    if (isReassigningBranch) {
+      if (payload.branchId !== null) {
+        const duplicateInTarget = await Batch.findOne({
+          _id: { $ne: batch._id },
+          storeId: batch.storeId,
+          productId: batch.productId,
+          branchId: targetBranch._id,
+          batchNumber: batch.batchNumber,
+        });
+        if (duplicateInTarget) {
+          throw new ApiError(
+            409,
+            `Batch number [${batch.batchNumber}] already exists in branch [${targetBranch.name}].`,
+            'DUPLICATE_BATCH_NUMBER'
+          );
+        }
+      }
+
+      // Recompute dynamic shelf-life & pricing state
+      syncBatchDynamicState(batch);
+
+      // Atomic Compare-And-Set update:
+      // Verifies batch ID, original branchId, exact stock quantity, and zero active reservations.
+      // Prevents overwriting concurrent checkout stock deductions or concurrent branch updates.
+      const atomicCondition = {
+        _id: batch._id,
+        branchId: batch.branchId || null,
+        quantity: batch.quantity,
+        reservedQuantity: 0,
+      };
+
+      const targetBranchId = payload.branchId === null ? null : targetBranch._id;
+      const atomicUpdate = {
+        $set: {
+          branchId: targetBranchId,
+          ...(payload.batchNumber !== undefined && { batchNumber: batch.batchNumber }),
+          ...(payload.manufacturingDate !== undefined && { manufacturingDate: batch.manufacturingDate }),
+          ...(payload.expiryDate !== undefined && { expiryDate: batch.expiryDate }),
+          ...(payload.originalPrice !== undefined && { originalPrice: batch.originalPrice }),
+          ...(payload.currentPrice !== undefined && { currentPrice: batch.currentPrice }),
+          status: batch.status,
+          remainingDays: batch.remainingDays,
+          isPurchasable: batch.isPurchasable,
+        },
+      };
+
+      const updatedBatch = await Batch.findOneAndUpdate(atomicCondition, atomicUpdate, { new: true });
+      if (!updatedBatch) {
+        throw new ApiError(
+          409,
+          'Concurrent modification conflict: Batch stock, reservation, or branch was modified by another operation during reassignment. Please refresh and try again.',
+          'CONCURRENT_REASSIGNMENT_CONFLICT'
+        );
+      }
+
+      // Record audit record ONLY upon successful atomic update
+      const targetName = payload.branchId === null ? 'legacy inventory' : targetBranch.name;
+      await InventoryAudit.create({
+        batchId: updatedBatch._id,
+        branchId: updatedBatch.branchId,
+        productId: updatedBatch.productId,
+        storeId: updatedBatch.storeId,
+        batchNumber: updatedBatch.batchNumber,
+        actionType: INVENTORY_ACTION_TYPES.STOCK_ADJUSTMENT,
+        quantityChange: 0,
+        previousQuantity: updatedBatch.quantity,
+        newQuantity: updatedBatch.quantity,
+        previousReserved: 0,
+        newReserved: 0,
+        batchStatusAfter: updatedBatch.status,
+        reason: payload.branchId === null
+          ? `Batch unassigned from branch [${prevBranchIdStr || 'unassigned'}] to legacy inventory`
+          : `Batch reassigned from branch [${prevBranchIdStr || 'LEGACY'}] to branch [${targetName}]`,
+        performedBy: requesterUser._id,
+        performedByRole: requesterUser.role,
+      });
+
+      await invalidateProductCache(updatedBatch.productId);
+
+      return updatedBatch.populate([
+        { path: 'productId', select: 'name brand unit category image status' },
+        { path: 'storeId', select: 'storeName slug address verificationStatus' },
+        { path: 'branchId', select: 'name address contactPhone isPrimary isActive' },
+      ]);
+    }
+  }
+
   syncBatchDynamicState(batch);
   await batch.save();
 
   // Invalidate affected product & marketplace deals caches
   await invalidateProductCache(batch.productId);
 
-  return batch;
+  return batch.populate([
+    { path: 'productId', select: 'name brand unit category image status' },
+    { path: 'storeId', select: 'storeName slug address verificationStatus' },
+    { path: 'branchId', select: 'name address contactPhone isPrimary isActive' },
+  ]);
 };
 
 /**
@@ -441,6 +661,7 @@ export const adjustBatchStockService = async (batchId, requesterUser, payload) =
 
   const auditRecord = await InventoryAudit.create({
     batchId: batch._id,
+    branchId: batch.branchId || null,
     productId: batch.productId,
     storeId: batch.storeId,
     batchNumber: batch.batchNumber,
@@ -559,6 +780,7 @@ export const reserveBatchStockService = async (batchId, requesterUser, payload) 
 
   const auditRecord = await InventoryAudit.create({
     batchId: updatedBatch._id,
+    branchId: updatedBatch.branchId || null,
     productId: updatedBatch.productId,
     storeId: updatedBatch.storeId,
     batchNumber: updatedBatch.batchNumber,
@@ -639,6 +861,7 @@ export const releaseBatchStockService = async (batchId, requesterUser, payload) 
 
   const auditRecord = await InventoryAudit.create({
     batchId: updatedBatch._id,
+    branchId: updatedBatch.branchId || null,
     productId: updatedBatch.productId,
     storeId: updatedBatch.storeId,
     batchNumber: updatedBatch.batchNumber,
@@ -694,10 +917,30 @@ export const listInventoryAuditLogsService = async (query = {}, requesterUser) =
     filter.actionType = query.actionType;
   }
 
+  if (query.branchId) {
+    if (query.branchId === 'LEGACY' || query.branchId === 'null') {
+      filter.branchId = null;
+    } else if (mongoose.Types.ObjectId.isValid(query.branchId)) {
+      if (requesterUser.role === USER_ROLES.SELLER) {
+        // Enforce branch belongs to seller's store
+        const branchDoc = await Branch.findById(query.branchId);
+        if (!branchDoc || branchDoc.storeId.toString() !== filter.storeId?.toString()) {
+          throw new ApiError(
+            403,
+            'Forbidden: Cannot query inventory audit logs for a branch belonging to another store.',
+            'FORBIDDEN_BRANCH_ACCESS'
+          );
+        }
+      }
+      filter.branchId = query.branchId;
+    }
+  }
+
   const [logs, total] = await Promise.all([
     InventoryAudit.find(filter)
       .populate('productId', 'name brand unit')
       .populate('storeId', 'storeName slug')
+      .populate('branchId', 'name address contactPhone isPrimary')
       .populate('performedBy', 'name email role')
       .sort({ createdAt: -1 })
       .skip(skip)

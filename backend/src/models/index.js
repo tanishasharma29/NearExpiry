@@ -10,8 +10,7 @@ export { ExpiryAlert, EXPIRY_ALERT_TYPES, ALERT_SEVERITY } from './expiryAlert.m
 export { SchedulerExecutionLog } from './schedulerLog.model.js';
 export { Wishlist } from './wishlist.model.js';
 export { BillReceipt } from './billReceipt.model.js';
-export {
-  Complaint,
+export { Complaint,
   COMPLAINT_STATUS,
   COMPLAINT_CATEGORY,
   COMPLAINT_PRIORITY,
@@ -19,3 +18,4 @@ export {
   RESOLUTION_ACTION_EXECUTION_STATUS,
   RESOLUTION_ACTION_TYPE,
 } from './complaint.model.js';
+export { Branch } from './branch.model.js';

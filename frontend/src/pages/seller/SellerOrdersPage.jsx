@@ -30,10 +30,12 @@ import {
   Boxes,
   Eye,
   Sparkles,
+  Building2,
 } from 'lucide-react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { orderService } from '../../services/orderService';
 import { billingService } from '../../services/billingService';
+import branchService from '../../services/branchService';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { Modal } from '../../components/common/Modal';
 import { BillReceiptModal } from '../../components/billing/BillReceiptModal';
@@ -92,6 +94,8 @@ export const SellerOrdersPage = () => {
   const [activeTab, setActiveTab] = useState('ALL'); // ALL | NEEDS_ACTION | READY_PICKUP | PICKUP | LOCAL_DELIVERY | COMPLETED
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [paymentFilter, setPaymentFilter] = useState('ALL');
+  const [branches, setBranches] = useState([]);
+  const [branchFilter, setBranchFilter] = useState('ALL');
 
   // QR Scanner & Verification State (100% Preserved)
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -113,7 +117,7 @@ export const SellerOrdersPage = () => {
   const scannerRef = useRef(null);
 
   // Fetch Orders
-  const fetchOrders = async (isManualSync = false) => {
+  const fetchOrders = async (isManualSync = false, activeBranchFilter = branchFilter) => {
     try {
       if (isManualSync) {
         setRefreshing(true);
@@ -121,8 +125,19 @@ export const SellerOrdersPage = () => {
         setLoading(true);
       }
       setError(null);
-      const data = await orderService.getSellerOrders();
+      const params = {};
+      if (activeBranchFilter !== 'ALL') {
+        params.branchId = activeBranchFilter;
+      }
+      const [data, brRes] = await Promise.all([
+        orderService.getSellerOrders(params),
+        branches.length === 0 ? branchService.getMyBranches().catch(() => ({ branches: [] })) : Promise.resolve(null),
+      ]);
       setOrders(data?.orders || []);
+      if (brRes) {
+        const brList = brRes?.branches || brRes?.data?.branches || [];
+        setBranches(brList);
+      }
     } catch (err) {
       console.error('Failed to retrieve store orders:', err);
       setError(err?.message || 'Unable to load store orders. Please try again.');
@@ -135,6 +150,11 @@ export const SellerOrdersPage = () => {
   useEffect(() => {
     fetchOrders();
   }, []);
+
+  const handleBranchFilterChange = (newBranch) => {
+    setBranchFilter(newBranch);
+    fetchOrders(true, newBranch);
+  };
 
   // Initialize html5-qrcode scanner when scanner modal opens in camera mode
   useEffect(() => {
@@ -219,7 +239,8 @@ export const SellerOrdersPage = () => {
     try {
       setVerifying(true);
       setScanError('');
-      const res = await orderService.verifyPickupQr(token);
+      const branchContext = branchFilter !== 'ALL' ? branchFilter : null;
+      const res = await orderService.verifyPickupQr(token, branchContext);
       const verifiedData = res?.data || res;
       setVerificationResult(verifiedData);
       fetchOrders(true);
@@ -374,13 +395,16 @@ export const SellerOrdersPage = () => {
     searchQuery.trim() !== '' ||
     activeTab !== 'ALL' ||
     statusFilter !== 'ALL' ||
-    paymentFilter !== 'ALL';
+    paymentFilter !== 'ALL' ||
+    branchFilter !== 'ALL';
 
   const resetFilters = () => {
     setSearchQuery('');
     setActiveTab('ALL');
     setStatusFilter('ALL');
     setPaymentFilter('ALL');
+    setBranchFilter('ALL');
+    fetchOrders(true, 'ALL');
   };
 
   return (
@@ -769,6 +793,22 @@ export const SellerOrdersPage = () => {
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
+              {/* Branch Dropdown */}
+              {branches.length > 0 && (
+                <select
+                  value={branchFilter}
+                  onChange={(e) => handleBranchFilterChange(e.target.value)}
+                  className="px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                >
+                  <option value="ALL">All Branches ({branches.length})</option>
+                  {branches.map((b) => (
+                    <option key={b._id} value={b._id}>
+                      {b.name} {b.isPrimary ? '(Main)' : ''}
+                    </option>
+                  ))}
+                </select>
+              )}
+
               {/* Status Dropdown */}
               <select
                 value={statusFilter}
@@ -862,6 +902,13 @@ export const SellerOrdersPage = () => {
                     <div className="flex items-center gap-2.5 flex-wrap">
                       <span className="font-mono font-black text-sm text-slate-900 bg-slate-100 px-2 py-0.5 rounded">
                         #{ord.orderNumber}
+                      </span>
+                      {/* Branch Badge */}
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200/80">
+                        <Building2 className="w-3 h-3 text-emerald-600" />
+                        <span>
+                          {ord.pickupBranch?.name || ord.branchId?.name || (ord.branchId ? 'Assigned Branch' : 'Main Store (Legacy)')}
+                        </span>
                       </span>
                       <span className="text-xs text-slate-400 font-medium">
                         • {formatDate(ord.createdAt)}
@@ -1154,6 +1201,27 @@ export const SellerOrdersPage = () => {
                     )}
                   </div>
                 </div>
+                <div className="sm:col-span-2">
+                  <div className="text-slate-400 text-[10px] uppercase font-semibold">
+                    Assigned Branch / Fulfillment Origin
+                  </div>
+                  <div className="font-semibold text-slate-800 flex items-center gap-1.5 mt-0.5">
+                    <Building2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>
+                      {detailOrder.pickupBranch?.name ||
+                        detailOrder.branchId?.name ||
+                        (detailOrder.branchId ? 'Assigned Branch' : 'Main Store (Legacy)')}
+                    </span>
+                    {(detailOrder.pickupBranch?.address || detailOrder.branchId?.address) && (
+                      <span className="text-xs font-normal text-slate-500">
+                        •{' '}
+                        {typeof (detailOrder.pickupBranch?.address || detailOrder.branchId?.address) === 'object'
+                          ? `${(detailOrder.pickupBranch?.address || detailOrder.branchId?.address).street || ''}, ${(detailOrder.pickupBranch?.address || detailOrder.branchId?.address).city || ''}`
+                          : (detailOrder.pickupBranch?.address || detailOrder.branchId?.address)}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1321,6 +1389,17 @@ export const SellerOrdersPage = () => {
                 <span className="font-bold text-slate-600">Store:</span>
                 <span className="font-semibold text-slate-900">
                   {verificationResult.order?.store?.storeName || 'Store'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
+                <span className="font-bold text-slate-600">Pickup Branch:</span>
+                <span className="font-semibold text-slate-900 inline-flex items-center gap-1">
+                  <Building2 className="w-3 h-3 text-emerald-600" />
+                  <span>
+                    {verificationResult.order?.confirmedBranch?.name ||
+                      verificationResult.order?.pickupBranch?.name ||
+                      (verificationResult.order?.branchId ? 'Assigned Branch' : 'Main Store (Legacy)')}
+                  </span>
                 </span>
               </div>
               <div className="flex justify-between items-center py-1 border-b border-slate-200/60">

@@ -23,9 +23,11 @@ import {
   ArrowUpDown,
   Boxes,
   ExternalLink,
+  MapPin,
 } from 'lucide-react';
 import { batchService } from '../../services/batchService';
 import { productService } from '../../services/productService';
+import { branchService } from '../../services/branchService';
 import { Modal } from '../../components/common/Modal';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import {
@@ -37,6 +39,7 @@ import {
 
 const batchSchema = z.object({
   productId: z.string().min(1, 'Product is required'),
+  branchId: z.string().optional().nullable(),
   batchNumber: z.string().min(1, 'Batch / Lot number is required'),
   manufacturingDate: z.string().min(1, 'Manufacturing date required'),
   expiryDate: z.string().min(1, 'Expiry date required'),
@@ -47,6 +50,7 @@ const batchSchema = z.object({
 export const SellerBatchesPage = () => {
   const [batches, setBatches] = useState([]);
   const [products, setProducts] = useState([]);
+  const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState('');
@@ -59,6 +63,7 @@ export const SellerBatchesPage = () => {
 
   // Filters & Search
   const [searchTerm, setSearchTerm] = useState('');
+  const [branchFilter, setBranchFilter] = useState('ALL');
   const [productFilter, setProductFilter] = useState('ALL');
   const [expiryWindowFilter, setExpiryWindowFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -79,16 +84,24 @@ export const SellerBatchesPage = () => {
       else setLoading(true);
       setLoadError('');
 
-      const [bData, pData] = await Promise.all([
+      const [bData, pData, brData] = await Promise.all([
         batchService.getBatches({ limit: 100 }),
         productService.getMyProducts({ limit: 100 }).catch(() => productService.getProducts({ limit: 100 })),
+        branchService.getMyBranches().catch(() => ({ branches: [] })),
       ]);
 
       const bList = bData?.batches || bData?.data?.batches || (Array.isArray(bData) ? bData : []);
       const pList = pData?.products || pData?.data?.products || (Array.isArray(pData) ? pData : []);
+      const brList = brData?.branches || brData?.data?.branches || [];
 
       setBatches(bList);
       setProducts(pList);
+      setBranches(brList);
+
+      const defaultBranch = brList.find((b) => b.isPrimary && b.isActive) || brList.find((b) => b.isActive);
+      if (defaultBranch) {
+        reset((prev) => ({ ...prev, branchId: defaultBranch._id }));
+      }
     } catch (err) {
       console.error('Failed to load FEFO batches:', err);
       setLoadError('Unable to retrieve inventory lots. Please check your connection.');
@@ -102,15 +115,32 @@ export const SellerBatchesPage = () => {
     loadData();
   }, []);
 
+  const handleOpenRegisterModal = () => {
+    const defaultBranch = branches.find((b) => b.isPrimary && b.isActive) || branches.find((b) => b.isActive);
+    reset({
+      productId: '',
+      branchId: defaultBranch ? defaultBranch._id : '',
+      batchNumber: '',
+      manufacturingDate: '',
+      expiryDate: '',
+      quantity: '',
+      originalPrice: '',
+    });
+    setServerError('');
+    setModalOpen(true);
+  };
+
   const onSubmit = async (data) => {
     try {
       setServerError('');
-      await batchService.createBatch(data);
+      const payload = { ...data };
+      if (!payload.branchId) delete payload.branchId;
+      await batchService.createBatch(payload);
       setModalOpen(false);
       reset();
       loadData(true);
     } catch (err) {
-      setServerError(err.message || 'Failed to register batch in NearExpiry system');
+      setServerError(err.response?.data?.message || err.message || 'Failed to register batch in NearExpiry system');
     }
   };
 
@@ -187,6 +217,25 @@ export const SellerBatchesPage = () => {
         if (prodId !== productFilter) return false;
       }
 
+      // Branch Filter (incorporates Phase 4 deterministic legacy primary fallback)
+      if (branchFilter !== 'ALL') {
+        const batchBranchId =
+          typeof b.branchId === 'object' && b.branchId?._id
+            ? b.branchId._id.toString()
+            : b.branchId
+            ? b.branchId.toString()
+            : null;
+
+        const selectedBranch = branches.find((br) => br._id === branchFilter);
+        if (selectedBranch?.isPrimary) {
+          // Primary branch policy: includes its assigned lots + unassigned legacy lots
+          if (batchBranchId !== branchFilter && batchBranchId !== null) return false;
+        } else {
+          // Secondary branch: strictly assigned lots
+          if (batchBranchId !== branchFilter) return false;
+        }
+      }
+
       // Expiry Window Filter
       if (expiryWindowFilter !== 'ALL') {
         const days = b.remainingDays !== undefined ? b.remainingDays : 999;
@@ -242,6 +291,7 @@ export const SellerBatchesPage = () => {
 
   const handleClearFilters = () => {
     setSearchTerm('');
+    setBranchFilter('ALL');
     setProductFilter('ALL');
     setExpiryWindowFilter('ALL');
     setStatusFilter('ALL');
@@ -250,6 +300,7 @@ export const SellerBatchesPage = () => {
 
   const hasActiveFilters =
     searchTerm.trim() !== '' ||
+    branchFilter !== 'ALL' ||
     productFilter !== 'ALL' ||
     expiryWindowFilter !== 'ALL' ||
     statusFilter !== 'ALL' ||
@@ -280,10 +331,7 @@ export const SellerBatchesPage = () => {
             </button>
 
             <button
-              onClick={() => {
-                setServerError('');
-                setModalOpen(true);
-              }}
+              onClick={handleOpenRegisterModal}
               className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-xs transition"
             >
               <Plus className="w-4 h-4" />
@@ -475,6 +523,22 @@ export const SellerBatchesPage = () => {
 
           {/* Filters & Sorting */}
           <div className="flex items-center gap-2.5 flex-wrap">
+            {/* Branch Filter */}
+            {branches.length > 0 && (
+              <select
+                value={branchFilter}
+                onChange={(e) => setBranchFilter(e.target.value)}
+                className="py-2 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+              >
+                <option value="ALL">All Branches ({branches.length})</option>
+                {branches.map((b) => (
+                  <option key={b._id} value={b._id}>
+                    {b.name} {b.isPrimary ? '(Main)' : ''}
+                  </option>
+                ))}
+              </select>
+            )}
+
             {/* Product Filter */}
             <select
               value={productFilter}
@@ -610,7 +674,15 @@ export const SellerBatchesPage = () => {
 
                       {/* Batch Number */}
                       <td className="py-3.5 px-4 font-mono font-bold text-slate-800">
-                        {b.batchNumber}
+                        <div>{b.batchNumber}</div>
+                        {b.branchId && (
+                          <div className="text-[10px] text-slate-500 font-sans font-medium flex items-center gap-1 mt-0.5">
+                            <MapPin className="w-2.5 h-2.5 text-slate-400 shrink-0" />
+                            <span className="truncate max-w-[140px]">
+                              {typeof b.branchId === 'object' ? b.branchId.name : 'Branch'}
+                            </span>
+                          </div>
+                        )}
                       </td>
 
                       {/* Expiry Date */}
@@ -693,6 +765,14 @@ export const SellerBatchesPage = () => {
                         <span className="font-mono text-xs font-bold text-slate-600">
                           {b.batchNumber}
                         </span>
+                        {b.branchId && (
+                          <span className="text-[10px] text-slate-500 font-sans font-medium flex items-center gap-1">
+                            <MapPin className="w-2.5 h-2.5 text-slate-400 shrink-0" />
+                            <span className="truncate max-w-[120px]">
+                              {typeof b.branchId === 'object' ? b.branchId.name : 'Branch'}
+                            </span>
+                          </span>
+                        )}
                       </div>
                       <h4 className="font-bold text-slate-900 text-sm mt-1">{prodName}</h4>
                       {prodBrand && <div className="text-xs text-slate-500">{prodBrand}</div>}
@@ -772,10 +852,7 @@ export const SellerBatchesPage = () => {
                 Register your first physical lot to enable automated FEFO allocation and shelf-life markdowns.
               </p>
               <button
-                onClick={() => {
-                  setServerError('');
-                  setModalOpen(true);
-                }}
+                onClick={handleOpenRegisterModal}
                 className="mt-4 px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition inline-flex items-center gap-1.5"
               >
                 <Plus className="w-4 h-4" />
@@ -826,6 +903,36 @@ export const SellerBatchesPage = () => {
                 </Link>
               </div>
             )}
+          </div>
+
+          <div>
+            <label className="block font-bold text-slate-700 uppercase tracking-wider text-[11px] mb-1">
+              Fulfillment Branch / Outlet
+            </label>
+            {branches.filter((b) => b.isActive).length > 0 ? (
+              <select
+                {...register('branchId')}
+                className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
+              >
+                {branches
+                  .filter((b) => b.isActive)
+                  .map((b) => (
+                    <option key={b._id} value={b._id}>
+                      {b.name} {b.isPrimary ? '★ (Primary Outlet)' : ''} — {b.address?.locality || b.address?.city} ({b.address?.pincode})
+                    </option>
+                  ))}
+              </select>
+            ) : (
+              <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-[11px] flex items-center justify-between">
+                <span>No active branches available. Register or activate a branch first.</span>
+                <Link to="/seller/branches" className="font-bold underline text-amber-950 ml-2 whitespace-nowrap">
+                  + Manage Branches
+                </Link>
+              </div>
+            )}
+            <p className="text-[10px] text-slate-400 mt-1">
+              Designates the physical outlet holding this batch lot for location-aware customer pickup.
+            </p>
           </div>
 
           <div>

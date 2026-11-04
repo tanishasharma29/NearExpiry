@@ -167,6 +167,26 @@ const statusTimelineSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const pickupBranchSnapshotSchema = new mongoose.Schema(
+  {
+    name: { type: String, default: '' },
+    address: {
+      street: { type: String, default: '' },
+      locality: { type: String, default: '' },
+      city: { type: String, default: '' },
+      state: { type: String, default: '' },
+      pincode: { type: String, default: '' },
+      landmark: { type: String, default: '' },
+    },
+    contactPhone: { type: String, default: '' },
+    contactEmail: { type: String, default: '' },
+    operatingHours: { type: String, default: '' },
+    latitude: { type: Number, default: null },
+    longitude: { type: Number, default: null },
+  },
+  { _id: false }
+);
+
 const orderSchema = new mongoose.Schema(
   {
     orderNumber: {
@@ -187,6 +207,16 @@ const orderSchema = new mongoose.Schema(
       ref: 'Store',
       required: true,
       index: true,
+    },
+    branchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Branch',
+      default: null,
+      index: true,
+    },
+    pickupBranch: {
+      type: pickupBranchSnapshotSchema,
+      default: null,
     },
     items: [orderItemSchema],
     pricingSummary: {

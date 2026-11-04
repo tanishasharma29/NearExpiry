@@ -46,8 +46,10 @@ export const orderService = {
     return res.data;
   },
 
-  verifyPickupQr: async (token) => {
-    const res = await api.post('/qr/pickup/verify', { token });
+  verifyPickupQr: async (token, branchId = null) => {
+    const payload = { token };
+    if (branchId) payload.branchId = branchId;
+    const res = await api.post('/qr/pickup/verify', payload);
     return res.data;
   },
 };

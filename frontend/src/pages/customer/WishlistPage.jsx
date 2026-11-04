@@ -22,8 +22,11 @@ export const WishlistPage = () => {
       ) : wishlist.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {wishlist.map((item) => {
-            const product = item.productId || item;
-            return <ProductCard key={product._id} product={product} />;
+            const product =
+              (item.product && typeof item.product === 'object' ? item.product : null) ||
+              (item.productId && typeof item.productId === 'object' ? item.productId : null) ||
+              item;
+            return <ProductCard key={product._id || item._id} product={product} />;
           })}
         </div>
       ) : (

@@ -5,6 +5,7 @@ import { Batch, BATCH_STATUS } from '../models/batch.model.js';
 import { Product } from '../models/product.model.js';
 import { Store } from '../models/store.model.js';
 import { Order, ORDER_STATUS, FULFILLMENT_TYPES } from '../models/order.model.js';
+import { Branch } from '../models/branch.model.js';
 import { USER_ROLES } from '../models/user.model.js';
 import { ApiError } from '../utils/ApiError.js';
 import {
@@ -367,6 +368,7 @@ export const generatePickupQrService = async (orderId, userActor) => {
 
   const order = await Order.findById(orderId)
     .populate('storeId', 'storeName slug address contactPhone')
+    .populate('branchId', 'name address contactPhone operatingHours isPrimary')
     .populate('customerId', 'name email phone');
 
   if (!order) {
@@ -432,6 +434,7 @@ export const generatePickupQrService = async (orderId, userActor) => {
       orderId: order._id,
       customerId: order.customerId._id,
       storeId: order.storeId._id,
+      branchId: order.branchId?._id || order.branchId || null,
       tokenNonce: pickupTokenData.nonce,
       tokenHash: pickupTokenData.tokenHash,
       status: QR_STATUS.ACTIVE,
@@ -446,6 +449,14 @@ export const generatePickupQrService = async (orderId, userActor) => {
     scale: 6,
   });
 
+  const pickupBranchData = order.pickupBranch || (order.branchId ? {
+    name: order.branchId.name,
+    address: order.branchId.address,
+    contactPhone: order.branchId.contactPhone,
+    operatingHours: order.branchId.operatingHours,
+    isPrimary: order.branchId.isPrimary,
+  } : null);
+
   return {
     orderId: order._id,
     orderNumber: order.orderNumber,
@@ -459,6 +470,8 @@ export const generatePickupQrService = async (orderId, userActor) => {
       address: order.storeId.address,
       contactPhone: order.storeId.contactPhone,
     },
+    branchId: order.branchId?._id || order.branchId || null,
+    pickupBranch: pickupBranchData,
     token: tokenToUse,
     qrDataUrl,
     qrCodeDataUrl: qrDataUrl,
@@ -492,7 +505,7 @@ export const verifyPickupQrService = async (token, sellerUser, auditContext = {}
     throw new ApiError(400, 'Invalid pickup QR.', 'INVALID_PICKUP_QR');
   }
 
-  const { ipAddress = '127.0.0.1', userAgent = 'unknown' } = auditContext;
+  const { ipAddress = '127.0.0.1', userAgent = 'unknown', branchId: scannerBranchId = null } = auditContext;
 
   // Step 3: Check QR Status
   if (qrRecord.status === QR_STATUS.USED) {
@@ -519,6 +532,7 @@ export const verifyPickupQrService = async (token, sellerUser, auditContext = {}
       qrRecord.scanHistory.push({
         scannedAt: new Date(),
         scannedBy: sellerUser._id,
+        branchId: null,
         ipAddress,
         userAgent,
         result: 'STORE_MISMATCH',
@@ -530,9 +544,29 @@ export const verifyPickupQrService = async (token, sellerUser, auditContext = {}
     }
   }
 
+  // Step 4.1: Optional Counter Scanner Branch Authorization
+  let scannerBranch = null;
+  if (scannerBranchId) {
+    if (!mongoose.Types.ObjectId.isValid(scannerBranchId)) {
+      throw new ApiError(400, 'Invalid branch ID format.', 'INVALID_BRANCH_ID');
+    }
+    scannerBranch = await Branch.findById(scannerBranchId);
+    if (!scannerBranch) {
+      throw new ApiError(404, 'Scanner branch not found.', 'BRANCH_NOT_FOUND');
+    }
+    if (sellerStore && scannerBranch.storeId.toString() !== sellerStore._id.toString()) {
+      throw new ApiError(
+        403,
+        'Forbidden: You are not authorized to scan for a branch of another store.',
+        'FORBIDDEN'
+      );
+    }
+  }
+
   // Step 5: Query and Validate the Associated Order
   const order = await Order.findById(qrRecord.orderId)
     .populate('customerId', 'name email phone')
+    .populate('branchId', 'name address contactPhone operatingHours isPrimary')
     .populate('storeId', 'storeName slug address contactPhone');
 
   if (!order) {
@@ -566,8 +600,38 @@ export const verifyPickupQrService = async (token, sellerUser, auditContext = {}
     throw new ApiError(400, 'Payment verification required before pickup.', 'PAYMENT_REQUIRED');
   }
 
+  // Step 5.1: Branch Assignment Validation (when counter branch is specified)
+  if (scannerBranch) {
+    const orderBranchIdStr = order.branchId?._id
+      ? order.branchId._id.toString()
+      : (order.branchId ? order.branchId.toString() : null);
+
+    // If order is assigned to a branch, it must match the scanner branch!
+    // For legacy orders without branchId (orderBranchIdStr === null), it is permitted at any authorized branch of that store
+    if (orderBranchIdStr && orderBranchIdStr !== scannerBranch._id.toString()) {
+      qrRecord.scanHistory.push({
+        scannedAt: new Date(),
+        scannedBy: sellerUser._id,
+        branchId: scannerBranch._id,
+        ipAddress,
+        userAgent,
+        result: 'BRANCH_PICKUP_MISMATCH',
+        verificationStatus: 'REJECTED',
+        notes: `Order is assigned to branch [${order.pickupBranch?.name || order.branchId?.name || orderBranchIdStr}] but presented at branch [${scannerBranch.name}]`,
+      });
+      await qrRecord.save();
+
+      throw new ApiError(
+        400,
+        `Branch pickup mismatch: This order is scheduled for pickup at [${order.pickupBranch?.name || order.branchId?.name || 'another branch'}], not [${scannerBranch.name}].`,
+        'BRANCH_PICKUP_MISMATCH'
+      );
+    }
+  }
+
   // Step 6: Atomic Concurrency Update (Double-scan protection)
   const now = new Date();
+  const recordedBranchId = scannerBranch?._id || order.branchId?._id || order.branchId || null;
   const updatedQr = await QrVerification.findOneAndUpdate(
     {
       _id: qrRecord._id,
@@ -579,16 +643,18 @@ export const verifyPickupQrService = async (token, sellerUser, auditContext = {}
         usedAt: now,
         verifiedAt: now,
         verifiedBy: sellerUser._id,
+        branchId: recordedBranchId,
       },
       $push: {
         scanHistory: {
           scannedAt: now,
           scannedBy: sellerUser._id,
+          branchId: recordedBranchId,
           ipAddress,
           userAgent,
           result: 'SUCCESS',
           verificationStatus: 'VERIFIED_AND_PICKED_UP',
-          notes: `Pickup verified by seller ${sellerUser.name || sellerUser.email}`,
+          notes: `Pickup verified by seller ${sellerUser.name || sellerUser.email}${scannerBranch ? ` at branch ${scannerBranch.name}` : ''}`,
         },
       },
     },
@@ -600,20 +666,49 @@ export const verifyPickupQrService = async (token, sellerUser, auditContext = {}
   }
 
   // Step 7: Update Order Status to DELIVERED
-  order.status = ORDER_STATUS.DELIVERED;
-  if (order.paymentMethod === 'CASH_ON_DELIVERY') {
-    order.paymentStatus = 'PAID';
+  try {
+    order.status = ORDER_STATUS.DELIVERED;
+    if (order.paymentMethod === 'CASH_ON_DELIVERY') {
+      order.paymentStatus = 'PAID';
+    }
+
+    order.statusTimeline.push({
+      status: ORDER_STATUS.DELIVERED,
+      timestamp: now,
+      updatedBy: sellerUser._id,
+      updatedByRole: sellerUser.role || 'SELLER',
+      note: 'Customer handover completed via cryptographic Pickup QR verification',
+    });
+
+    await order.save();
+  } catch (orderSaveErr) {
+    // Standalone MongoDB Compensation: Roll back QrVerification from USED to ACTIVE to prevent permanent order bricking
+    try {
+      await QrVerification.findByIdAndUpdate(qrRecord._id, {
+        $set: {
+          status: QR_STATUS.ACTIVE,
+          usedAt: null,
+          verifiedAt: null,
+          verifiedBy: null,
+        },
+        $push: {
+          scanHistory: {
+            scannedAt: new Date(),
+            scannedBy: sellerUser._id,
+            branchId: recordedBranchId,
+            ipAddress,
+            userAgent,
+            result: 'ORDER_UPDATE_FAILED',
+            verificationStatus: 'FAILED',
+            notes: `Order state update failed: ${orderSaveErr.message}. Restored QR status to ACTIVE for retry.`,
+          },
+        },
+      });
+    } catch (compErr) {
+      console.error('[QR] Failed to compensate QR status on order update failure:', compErr.message);
+    }
+    throw new ApiError(500, `Failed to update order status during pickup verification: ${orderSaveErr.message}`);
   }
-
-  order.statusTimeline.push({
-    status: ORDER_STATUS.DELIVERED,
-    timestamp: now,
-    updatedBy: sellerUser._id,
-    updatedByRole: sellerUser.role || 'SELLER',
-    note: 'Customer handover completed via cryptographic Pickup QR verification',
-  });
-
-  await order.save();
 
   // Step 7.5: Generate immutable Bill Receipt and email customer automatically
   let billReceipt = null;
@@ -636,6 +731,21 @@ export const verifyPickupQrService = async (token, sellerUser, auditContext = {}
       orderNumber: order.orderNumber,
       status: order.status,
       fulfillmentType: order.fulfillmentType,
+      branchId: order.branchId?._id || order.branchId || null,
+      pickupBranch: order.pickupBranch || (order.branchId ? {
+        name: order.branchId.name,
+        address: order.branchId.address,
+        contactPhone: order.branchId.contactPhone,
+        operatingHours: order.branchId.operatingHours,
+        isPrimary: order.branchId.isPrimary,
+      } : null),
+      confirmedBranch: scannerBranch ? {
+        _id: scannerBranch._id,
+        name: scannerBranch.name,
+        address: scannerBranch.address,
+        contactPhone: scannerBranch.contactPhone,
+        isPrimary: scannerBranch.isPrimary,
+      } : (order.pickupBranch || null),
       customer: {
         _id: order.customerId?._id,
         name: order.customerId?.name || 'Customer',

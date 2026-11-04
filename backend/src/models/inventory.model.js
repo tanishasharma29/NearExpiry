@@ -34,6 +34,12 @@ const inventoryAuditSchema = new mongoose.Schema(
       required: [true, 'storeId is required'],
       index: true,
     },
+    branchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Branch',
+      default: null,
+      index: true,
+    },
     batchNumber: {
       type: String,
       required: true,

@@ -12,3 +12,4 @@ export { analyticsService } from './analyticsService';
 export { adminService } from './adminService';
 export { complaintService } from './complaintService';
 export { sellerService } from './sellerService';
+export { branchService } from './branchService';

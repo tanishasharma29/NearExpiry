@@ -23,9 +23,11 @@ import {
   SlidersHorizontal,
   ChevronDown,
   ChevronUp,
+  Store,
 } from 'lucide-react';
 import { batchService } from '../../services/batchService';
 import { productService } from '../../services/productService';
+import { branchService } from '../../services/branchService';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import {
   SellerPageHeader,
@@ -159,6 +161,8 @@ const ExpandableInventoryKpiCard = ({
 export const SellerInventoryPage = () => {
   const [batches, setBatches] = useState([]);
   const [products, setProducts] = useState([]);
+  const [branches, setBranches] = useState([]);
+  const [selectedBranchId, setSelectedBranchId] = useState('ALL');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState('');
@@ -182,16 +186,19 @@ export const SellerInventoryPage = () => {
       else setLoading(true);
       setLoadError('');
 
-      const [bData, pData] = await Promise.all([
+      const [bData, pData, brData] = await Promise.all([
         batchService.getBatches({ limit: 100 }),
         productService.getMyProducts({ limit: 100 }).catch(() => productService.getProducts({ limit: 100 })),
+        branchService.getMyBranches().catch(() => ({ branches: [] })),
       ]);
 
       const bList = bData?.batches || bData?.data?.batches || (Array.isArray(bData) ? bData : []);
       const pList = pData?.products || pData?.data?.products || (Array.isArray(pData) ? pData : []);
+      const brList = brData?.branches || brData?.data?.branches || [];
 
       setBatches(bList);
       setProducts(pList);
+      setBranches(brList);
     } catch (err) {
       console.error('Failed to load store inventory:', err);
       setLoadError('Unable to load inventory data. Please check your connection.');
@@ -214,6 +221,29 @@ export const SellerInventoryPage = () => {
     return map;
   }, [products]);
 
+  // Branch-Scoped Batches (incorporates Phase 4 deterministic legacy primary fallback)
+  const scopedBatches = useMemo(() => {
+    if (selectedBranchId === 'ALL') {
+      return batches;
+    }
+    const selectedBranch = branches.find((b) => b._id === selectedBranchId);
+    return batches.filter((b) => {
+      const batchBranchId =
+        typeof b.branchId === 'object' && b.branchId?._id
+          ? b.branchId._id.toString()
+          : b.branchId
+          ? b.branchId.toString()
+          : null;
+
+      if (selectedBranch?.isPrimary) {
+        // Primary branch policy: includes its assigned lots + unassigned legacy lots
+        return batchBranchId === selectedBranchId || batchBranchId === null;
+      }
+      // Secondary branch: strictly assigned lots
+      return batchBranchId === selectedBranchId;
+    });
+  }, [batches, selectedBranchId, branches]);
+
   // 1. Calculate Real Unit-Based Inventory Health Distribution
   const unitHealthDistribution = useMemo(() => {
     const acc = {
@@ -225,7 +255,7 @@ export const SellerInventoryPage = () => {
       totalUnits: 0,
     };
 
-    batches.forEach((b) => {
+    scopedBatches.forEach((b) => {
       const qty = b.quantity || 0;
       acc.totalUnits += qty;
       const days = b.remainingDays !== undefined ? b.remainingDays : 999;
@@ -244,12 +274,12 @@ export const SellerInventoryPage = () => {
     });
 
     return acc;
-  }, [batches]);
+  }, [scopedBatches]);
 
   // 2. Active Batches and Financial Metrics
   const activeBatches = useMemo(() => {
-    return batches.filter((b) => b.status !== 'EXPIRED' && (b.remainingDays === undefined || b.remainingDays >= 0));
-  }, [batches]);
+    return scopedBatches.filter((b) => b.status !== 'EXPIRED' && (b.remainingDays === undefined || b.remainingDays >= 0));
+  }, [scopedBatches]);
 
   const totalStockUnits = useMemo(() => {
     return activeBatches.reduce((acc, b) => acc + (b.quantity || 0), 0);
@@ -376,7 +406,7 @@ export const SellerInventoryPage = () => {
 
   // 6. Filtered & Sorted Batches for the Operations Table
   const filteredBatches = useMemo(() => {
-    let result = batches.filter((b) => {
+    let result = scopedBatches.filter((b) => {
       const prodId = typeof b.productId === 'object' ? b.productId?._id : b.productId;
       const prod = productMap.get(prodId) || (typeof b.productId === 'object' ? b.productId : null);
       const prodName = prod?.name || '';
@@ -436,7 +466,7 @@ export const SellerInventoryPage = () => {
     });
 
     return result;
-  }, [batches, productMap, searchTerm, riskFilter, stockStatusFilter, sortBy]);
+  }, [scopedBatches, productMap, searchTerm, riskFilter, stockStatusFilter, sortBy]);
 
   const handleClearFilters = () => {
     setSearchTerm('');
@@ -474,6 +504,24 @@ export const SellerInventoryPage = () => {
         showEngineStatus={true}
         actions={
           <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+            {branches.length > 0 && (
+              <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 shadow-xs">
+                <Store className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <select
+                  value={selectedBranchId}
+                  onChange={(e) => setSelectedBranchId(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-slate-800 outline-none cursor-pointer pr-1"
+                >
+                  <option value="ALL">All Outlets ({branches.length})</option>
+                  {branches.map((b) => (
+                    <option key={b._id} value={b._id}>
+                      {b.name} {b.isPrimary ? '(Main)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <button
               onClick={() => loadData(true)}
               disabled={refreshing}

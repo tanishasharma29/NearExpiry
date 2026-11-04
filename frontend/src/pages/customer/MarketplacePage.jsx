@@ -6,12 +6,15 @@ import { categoryService } from '../../services/categoryService';
 import { ProductCard } from '../../components/common/ProductCard';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { EmptyState } from '../../components/common/EmptyState';
+import { useCustomerLocation } from '../../context/LocationContext';
 
 export const MarketplacePage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { location, clearLocation, openLocationModal } = useCustomerLocation();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [locationSummary, setLocationSummary] = useState(null);
   const [pagination, setPagination] = useState({ page: 1, limit: 12, total: 0, pages: 1 });
 
   // Filters state
@@ -44,16 +47,39 @@ export const MarketplacePage = () => {
       if (sortOrder) queryParams.sortOrder = sortOrder;
       if (maxDistanceKm) queryParams.maxDistanceKm = maxDistanceKm;
 
+      // Attach customer selected location / GPS coordinates
+      if (location) {
+        if (location.branchId) {
+          queryParams.branchId = location.branchId;
+        }
+        if (location.pincode) {
+          queryParams.pincode = location.pincode;
+        } else if (location.city) {
+          queryParams.city = location.city;
+        } else if (location.value && /^\d{6}$/.test(location.value)) {
+          queryParams.pincode = location.value;
+        } else if (location.value) {
+          queryParams.city = location.value;
+        }
+
+        if (location.latitude !== undefined && location.longitude !== undefined) {
+          queryParams.latitude = location.latitude;
+          queryParams.longitude = location.longitude;
+          if (location.radiusKm) queryParams.radiusKm = location.radiusKm;
+        }
+      }
+
       const data = await productService.getMarketplaceProducts(queryParams);
       setProducts(data?.products || []);
       setPagination(data?.pagination || { page: 1, limit: 12, total: 0, pages: 1 });
+      setLocationSummary(data?.locationSummary || null);
     } catch (err) {
       console.error('Failed to fetch marketplace products', err);
       setProducts([]);
     } finally {
       setLoading(false);
     }
-  }, [search, category, expiryWindow, minDiscount, sortBy, sortOrder, maxDistanceKm, page]);
+  }, [search, category, expiryWindow, minDiscount, sortBy, sortOrder, maxDistanceKm, page, location]);
 
   useEffect(() => {
     fetchProducts();
@@ -107,6 +133,38 @@ export const MarketplacePage = () => {
           </select>
         </div>
       </div>
+
+      {/* Active Location Filter Banner */}
+      {location && (
+        <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 rounded-2xl bg-emerald-50/80 border border-emerald-200/80 text-xs shadow-2xs">
+          <div className="flex items-center gap-2 text-emerald-950 font-medium">
+            <MapPin className="w-4 h-4 text-brand-600 flex-shrink-0" />
+            <span>
+              Showing deals near: <strong className="font-bold text-brand-900">{location.label || location.value}</strong>
+              {locationSummary?.matchedBranchesCount !== null && locationSummary?.matchedBranchesCount !== undefined && locationSummary?.matchedBranchesCount > 0 && (
+                <span className="ml-1 text-emerald-700">({locationSummary.matchedBranchesCount} {locationSummary.matchedBranchesCount === 1 ? 'branch' : 'branches'} found)</span>
+              )}
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={openLocationModal}
+              className="font-bold text-brand-700 hover:text-brand-800 underline underline-offset-2 transition"
+            >
+              Change Location
+            </button>
+            <span className="text-emerald-300">•</span>
+            <button
+              type="button"
+              onClick={clearLocation}
+              className="text-gray-500 hover:text-red-600 font-semibold transition"
+            >
+              All Locations
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Filter Bar */}
       <div className="bg-white px-3.5 py-2.5 sm:px-4 sm:py-2.5 rounded-2xl border border-gray-200 shadow-xs">
@@ -242,6 +300,13 @@ export const MarketplacePage = () => {
             </div>
           )}
         </>
+      ) : locationSummary?.noStoresFound ? (
+        <EmptyState
+          title={`No stores or branches found near ${location?.label || 'selected location'}`}
+          description="We couldn't find any active NearExpiry partner branches in this immediate area. You can search another PIN code or city, or browse deals across all locations."
+          actionLabel="View All Locations"
+          onAction={clearLocation}
+        />
       ) : (
         <EmptyState
           title="No products match your criteria"

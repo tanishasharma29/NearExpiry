@@ -8,6 +8,7 @@ export const createBatchSchema = z.object({
   body: z
     .object({
       productId: objectIdString,
+      branchId: objectIdString.optional().nullable(),
       batchNumber: z
         .string({ required_error: 'batchNumber is required' })
         .trim()
@@ -69,6 +70,7 @@ export const createBatchSchema = z.object({
 export const updateBatchSchema = z.object({
   body: z
     .object({
+      branchId: objectIdString.optional().nullable(),
       batchNumber: z
         .string()
         .trim()

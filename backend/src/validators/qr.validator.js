@@ -37,6 +37,15 @@ export const verifyPickupQrSchema = z.object({
       .string({ required_error: 'Pickup QR token is required' })
       .trim()
       .min(20, 'Invalid pickup QR token length'),
+    branchId: z
+      .string()
+      .trim()
+      .optional()
+      .nullable()
+      .refine((val) => val === undefined || val === null || val === '' || objectIdRegex.test(val), {
+        message: 'Invalid Branch ID format',
+      })
+      .transform((val) => (val === '' ? null : val)),
   }),
 });
 

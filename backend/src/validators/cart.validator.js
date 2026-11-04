@@ -50,8 +50,22 @@ export const checkoutValidateSchema = z.object({
     .object({
       storeId: z
         .string()
-        .regex(objectIdRegex, 'Invalid Store ID format')
-        .optional(),
+        .trim()
+        .optional()
+        .nullable()
+        .refine((val) => val === undefined || val === null || val === '' || objectIdRegex.test(val), {
+          message: 'Invalid Store ID format',
+        })
+        .transform((val) => (val === '' ? null : val)),
+      branchId: z
+        .string()
+        .trim()
+        .optional()
+        .nullable()
+        .refine((val) => val === undefined || val === null || val === '' || objectIdRegex.test(val), {
+          message: 'Invalid Branch ID format',
+        })
+        .transform((val) => (val === '' ? null : val)),
     })
     .optional(),
 });

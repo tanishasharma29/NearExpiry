@@ -2,11 +2,13 @@ import mongoose from 'mongoose';
 import { Cart } from '../models/cart.model.js';
 import { Product, PRODUCT_STATUS } from '../models/product.model.js';
 import { Store } from '../models/store.model.js';
+import { Branch } from '../models/branch.model.js';
 import { User, VERIFICATION_STATUS } from '../models/user.model.js';
 import { Batch, BATCH_STATUS } from '../models/batch.model.js';
 import { InventoryAudit, INVENTORY_ACTION_TYPES } from '../models/inventory.model.js';
 import { ApiError } from '../utils/ApiError.js';
 import { toCalendarDayEpochUTC } from '../utils/shelfLife.js';
+import { ensureDefaultBranchForStore } from './branch.service.js';
 
 const round2 = (num) => Math.round((Number(num) + Number.EPSILON) * 100) / 100;
 
@@ -34,15 +36,59 @@ export const getOrCreateCart = async (userId) => {
  * 7. Flags insufficient stock with exact available counts.
  * 8. Calculates subtotal, discounts, and final total.
  */
-export const getCartSummaryService = async (userId) => {
+export const getCartSummaryService = async (userId, options = {}) => {
   const cart = await getOrCreateCart(userId);
   const todayUtc = new Date(toCalendarDayEpochUTC(new Date()));
+
+  // 1. Resolve and validate explicitly selected branch (if provided)
+  let validatedBranch = null;
+  if (options.branchId) {
+    if (!mongoose.Types.ObjectId.isValid(options.branchId)) {
+      throw new ApiError(400, 'Invalid Branch ID format.', 'INVALID_BRANCH_ID');
+    }
+    validatedBranch = await Branch.findById(options.branchId);
+    if (!validatedBranch) {
+      throw new ApiError(404, 'Selected branch could not be found.', 'BRANCH_NOT_FOUND');
+    }
+    if (!validatedBranch.isActive) {
+      throw new ApiError(
+        400,
+        'Selected pickup branch is currently inactive. Please choose an active branch.',
+        'BRANCH_INACTIVE'
+      );
+    }
+  } else if (cart.items.length > 0) {
+    // If no branch explicitly specified, establish deterministic legacy fallback (active primary branch)
+    const storeId = cart.items[0].storeId;
+    if (storeId) {
+      validatedBranch = await Branch.findOne({
+        storeId,
+        isPrimary: true,
+        isActive: true,
+      });
+      if (!validatedBranch) {
+        const storeDoc = await Store.findById(storeId);
+        if (storeDoc) {
+          validatedBranch = await ensureDefaultBranchForStore(storeDoc);
+        }
+      }
+    }
+  }
 
   if (cart.items.length === 0) {
     return {
       cartId: cart._id,
       userId: cart.userId,
       store: null,
+      branch: validatedBranch
+        ? {
+            _id: validatedBranch._id,
+            name: validatedBranch.name,
+            address: validatedBranch.address,
+            contactPhone: validatedBranch.contactPhone,
+            isPrimary: validatedBranch.isPrimary,
+          }
+        : null,
       items: [],
       pricingSummary: {
         subtotal: 0,
@@ -65,22 +111,37 @@ export const getCartSummaryService = async (userId) => {
   const storeIds = cart.items.map((i) => i.storeId);
   const pinnedBatchIds = cart.items.map((i) => i.batchId).filter(Boolean);
 
+  const fefoBatchFilter = {
+    productId: { $in: productIds },
+    storeId: { $in: storeIds },
+    isPurchasable: true,
+    quantity: { $gt: 0 },
+    remainingDays: { $gte: 0 },
+    expiryDate: { $gte: todayUtc },
+    status: {
+      $in: [BATCH_STATUS.NORMAL, BATCH_STATUS.APPROACHING_EXPIRY, BATCH_STATUS.CRITICAL],
+    },
+  };
+
+  if (validatedBranch) {
+    if (validatedBranch.isPrimary) {
+      // Deterministic legacy inventory fallback: primary branch fulfills both its assigned lots and legacy unassigned lots
+      fefoBatchFilter.$or = [
+        { branchId: validatedBranch._id },
+        { branchId: null },
+      ];
+    } else {
+      // Secondary branch: strictly isolated to lots registered at this specific branch
+      fefoBatchFilter.branchId = validatedBranch._id;
+    }
+  }
+
   const [products, stores, fefoBatches, pinnedBatches, expiredBatches] = await Promise.all([
     Product.find({ _id: { $in: productIds } })
       .populate('category', 'name slug status')
       .lean(),
     Store.find({ _id: { $in: storeIds } }).lean(),
-    Batch.find({
-      productId: { $in: productIds },
-      storeId: { $in: storeIds },
-      isPurchasable: true,
-      quantity: { $gt: 0 },
-      remainingDays: { $gte: 0 },
-      expiryDate: { $gte: todayUtc },
-      status: {
-        $in: [BATCH_STATUS.NORMAL, BATCH_STATUS.APPROACHING_EXPIRY, BATCH_STATUS.CRITICAL],
-      },
-    })
+    Batch.find(fefoBatchFilter)
       .sort({ expiryDate: 1, createdAt: 1 })
       .lean(),
     pinnedBatchIds.length > 0
@@ -142,6 +203,13 @@ export const getCartSummaryService = async (userId) => {
     const seller = sellerId ? sellerMap.get(sellerId.toString()) : null;
 
     if (!activeStore && store) {
+      if (validatedBranch && validatedBranch.storeId.toString() !== store._id.toString()) {
+        throw new ApiError(
+          400,
+          'Selected branch does not belong to the fulfilling store.',
+          'BRANCH_STORE_MISMATCH'
+        );
+      }
       activeStore = {
         _id: store._id,
         storeName: store.storeName,
@@ -292,6 +360,9 @@ export const getCartSummaryService = async (userId) => {
         if (expiredCount > 0) {
           itemResult.itemStatus = 'EXPIRED';
           itemResult.reason = 'All available inventory for this product has expired.';
+        } else if (validatedBranch) {
+          itemResult.itemStatus = 'OUT_OF_STOCK_AT_BRANCH';
+          itemResult.reason = `Product [${product.name}] is currently out of stock at ${validatedBranch.name}.`;
         } else {
           itemResult.itemStatus = 'OUT_OF_STOCK';
           itemResult.reason = 'Product is currently out of stock at this store.';
@@ -311,7 +382,9 @@ export const getCartSummaryService = async (userId) => {
 
     if (totalAvailableQty < item.quantity) {
       itemResult.itemStatus = 'INSUFFICIENT_STOCK';
-      itemResult.reason = `Requested ${item.quantity} units, but only ${totalAvailableQty} units are available in active non-expired stock.`;
+      itemResult.reason = validatedBranch
+        ? `Requested ${item.quantity} units, but only ${totalAvailableQty} units are available at ${validatedBranch.name}.`
+        : `Requested ${item.quantity} units, but only ${totalAvailableQty} units are available in active non-expired stock.`;
       unavailableItemCount += 1;
       blockingIssues.push({
         productId: item.productId,
@@ -431,6 +504,15 @@ export const getCartSummaryService = async (userId) => {
     cartId: cart._id,
     userId: cart.userId,
     store: activeStore,
+    branch: validatedBranch
+      ? {
+          _id: validatedBranch._id,
+          name: validatedBranch.name,
+          address: validatedBranch.address,
+          contactPhone: validatedBranch.contactPhone,
+          isPrimary: validatedBranch.isPrimary,
+        }
+      : null,
     items: evaluatedItems,
     pricingSummary: {
       subtotal,
@@ -671,7 +753,7 @@ export const clearCartService = async (userId) => {
  * Returns validated checkout snapshot or throws detailed blocking errors.
  */
 export const validateCartForCheckoutService = async (userId, options = {}) => {
-  const summary = await getCartSummaryService(userId);
+  const summary = await getCartSummaryService(userId, options);
 
   if (summary.items.length === 0) {
     throw new ApiError(400, 'Your cart is empty. Please add items before checkout.', 'CART_EMPTY');
@@ -698,6 +780,8 @@ export const validateCartForCheckoutService = async (userId, options = {}) => {
     canProceed: true,
     storeId: summary.store._id,
     storeName: summary.store.storeName,
+    branchId: summary.branch?._id || options.branchId || null,
+    branch: summary.branch || null,
     pricingSummary: summary.pricingSummary,
     items: summary.items.map((item) => ({
       productId: item.productId,

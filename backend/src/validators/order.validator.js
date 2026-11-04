@@ -9,6 +9,15 @@ export const createOrderSchema = z.object({
       .enum(Object.values(FULFILLMENT_TYPES))
       .optional()
       .default(FULFILLMENT_TYPES.PICKUP),
+    branchId: z
+      .string()
+      .trim()
+      .optional()
+      .nullable()
+      .refine((val) => val === undefined || val === null || val === '' || objectIdRegex.test(val), {
+        message: 'Invalid Branch ID format',
+      })
+      .transform((val) => (val === '' ? null : val)),
     paymentMethod: z
       .enum(['CASH_ON_DELIVERY', 'MOCK_PAYMENT'])
       .optional()
@@ -67,6 +76,10 @@ export const listOrdersQuerySchema = z.object({
   query: z
     .object({
       status: z.enum(Object.values(ORDER_STATUS)).optional(),
+      branchId: z
+        .string()
+        .trim()
+        .optional(),
       page: z
         .string()
         .regex(/^\d+$/, 'Page must be a positive integer')

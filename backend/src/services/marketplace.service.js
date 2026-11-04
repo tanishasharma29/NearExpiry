@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { Batch, BATCH_STATUS } from '../models/batch.model.js';
 import { Product, PRODUCT_STATUS } from '../models/product.model.js';
 import { Store } from '../models/store.model.js';
+import { Branch } from '../models/branch.model.js';
 import { VERIFICATION_STATUS } from '../models/user.model.js';
 import { EXPIRY_WINDOW_PRESETS } from '../validators/marketplace.validator.js';
 import { ApiError } from '../utils/ApiError.js';
@@ -65,6 +66,11 @@ export const browseMarketplaceProductsService = async (query = {}) => {
     batchMatch.storeId = new mongoose.Types.ObjectId(query.storeId);
   }
 
+  // Branch filter (direct branch ID)
+  if (query.branchId && mongoose.Types.ObjectId.isValid(query.branchId)) {
+    batchMatch.branchId = new mongoose.Types.ObjectId(query.branchId);
+  }
+
   // Price filter (matches batch currentPrice)
   if (query.minPrice !== undefined || query.maxPrice !== undefined) {
     batchMatch.currentPrice = {};
@@ -99,8 +105,15 @@ export const browseMarketplaceProductsService = async (query = {}) => {
   };
 
   // -------------------------------------------------------------------------
-  // STAGE 2: Geospatial Store Pre-Filter (if latitude & longitude provided)
+  // STAGE 2: Multi-Branch & Hyperlocal Location Discovery
+  // (Manual PIN/City/Locality or Device GPS Coordinates)
   // -------------------------------------------------------------------------
+  const hasTextLocation = Boolean(
+    (query.pincode && query.pincode.trim()) ||
+    (query.city && query.city.trim()) ||
+    (query.locality && query.locality.trim())
+  );
+
   const hasGeoCoordinates =
     query.latitude !== undefined &&
     query.longitude !== undefined &&
@@ -108,7 +121,81 @@ export const browseMarketplaceProductsService = async (query = {}) => {
     !Number.isNaN(Number(query.longitude));
 
   let nearbyStoreMap = null;
-  if (hasGeoCoordinates) {
+  let locationSummary = {
+    hasLocationFilter: false,
+    noStoresFound: false,
+  };
+
+  if (hasTextLocation) {
+    const branchConditions = [];
+    const storeConditions = [];
+
+    if (query.pincode && query.pincode.trim()) {
+      const pin = query.pincode.trim();
+      branchConditions.push({ 'address.pincode': pin });
+      storeConditions.push({ 'address.pincode': pin });
+    }
+    if (query.city && query.city.trim()) {
+      const cityRegex = new RegExp(escapeRegex(query.city.trim()), 'i');
+      branchConditions.push({ 'address.city': cityRegex });
+      storeConditions.push({ 'address.city': cityRegex });
+    }
+    if (query.locality && query.locality.trim()) {
+      const locRegex = new RegExp(escapeRegex(query.locality.trim()), 'i');
+      branchConditions.push({ 'address.locality': locRegex });
+      branchConditions.push({ 'address.street': locRegex });
+      storeConditions.push({ 'address.street': locRegex });
+      storeConditions.push({ 'address.landmark': locRegex });
+    }
+
+    const matchedBranches = await Branch.find({
+      isActive: true,
+      $or: branchConditions,
+    }).lean();
+
+    const matchedStores = await Store.find({
+      verificationStatus: VERIFICATION_STATUS.APPROVED,
+      isActive: true,
+      $or: storeConditions,
+    }).select('_id').lean();
+
+    const matchedBranchIds = matchedBranches.map((b) => b._id);
+    const matchedLegacyStoreIds = matchedStores.map((s) => s._id);
+
+    if (matchedBranchIds.length === 0 && matchedLegacyStoreIds.length === 0) {
+      return {
+        products: [],
+        pagination: { total: 0, page, limit, totalPages: 1 },
+        appliedFilters: query,
+        locationSummary: {
+          hasLocationFilter: true,
+          pincode: query.pincode || null,
+          city: query.city || null,
+          locality: query.locality || null,
+          matchedBranchesCount: 0,
+          noStoresFound: true,
+        },
+      };
+    }
+
+    const batchLocationOr = [];
+    if (matchedBranchIds.length > 0) {
+      batchLocationOr.push({ branchId: { $in: matchedBranchIds } });
+    }
+    if (matchedLegacyStoreIds.length > 0) {
+      batchLocationOr.push({ branchId: null, storeId: { $in: matchedLegacyStoreIds } });
+    }
+
+    batchMatch.$or = batchLocationOr;
+    locationSummary = {
+      hasLocationFilter: true,
+      pincode: query.pincode || null,
+      city: query.city || null,
+      locality: query.locality || null,
+      matchedBranchesCount: matchedBranchIds.length,
+      noStoresFound: false,
+    };
+  } else if (hasGeoCoordinates) {
     const userLat = Number(query.latitude);
     const userLng = Number(query.longitude);
     const radiusKm = Number(query.radiusKm || 25);
@@ -141,31 +228,67 @@ export const browseMarketplaceProductsService = async (query = {}) => {
       },
     ]);
 
-    if (nearbyStores.length === 0) {
+    const nearbyBranches = await Branch.find({
+      isActive: true,
+      latitude: { $ne: null },
+      longitude: { $ne: null },
+    }).lean();
+
+    const branchesWithinRadius = nearbyBranches.filter((b) => {
+      if (typeof b.latitude !== 'number' || typeof b.longitude !== 'number') return false;
+      const dist = computeHaversineDistanceKm(userLat, userLng, b.latitude, b.longitude);
+      b.distanceKm = dist;
+      return dist <= radiusKm;
+    });
+
+    const nearbyStoreIds = nearbyStores.map((s) => s._id);
+    const branchesFromNearbyStores = await Branch.find({
+      storeId: { $in: nearbyStoreIds },
+      isActive: true,
+    }).select('_id').lean();
+
+    const allBranchIds = [
+      ...branchesWithinRadius.map((b) => b._id),
+      ...branchesFromNearbyStores.map((b) => b._id),
+    ];
+    const uniqueBranchIdStrings = Array.from(new Set(allBranchIds.map((id) => id.toString())));
+    const uniqueBranchIds = uniqueBranchIdStrings.map((id) => new mongoose.Types.ObjectId(id));
+
+    if (uniqueBranchIds.length === 0 && nearbyStoreIds.length === 0) {
       return {
         products: [],
         pagination: { total: 0, page, limit, totalPages: 1 },
         appliedFilters: query,
+        locationSummary: {
+          hasLocationFilter: true,
+          latitude: userLat,
+          longitude: userLng,
+          radiusKm,
+          matchedBranchesCount: 0,
+          noStoresFound: true,
+        },
       };
     }
 
     nearbyStoreMap = new Map(nearbyStores.map((s) => [s._id.toString(), s]));
-    const allowedStoreIds = nearbyStores.map((s) => s._id);
 
-    if (batchMatch.storeId) {
-      const isWithinRadius = allowedStoreIds.some(
-        (id) => id.toString() === batchMatch.storeId.toString()
-      );
-      if (!isWithinRadius) {
-        return {
-          products: [],
-          pagination: { total: 0, page, limit, totalPages: 1 },
-          appliedFilters: query,
-        };
-      }
-    } else {
-      batchMatch.storeId = { $in: allowedStoreIds };
+    const geoOr = [];
+    if (uniqueBranchIds.length > 0) {
+      geoOr.push({ branchId: { $in: uniqueBranchIds } });
     }
+    if (nearbyStoreIds.length > 0) {
+      geoOr.push({ branchId: null, storeId: { $in: nearbyStoreIds } });
+    }
+
+    batchMatch.$or = geoOr;
+    locationSummary = {
+      hasLocationFilter: true,
+      latitude: userLat,
+      longitude: userLng,
+      radiusKm,
+      matchedBranchesCount: uniqueBranchIds.length,
+      noStoresFound: false,
+    };
   }
 
   // -------------------------------------------------------------------------
@@ -218,6 +341,7 @@ export const browseMarketplaceProductsService = async (query = {}) => {
             discountPercentage: '$discountPercentage',
             status: '$status',
             isPurchasable: '$isPurchasable',
+            branchId: '$branchId',
           },
         },
         lowestPrice: { $min: '$currentPrice' },
@@ -240,6 +364,7 @@ export const browseMarketplaceProductsService = async (query = {}) => {
             discountPercentage: '$discountPercentage',
             status: '$status',
             isPurchasable: '$isPurchasable',
+            branchId: '$branchId',
           },
         },
       },
@@ -286,6 +411,16 @@ export const browseMarketplaceProductsService = async (query = {}) => {
         'category.status': 'ACTIVE',
       },
     },
+    // 7. Join Branch for leadBatch
+    {
+      $lookup: {
+        from: 'branches',
+        localField: 'leadBatch.branchId',
+        foreignField: '_id',
+        as: 'leadBranch',
+      },
+    },
+    { $unwind: { path: '$leadBranch', preserveNullAndEmptyArrays: true } },
   ];
 
   const aggregatedItems = await Batch.aggregate(pipeline);
@@ -333,6 +468,16 @@ export const browseMarketplaceProductsService = async (query = {}) => {
         status: item.store.status,
         distanceKm,
       },
+      branch: item.leadBranch
+        ? {
+            _id: item.leadBranch._id,
+            name: item.leadBranch.name,
+            code: item.leadBranch.code,
+            address: item.leadBranch.address,
+            contactPhone: item.leadBranch.contactPhone,
+            isPrimary: item.leadBranch.isPrimary,
+          }
+        : null,
       pricingAndInventory: {
         fefoPrice: item.leadBatch.currentPrice,
         lowestPrice: item.lowestPrice,
@@ -397,6 +542,7 @@ export const browseMarketplaceProductsService = async (query = {}) => {
       limit,
       totalPages: Math.ceil(total / limit) || 1,
     },
+    locationSummary,
   };
   return result;
   });
@@ -438,7 +584,9 @@ export const getMarketplaceProductDetailsService = async (productId, query = {})
     status: {
       $in: [BATCH_STATUS.NORMAL, BATCH_STATUS.APPROACHING_EXPIRY, BATCH_STATUS.CRITICAL],
     },
-  }).sort({ expiryDate: 1, createdAt: 1 });
+  })
+    .populate('branchId', 'name code address contactPhone isPrimary isActive')
+    .sort({ expiryDate: 1, createdAt: 1 });
 
   let distanceKm = null;
   if (

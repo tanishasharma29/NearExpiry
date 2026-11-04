@@ -28,6 +28,12 @@ const batchSchema = new mongoose.Schema(
       required: [true, 'sellerId is required'],
       index: true,
     },
+    branchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Branch',
+      default: null,
+      index: true,
+    },
     batchNumber: {
       type: String,
       required: [true, 'Batch number is required'],

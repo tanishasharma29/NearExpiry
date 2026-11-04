@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import { CartProvider } from './context/CartContext';
 import { WishlistProvider } from './context/WishlistContext';
+import { LocationProvider } from './context/LocationContext';
 
 // Route Guards & Layouts
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
@@ -34,6 +35,7 @@ import { SellerDashboardPage } from './pages/seller/SellerDashboardPage';
 import { SellerProductsPage } from './pages/seller/SellerProductsPage';
 import { SellerBatchesPage } from './pages/seller/SellerBatchesPage';
 import { SellerInventoryPage } from './pages/seller/SellerInventoryPage';
+import { SellerBranchesPage } from './pages/seller/SellerBranchesPage';
 import { SellerExpiryAlertsPage } from './pages/seller/SellerExpiryAlertsPage';
 import { SellerOrdersPage } from './pages/seller/SellerOrdersPage';
 import { SellerBillingPage } from './pages/seller/SellerBillingPage';
@@ -58,9 +60,10 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <SocketProvider>
-          <CartProvider>
-            <WishlistProvider>
+        <LocationProvider>
+          <SocketProvider>
+            <CartProvider>
+              <WishlistProvider>
               <Routes>
               {/* 1. Public & Guest Routes */}
               <Route element={<PublicLayout />}>
@@ -148,6 +151,7 @@ export default function App() {
                 <Route path="products" element={<SellerProductsPage />} />
                 <Route path="batches" element={<SellerBatchesPage />} />
                 <Route path="inventory" element={<SellerInventoryPage />} />
+                <Route path="branches" element={<SellerBranchesPage />} />
                 <Route path="alerts" element={<SellerExpiryAlertsPage />} />
                 <Route path="orders" element={<SellerOrdersPage />} />
                 <Route path="billing" element={<SellerBillingPage />} />
@@ -185,7 +189,8 @@ export default function App() {
           </WishlistProvider>
         </CartProvider>
       </SocketProvider>
-    </AuthProvider>
-  </BrowserRouter>
+    </LocationProvider>
+  </AuthProvider>
+</BrowserRouter>
   );
 }
