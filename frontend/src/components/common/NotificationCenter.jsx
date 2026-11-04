@@ -193,14 +193,17 @@ export const NotificationCenter = ({
   };
 
   const resolveTargetUrl = (notif) => {
-    if (notif?.actionUrl) return notif.actionUrl;
-    const cid = notif?.data?.complaintId || notif?.metadata?.complaintId;
-    if (cid) {
-      if (role === 'SELLER') return `/seller/complaints?complaintId=${cid}`;
-      if (role === 'ADMIN') return `/admin/complaints/${cid}`;
-      return `/customer/complaints`;
-    }
-    const isDisputeNotice =
+    // 1. Complaint / Dispute notifications
+    const cid =
+      notif?.data?.complaintId ||
+      notif?.metadata?.complaintId ||
+      notif?.data?.entityId ||
+      (notif?.entityModel === 'Complaint' ? notif?.entityId : null);
+
+    const isComplaintNotice =
+      Boolean(cid) ||
+      notif?.actionUrl?.includes('/complaints') ||
+      notif?.actionUrl?.includes('/support') ||
       notif?.title?.includes('Dispute') ||
       notif?.title?.includes('Complaint') ||
       notif?.message?.includes('dispute') ||
@@ -208,11 +211,74 @@ export const NotificationCenter = ({
       notif?.title?.includes('NE-CMP-') ||
       notif?.message?.includes('NE-CMP-');
 
-    if (isDisputeNotice) {
-      if (role === 'SELLER') return '/seller/complaints';
-      if (role === 'ADMIN') return '/admin/support';
+    if (isComplaintNotice) {
+      const complaintIdToUse =
+        cid ||
+        (notif?.actionUrl?.includes('/admin/complaints/')
+          ? notif.actionUrl.split('/').pop()
+          : null) ||
+        (notif?.actionUrl?.includes('complaintId=')
+          ? new URLSearchParams(notif.actionUrl.split('?')[1]).get('complaintId')
+          : null) ||
+        (notif?.actionUrl?.includes('id=')
+          ? new URLSearchParams(notif.actionUrl.split('?')[1]).get('id')
+          : null);
+
+      if (role === 'ADMIN') {
+        return complaintIdToUse
+          ? `/admin/support?id=${complaintIdToUse}`
+          : '/admin/support';
+      }
+      if (role === 'SELLER') {
+        return complaintIdToUse
+          ? `/seller/complaints?complaintId=${complaintIdToUse}`
+          : '/seller/complaints';
+      }
       return '/customer/complaints';
     }
+
+    // 2. Seller Verification / Onboarding / Credentials
+    const sid =
+      notif?.data?.sellerId ||
+      notif?.metadata?.sellerId ||
+      (notif?.entityModel === 'User' ? notif?.entityId : null) ||
+      (notif?.actionUrl?.includes('sellerId=')
+        ? new URLSearchParams(notif.actionUrl.split('?')[1]).get('sellerId')
+        : null);
+
+    const isSellerNotice =
+      Boolean(sid) ||
+      notif?.actionUrl?.includes('/admin/sellers') ||
+      notif?.title?.includes('Document') ||
+      notif?.title?.includes('Seller') ||
+      notif?.title?.includes('Legal') ||
+      notif?.title?.includes('Credential') ||
+      notif?.title?.includes('KYC') ||
+      notif?.title?.includes('Store Onboarding') ||
+      notif?.category === 'COMPLIANCE' ||
+      notif?.message?.includes('credential') ||
+      notif?.message?.includes('PAN') ||
+      notif?.message?.includes('GSTIN') ||
+      notif?.message?.includes('FSSAI') ||
+      notif?.message?.includes('verification') ||
+      notif?.message?.includes('Seller:');
+
+    if (isSellerNotice) {
+      if (role === 'ADMIN') {
+        return sid ? `/admin/sellers?sellerId=${sid}` : '/admin/sellers';
+      }
+      if (role === 'SELLER') return '/seller/dashboard';
+    }
+
+    // 3. Fallback to generic actionUrl if provided and safe
+    if (notif?.actionUrl) {
+      if (notif.actionUrl.startsWith('/admin/complaints/')) {
+        const id = notif.actionUrl.split('/').pop();
+        return `/admin/support?id=${id}`;
+      }
+      return notif.actionUrl;
+    }
+
     return null;
   };
 
@@ -341,6 +407,20 @@ export const NotificationCenter = ({
                                 notif.title?.includes('NE-CMP-') ||
                                 notif.message?.includes('dispute'))
                                 ? 'Talk with Customer & Resolve'
+                                : role === 'ADMIN' &&
+                                  (notif.data?.complaintId ||
+                                    notif.title?.includes('Dispute') ||
+                                    notif.title?.includes('NE-CMP-') ||
+                                    notif.message?.includes('dispute') ||
+                                    notif.title?.includes('Complaint'))
+                                ? 'Inspect Dispute Dossier'
+                                : role === 'ADMIN' &&
+                                  (notif.data?.sellerId ||
+                                    notif.title?.includes('Document') ||
+                                    notif.title?.includes('Seller') ||
+                                    notif.message?.includes('credential') ||
+                                    notif.message?.includes('verification'))
+                                ? 'Inspect Seller Dossier'
                                 : 'Open Details'}
                             </span>
                             <ArrowRight className="w-3.5 h-3.5" />

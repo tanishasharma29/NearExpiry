@@ -170,6 +170,9 @@ export const listSellersService = async (queryParams = {}) => {
   const skip = (page - 1) * limit;
 
   const filter = { role: USER_ROLES.SELLER };
+  if (queryParams.sellerId && mongoose.Types.ObjectId.isValid(queryParams.sellerId)) {
+    filter._id = queryParams.sellerId;
+  }
   if (queryParams.verificationStatus) {
     filter.verificationStatus = queryParams.verificationStatus;
   }

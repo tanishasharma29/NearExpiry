@@ -151,23 +151,46 @@ const notifyCustomer = async ({ customerId, type, title, message, complaint, ded
 /**
  * Helper to dispatch complaint notifications to all active administrators
  */
-const notifyAdminsOnComplaint = async ({ complaint, order, customer, category, subject, isReply = false, replyMessage = '' }) => {
+const notifyAdminsOnComplaint = async ({
+  complaint,
+  order,
+  customer,
+  category,
+  subject,
+  isReply = false,
+  replyMessage = '',
+  senderRole = 'CUSTOMER',
+  senderName = '',
+}) => {
   try {
     const adminUsers = await User.find({ role: USER_ROLES.ADMIN, isActive: true })
       .select('_id email name')
       .lean();
     if (!adminUsers || adminUsers.length === 0) return;
 
-    const title = isReply
-      ? `Customer Replied: Dispute ${complaint.complaintNumber}`
-      : `New Dispute Filed: ${complaint.complaintNumber}`;
+    const isSeller =
+      senderRole === 'SELLER' ||
+      replyMessage.startsWith('Merchant') ||
+      replyMessage.startsWith('[Private Admin-Seller Chat]');
+    const effectiveSender =
+      senderName || (isSeller ? complaint.storeName || 'Seller' : customer?.name || 'Customer');
 
+    let title = '';
+    let message = '';
     const orderNum = order?.orderNumber || complaint.orderNumber || '';
-    const message = isReply
-      ? `Customer ${customer?.name || 'Customer'} replied on dispute #${complaint.complaintNumber} (Order #${orderNum}): "${replyMessage.slice(0, 100)}${replyMessage.length > 100 ? '...' : ''}"`
-      : `Customer ${customer?.name || 'Customer'} filed a complaint for Order #${orderNum} under category [${category}]: "${subject}".`;
 
-    const actionUrl = `/admin/complaints/${complaint._id}`;
+    if (!isReply) {
+      title = `New Dispute Filed: ${complaint.complaintNumber}`;
+      message = `Customer ${customer?.name || 'Customer'} filed a complaint for Order #${orderNum} under category [${category}]: "${subject}".`;
+    } else if (isSeller) {
+      title = `Seller Replied: Dispute ${complaint.complaintNumber}`;
+      message = `Seller ${effectiveSender} replied on dispute #${complaint.complaintNumber} (Order #${orderNum}): "${replyMessage.slice(0, 100)}${replyMessage.length > 100 ? '...' : ''}"`;
+    } else {
+      title = `Customer Replied: Dispute ${complaint.complaintNumber}`;
+      message = `Customer ${customer?.name || 'Customer'} replied on dispute #${complaint.complaintNumber} (Order #${orderNum}): "${replyMessage.slice(0, 100)}${replyMessage.length > 100 ? '...' : ''}"`;
+    }
+
+    const actionUrl = `/admin/support?id=${complaint._id}`;
 
     await Promise.allSettled(
       adminUsers.map((admin) =>
@@ -1413,10 +1436,12 @@ export const replySellerComplaintService = async (
     await notifyAdminsOnComplaint({
       complaint,
       order: { orderNumber: complaint.orderNumber, storeId: complaint.storeId },
-      customer: { name: senderName },
+      customer: { name: complaint.customerName || 'Customer' },
       category: complaint.category,
       subject: complaint.subject,
       isReply: true,
+      senderRole: 'SELLER',
+      senderName,
       replyMessage: `[Private Admin-Seller Chat] ${senderName}: ${message}`,
     });
 
@@ -1475,10 +1500,12 @@ export const replySellerComplaintService = async (
     await notifyAdminsOnComplaint({
       complaint,
       order: { orderNumber: complaint.orderNumber, storeId: complaint.storeId },
-      customer: { name: senderName },
+      customer: { name: complaint.customerName || 'Customer' },
       category: complaint.category,
       subject: complaint.subject,
       isReply: true,
+      senderRole: 'SELLER',
+      senderName,
       replyMessage: `Merchant (${senderName}): ${message}`,
     });
   }

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useParams } from 'react-router-dom';
 import {
   LifeBuoy,
   AlertTriangle,
@@ -130,8 +130,9 @@ const VALID_STATUS_TRANSITIONS = {
 
 export const AdminSupportPage = () => {
   const { user } = useAuth();
+  const { id: routeId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
-  const deepLinkComplaintId = searchParams.get('id');
+  const deepLinkComplaintId = routeId || searchParams.get('id') || searchParams.get('complaintId');
 
   // Primary Complaints State
   const [complaints, setComplaints] = useState([]);
@@ -348,6 +349,7 @@ export const AdminSupportPage = () => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.delete('id');
+      next.delete('complaintId');
       return next;
     });
   }, [setSearchParams]);

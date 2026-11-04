@@ -173,6 +173,7 @@ export default function App() {
                 <Route index element={<Navigate to="/admin/dashboard" replace />} />
                 <Route path="dashboard" element={<AdminDashboardPage />} />
                 <Route path="sellers" element={<AdminSellersPage />} />
+                <Route path="sellers/:id" element={<AdminSellersPage />} />
                 <Route path="users" element={<AdminUsersPage />} />
                 <Route path="products" element={<AdminProductsPage />} />
                 <Route path="categories" element={<AdminCategoriesPage />} />
@@ -180,6 +181,9 @@ export default function App() {
                 <Route path="inventory" element={<AdminInventoryPage />} />
                 <Route path="orders" element={<AdminOrdersPage />} />
                 <Route path="support" element={<AdminSupportPage />} />
+                <Route path="support/:id" element={<AdminSupportPage />} />
+                <Route path="complaints" element={<Navigate to="/admin/support" replace />} />
+                <Route path="complaints/:id" element={<AdminSupportPage />} />
                 <Route path="audit-logs" element={<AdminAuditLogsPage />} />
                 <Route path="analytics" element={<AdminAnalyticsPage />} />
                 <Route path="notifications" element={<AdminNotificationsPage />} />

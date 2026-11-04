@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useParams } from 'react-router-dom';
 import {
   Store,
   Check,
@@ -41,8 +41,13 @@ export const AdminSellersPage = () => {
   const [statusFilter, setStatusFilter] = useState('');
 
   // URL search params for deep-linking into specific seller dossier
+  const { id: paramId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
-  const targetSellerId = searchParams.get('sellerId');
+  const targetSellerId =
+    paramId ||
+    searchParams.get('sellerId') ||
+    searchParams.get('storeId') ||
+    searchParams.get('id');
 
   // Selected seller dossier drawer
   const [selectedSeller, setSelectedSeller] = useState(null);
@@ -85,14 +90,31 @@ export const AdminSellersPage = () => {
 
   // Deep-link auto-open seller dossier if sellerId exists in URL
   useEffect(() => {
-    if (targetSellerId && sellers.length > 0) {
-      const match = sellers.find(
-        (s) => s._id === targetSellerId || s.store?._id === targetSellerId || s.store?.ownerId === targetSellerId
-      );
-      if (match) {
-        setSelectedSeller(match);
-        setDrawerOpen(true);
+    if (targetSellerId) {
+      if (sellers.length > 0) {
+        const match = sellers.find(
+          (s) =>
+            String(s._id) === targetSellerId ||
+            String(s.store?._id) === targetSellerId ||
+            String(s.store?.ownerId) === targetSellerId
+        );
+        if (match) {
+          setSelectedSeller(match);
+          setDrawerOpen(true);
+          return;
+        }
       }
+
+      // If not present in currently loaded list, query specifically for target seller
+      adminService
+        .getSellers({ sellerId: targetSellerId })
+        .then((res) => {
+          if (res?.sellers?.length > 0) {
+            setSelectedSeller(res.sellers[0]);
+            setDrawerOpen(true);
+          }
+        })
+        .catch((err) => console.warn('Could not load target seller dossier:', err.message));
     }
   }, [targetSellerId, sellers]);
 
@@ -268,6 +290,14 @@ export const AdminSellersPage = () => {
   const openDossier = (seller) => {
     setSelectedSeller(seller);
     setDrawerOpen(true);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('sellerId', seller._id);
+        return next;
+      },
+      { replace: true }
+    );
   };
 
   const formatDate = (dateString) => {
@@ -569,11 +599,17 @@ export const AdminSellersPage = () => {
         isOpen={drawerOpen}
         onClose={() => {
           setDrawerOpen(false);
-          if (searchParams.get('sellerId')) {
-            const next = new URLSearchParams(searchParams);
-            next.delete('sellerId');
-            setSearchParams(next, { replace: true });
-          }
+          setSelectedSeller(null);
+          setSearchParams(
+            (prev) => {
+              const next = new URLSearchParams(prev);
+              next.delete('sellerId');
+              next.delete('storeId');
+              next.delete('id');
+              return next;
+            },
+            { replace: true }
+          );
         }}
         eyebrow="SELLER VERIFICATION DOSSIER"
         title={selectedSeller?.sellerProfile?.storeName || selectedSeller?.store?.storeName || selectedSeller?.name || 'Seller Details'}
